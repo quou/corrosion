@@ -1,7 +1,7 @@
 #include "core.h"
-#include "simplerenderer.h"
 #include "ui.h"
 #include "ui_atlas.h"
+#include "ui_render.h"
 
 enum {
 	ui_cmd_draw_rect,
@@ -19,6 +19,7 @@ struct ui_cmd_draw_rect {
 	v2f position;
 	v2f dimentions;
 	v4f colour;
+	f32 radius;
 };
 
 struct ui_cmd_draw_text {
@@ -55,6 +56,7 @@ struct ui_style {
 	optional(v4f) background_colour;
 	optional(u32) align;
 	optional(f32) padding;
+	optional(f32) radius;
 };
 
 struct ui_stylesheet {
@@ -64,7 +66,7 @@ struct ui_stylesheet {
 };
 
 struct ui {
-	struct simple_renderer* renderer;
+	struct ui_renderer* renderer;
 
 	struct font* default_font;
 	struct font* font;
@@ -112,13 +114,14 @@ static void* ui_cmd_add(struct ui* ui, usize size) {
 	return ui->cmd_buffer + (ui->cmd_buffer_idx - size);
 }
 
-static void ui_draw_rect(struct ui* ui, v2f position, v2f dimentions, v4f colour) {
+static void ui_draw_rect(struct ui* ui, v2f position, v2f dimentions, v4f colour, f32 radius) {
 	struct ui_cmd_draw_rect* cmd = ui_cmd_add(ui, sizeof(struct ui_cmd_draw_rect));
 	cmd->cmd.type = ui_cmd_draw_rect;
 	cmd->cmd.size = sizeof *cmd;
 	cmd->position = position;
 	cmd->dimentions = dimentions;
 	cmd->colour = colour;
+	cmd->radius = radius;
 }
 
 static void ui_draw_text(struct ui* ui, v2f position, const char* text, v4f colour) {
@@ -147,6 +150,7 @@ static inline void ui_build_style(struct ui_style* dst, const struct ui_style* s
 	if (src->background_colour.has_value) { dst->background_colour = src->background_colour; }
 	if (src->align.has_value)             { dst->align             = src->align; }
 	if (src->padding.has_value)           { dst->padding           = src->padding; }
+	if (src->radius.has_value)            { dst->radius            = src->radius; }
 }
 
 static inline void ui_build_style_variant(struct ui* ui, u64 class_id, struct ui_style* dst, u32 variant) {
@@ -226,7 +230,7 @@ struct ui* new_ui(const struct framebuffer* framebuffer) {
 
 	ui->default_font = new_font(default_font, sizeof default_font, 14.0f);
 
-	ui->renderer = new_simple_renderer(framebuffer);
+	ui->renderer = new_ui_renderer(framebuffer);
 	ui->cmd_buffer = core_alloc(1024);
 
 	table_set(ui->stylesheet.normal, hash_string("label"), ((struct ui_style) {
@@ -254,7 +258,8 @@ struct ui* new_ui(const struct framebuffer* framebuffer) {
 
 	table_set(ui->stylesheet.normal, hash_string("container"), ((struct ui_style) {
 		.background_colour = { true, make_rgba(0x111111, 255) },
-		.padding           = { true, 3.0f }
+		.padding           = { true, 5.0f },
+		.radius            = { true, 10.0f }
 	}));
 
 	return ui;
@@ -263,7 +268,7 @@ struct ui* new_ui(const struct framebuffer* framebuffer) {
 void free_ui(struct ui* ui) {
 	free_vector(ui->container_stack);
 	free_font(ui->default_font);
-	free_simple_renderer(ui->renderer);
+	free_ui_renderer(ui->renderer);
 	core_free(ui->cmd_buffer);
 	core_free(ui);
 }
@@ -274,7 +279,7 @@ void ui_begin(struct ui* ui) {
 	ui_font(ui, null);
 
 	v2i window_size = get_window_size();
-	simple_renderer_clip(ui->renderer, make_v4i(0, 0, window_size.x, window_size.y));
+	ui_renderer_clip(ui->renderer, make_v4i(0, 0, window_size.x, window_size.y));
 
 	ui->cursor_pos = make_v2f(0.0f, 0.0f);
 	ui->current_item_height = 0.0f;
@@ -311,7 +316,7 @@ void ui_begin_container_ex(struct ui* ui, const char* class, v4f rect) {
 			rect.w * (f32)(parent->rect.w - parent->rect.y) - style.padding.value * 2.0f);
 
 		ui_clip(ui, clip);
-		ui_draw_rect(ui, make_v2f(clip.x, clip.y), make_v2f(clip.z, clip.w), style.background_colour.value);
+		ui_draw_rect(ui, make_v2f(clip.x, clip.y), make_v2f(clip.z, clip.w), style.background_colour.value, style.radius.value);
 	} else {
 		clip = make_v4f(
 			rect.x * (f32)window_size.x,
@@ -390,7 +395,8 @@ bool ui_label_ex(struct ui* ui, const char* class, const char* text) {
 
 	const v2f dimentions = v2f_add(get_text_dimentions(ui->font, text), make_v2f(style.padding.value * 2.0f, style.padding.value * 2.0f));
 
-	ui_draw_rect(ui, get_ui_el_position(ui, &style, dimentions), make_v2f(dimentions.x, dimentions.y), style.background_colour.value);
+	ui_draw_rect(ui, get_ui_el_position(ui, &style, dimentions), make_v2f(dimentions.x, dimentions.y),
+		style.background_colour.value, style.radius.value);
 	struct ui_cmd_draw_rect* rect_cmd = ui_last_cmd(ui);
 
 	ui_draw_text(ui, v2f_add(rect_cmd->position, make_v2f(style.padding.value, style.padding.value)), text, style.text_colour.value);
@@ -399,6 +405,7 @@ bool ui_label_ex(struct ui* ui, const char* class, const char* text) {
 	bool hovered = mouse_over_rect(rect_cmd->position, dimentions);
 	if (ui_get_style_variant(ui, &style, "label", class, hovered)) {
 		rect_cmd->position = get_ui_el_position(ui, &style, dimentions);
+		rect_cmd->radius   = style.radius.value;
 		text_cmd->position = v2f_add(rect_cmd->position, make_v2f(style.padding.value, style.padding.value));
 
 		rect_cmd->colour = style.background_colour.value;
@@ -427,15 +434,16 @@ void ui_draw(const struct ui* ui) {
 		switch (cmd->type) {
 			case ui_cmd_draw_rect: {
 				struct ui_cmd_draw_rect* rect = (struct ui_cmd_draw_rect*)cmd;
-				simple_renderer_push(ui->renderer, &(struct simple_renderer_quad) {
+				ui_renderer_push(ui->renderer, &(struct ui_renderer_quad) {
 					.position   = make_v2f(rect->position.x,   rect->position.y),
 					.dimentions = make_v2f(rect->dimentions.x, rect->dimentions.y),
-					.colour     = rect->colour
+					.colour     = rect->colour,
+					.radius     = rect->radius
 				});
 			} break;
 			case ui_cmd_draw_text: {
 				struct ui_cmd_draw_text* text = (struct ui_cmd_draw_text*)cmd;
-				simple_renderer_push_text(ui->renderer, &(struct simple_renderer_text) {
+				ui_renderer_push_text(ui->renderer, &(struct ui_renderer_text) {
 					.position = text->position,
 					.text     = (char*)(text + 1),
 					.colour   = text->colour,
@@ -444,13 +452,13 @@ void ui_draw(const struct ui* ui) {
 			} break;
 			case ui_cmd_clip: {
 				struct ui_cmd_clip* clip = (struct ui_cmd_clip*)cmd;
-				simple_renderer_clip(ui->renderer, clip->rect);
+				ui_renderer_clip(ui->renderer, clip->rect);
 			} break;
 		}
 
 		cmd = (void*)(((u8*)cmd) + cmd->size);
 	}
 
-	simple_renderer_flush(ui->renderer);
-	simple_renderer_end_frame(ui->renderer);
+	ui_renderer_flush(ui->renderer);
+	ui_renderer_end_frame(ui->renderer);
 }

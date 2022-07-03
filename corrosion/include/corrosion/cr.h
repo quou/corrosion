@@ -12,3 +12,4 @@
 #include "simplerenderer.h"
 #include "timer.h"
 #include "ui.h"
+#include "ui_render.h"

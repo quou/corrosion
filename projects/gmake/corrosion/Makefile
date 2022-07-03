@@ -51,6 +51,7 @@ sources =                            \
           $(srcdir)/stb.c            \
           $(srcdir)/timer_posix.c    \
           $(srcdir)/ui.c             \
+          $(srcdir)/ui_render.c      \
           $(srcdir)/video.c          \
           $(srcdir)/video_vk.c       \
           $(srcdir)/window_x11.c     \
