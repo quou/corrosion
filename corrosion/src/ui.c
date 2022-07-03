@@ -185,6 +185,7 @@ static struct ui_style ui_get_style(struct ui* ui, const char* base_class, const
 	usize cur_class_len = 0;
 	for (const char* c = class; *c; c++) {
 		if (*c == ' ' || *(c + 1) == '\0') {
+			if (*c == ' ')        { cur_class_len--; }
 			if (*(c + 1) == '\0') { cur_class_len++; }
 
 			const u64 name_hash = elf_hash((const u8*)cur_class_start, cur_class_len);
