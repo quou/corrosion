@@ -22,6 +22,7 @@ void ui_columns(struct ui* ui, usize count, f32* columns);
 
 bool ui_label_ex(struct ui* ui, const char* class, const char* text);
 #define ui_label(ui_, t_) ui_label_ex(ui_, "", t_)
+#define ui_button(ui_, t_) ui_label_ex(ui_, "button", t_)
 
 void ui_begin_window();
 void ui_end_window();

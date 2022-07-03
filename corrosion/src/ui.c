@@ -16,7 +16,8 @@ struct ui_cmd {
 
 struct ui_cmd_draw_rect {
 	struct ui_cmd cmd;
-	v4f rect;
+	v2f position;
+	v2f dimentions;
 	v4f colour;
 };
 
@@ -111,15 +112,16 @@ static void* ui_cmd_add(struct ui* ui, usize size) {
 	return ui->cmd_buffer + (ui->cmd_buffer_idx - size);
 }
 
-static void ui_draw_rect(struct ui* ui, v4f rect, v4f colour) {
+static void ui_draw_rect(struct ui* ui, v2f position, v2f dimentions, v4f colour) {
 	struct ui_cmd_draw_rect* cmd = ui_cmd_add(ui, sizeof(struct ui_cmd_draw_rect));
 	cmd->cmd.type = ui_cmd_draw_rect;
 	cmd->cmd.size = sizeof *cmd;
-	cmd->rect = rect;
+	cmd->position = position;
+	cmd->dimentions = dimentions;
 	cmd->colour = colour;
 }
 
-static v2f ui_draw_text(struct ui* ui, v2f position, const char* text, v4f colour) {
+static void ui_draw_text(struct ui* ui, v2f position, const char* text, v4f colour) {
 	usize len = strlen(text);
 
 	struct ui_cmd_draw_text* cmd = ui_cmd_add(ui, sizeof(struct ui_cmd_draw_text) + len + 1);
@@ -131,8 +133,6 @@ static v2f ui_draw_text(struct ui* ui, v2f position, const char* text, v4f colou
 
 	memcpy(cmd + 1, text, len);
 	((char*)(cmd + 1))[len] = '\0';
-
-	return get_text_dimentions(cmd->font, text);
 }
 
 static void ui_clip(struct ui* ui, v4f rect) {
@@ -183,7 +183,9 @@ static struct ui_style ui_get_style(struct ui* ui, const char* base_class, const
 	const char* cur_class_start = class;
 	usize cur_class_len = 0;
 	for (const char* c = class; *c; c++) {
-		if (*c == ' ') {
+		if (*c == ' ' || *(c + 1) == '\0') {
+			if (*(c + 1) == '\0') { cur_class_len++; }
+
 			const u64 name_hash = elf_hash((const u8*)cur_class_start, cur_class_len);
 			const struct ui_style* class_ptr = table_get(ui->stylesheet.normal, name_hash);
 			if (!class_ptr) {
@@ -203,6 +205,20 @@ static struct ui_style ui_get_style(struct ui* ui, const char* base_class, const
 	return base;
 }
 
+static bool ui_get_style_variant(struct ui* ui, struct ui_style* style, const char* base, const char* class, bool hovered) {
+	if (hovered) {
+		if (mouse_btn_pressed(mouse_btn_left)) {
+			*style = ui_get_style(ui, base, class, ui_style_variant_active);
+			return true;
+		} else {
+			*style = ui_get_style(ui, base, class, ui_style_variant_hovered);
+			return true;
+		}
+	}
+
+	return false;
+}
+
 struct ui* new_ui(const struct framebuffer* framebuffer) {
 	struct ui* ui = core_calloc(1, sizeof(struct ui));
 
@@ -219,12 +235,19 @@ struct ui* new_ui(const struct framebuffer* framebuffer) {
 		.align             = { true, ui_align_left },
 	}));
 
-	table_set(ui->stylesheet.hovered, hash_string("label"), ((struct ui_style) {
-		.text_colour       = { true, make_rgba(0xff0000, 255) },
+	table_set(ui->stylesheet.normal, hash_string("button"), ((struct ui_style) {
+		.text_colour       = { true, make_rgba(0xffffff, 255) },
+		.background_colour = { true, make_rgba(0x191b26, 255) },
+		.align             = { true, ui_align_left },
 	}));
 
-	table_set(ui->stylesheet.active, hash_string("label"), ((struct ui_style) {
-		.text_colour       = { true, make_rgba(0x00ff00, 255) },
+	table_set(ui->stylesheet.hovered, hash_string("button"), ((struct ui_style) {
+		.background_colour = { true, make_rgba(0x252839, 255) },
+	}));
+
+	table_set(ui->stylesheet.active, hash_string("button"), ((struct ui_style) {
+		.text_colour       = { true, make_rgba(0x000000, 255) },
+		.background_colour = { true, make_rgba(0x8c91ac, 255) },
 	}));
 
 	table_set(ui->stylesheet.normal, hash_string("container"), ((struct ui_style) {
@@ -279,7 +302,7 @@ void ui_begin_container_ex(struct ui* ui, const char* class, v4f rect) {
 
 		ui_clip(ui, clip);
 		const struct ui_style style = ui_get_style(ui, "container", class, ui_style_variant_none);
-		ui_draw_rect(ui, clip, style.background_colour.value);
+		ui_draw_rect(ui, make_v2f(clip.x, clip.y), make_v2f(clip.z, clip.w), style.background_colour.value);
 	} else {
 		clip = make_v4f(
 			rect.x * (f32)window_size.x,
@@ -353,24 +376,24 @@ void ui_columns(struct ui* ui, usize count, f32* columns) {
 bool ui_label_ex(struct ui* ui, const char* class, const char* text) {
 	const struct ui_container* container = vector_end(ui->container_stack) - 1;
 
-	const v2f dimentions = ui_draw_text(ui, ui->cursor_pos, text, make_rgba(0xffffff, 255));
-	struct ui_cmd_draw_text* cmd = ui_last_cmd(ui);
+	const v2f dimentions = v2f_add(get_text_dimentions(ui->font, text), make_v2f(ui->padding * 2.0f, ui->padding * 2.0f));
 
 	struct ui_style style = ui_get_style(ui, "label", class, ui_style_variant_none);
-	cmd->position = get_ui_el_position(ui, &style, dimentions);
 
-	bool hovered = mouse_over_rect(cmd->position, dimentions); 
+	ui_draw_rect(ui, get_ui_el_position(ui, &style, dimentions), make_v2f(dimentions.x, dimentions.y), style.background_colour.value);
+	struct ui_cmd_draw_rect* rect_cmd = ui_last_cmd(ui);
 
-	if (hovered) {
-		if (mouse_btn_pressed(mouse_btn_left)) {
-			style = ui_get_style(ui, "label", class, ui_style_variant_active);
-		} else {
-			style = ui_get_style(ui, "label", class, ui_style_variant_hovered);
-		}
+	ui_draw_text(ui, v2f_add(rect_cmd->position, make_v2f(ui->padding, ui->padding)), text, style.text_colour.value);
+	struct ui_cmd_draw_text* text_cmd = ui_last_cmd(ui);
+
+	bool hovered = mouse_over_rect(rect_cmd->position, dimentions);
+	if (ui_get_style_variant(ui, &style, "label", class, hovered)) {
+		rect_cmd->position = get_ui_el_position(ui, &style, dimentions);
+		text_cmd->position = v2f_add(rect_cmd->position, make_v2f(ui->padding, ui->padding));
+
+		rect_cmd->colour = style.background_colour.value;
+		text_cmd->colour = style.text_colour.value;
 	}
-
-	cmd->colour = style.text_colour.value;
-	cmd->position = get_ui_el_position(ui, &style, dimentions);
 
 	advance(ui, dimentions.y + ui->padding);
 
@@ -395,8 +418,8 @@ void ui_draw(const struct ui* ui) {
 			case ui_cmd_draw_rect: {
 				struct ui_cmd_draw_rect* rect = (struct ui_cmd_draw_rect*)cmd;
 				simple_renderer_push(ui->renderer, &(struct simple_renderer_quad) {
-					.position   = make_v2f(rect->rect.x, rect->rect.y),
-					.dimentions = make_v2f(rect->rect.z, rect->rect.w),
+					.position   = make_v2f(rect->position.x,   rect->position.y),
+					.dimentions = make_v2f(rect->dimentions.x, rect->dimentions.y),
 					.colour     = rect->colour
 				});
 			} break;
