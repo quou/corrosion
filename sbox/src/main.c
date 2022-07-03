@@ -116,8 +116,11 @@ void cr_update(f64 ts) {
 	ui_label(app.ui, "Hello, world.");
 	ui_label(app.ui, "Hello, world.");
 	ui_label(app.ui, "Hello, world.");
-	if (ui_button(app.ui, "Hello there")) {
-
+	if (ui_button(app.ui, "Button A")) {
+		info("Button A pressed.");
+	}
+	if (ui_button(app.ui, "Button B")) {
+		info("Button B pressed.");
 	}
 	ui_end_container(app.ui);
 	ui_end(app.ui);
