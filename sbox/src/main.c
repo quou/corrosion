@@ -122,6 +122,11 @@ void cr_update(f64 ts) {
 	if (ui_button(app.ui, "Button B")) {
 		info("Button B pressed.");
 	}
+
+	static f32 test = 0.0f;
+
+	ui_knob(app.ui, &test, 0.0f, 100.0f);
+
 	ui_end_container(app.ui);
 	ui_end(app.ui);
 

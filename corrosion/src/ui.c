@@ -82,6 +82,8 @@ struct ui {
 
 	vector(struct ui_container) container_stack;
 
+	u64 active_item;
+
 	usize column_count;
 	usize column;
 	f32 current_item_height;
@@ -114,7 +116,7 @@ static void* ui_cmd_add(struct ui* ui, usize size) {
 	return ui->cmd_buffer + (ui->cmd_buffer_idx - size);
 }
 
-static void ui_draw_rect(struct ui* ui, v2f position, v2f dimentions, v4f colour, f32 radius) {
+void ui_draw_rect(struct ui* ui, v2f position, v2f dimentions, v4f colour, f32 radius) {
 	struct ui_cmd_draw_rect* cmd = ui_cmd_add(ui, sizeof(struct ui_cmd_draw_rect));
 	cmd->cmd.type = ui_cmd_draw_rect;
 	cmd->cmd.size = sizeof *cmd;
@@ -124,7 +126,17 @@ static void ui_draw_rect(struct ui* ui, v2f position, v2f dimentions, v4f colour
 	cmd->radius = radius;
 }
 
-static void ui_draw_text(struct ui* ui, v2f position, const char* text, v4f colour) {
+void ui_draw_circle(struct ui* ui, v2f position, f32 radius, v4f colour) {
+	struct ui_cmd_draw_rect* cmd = ui_cmd_add(ui, sizeof(struct ui_cmd_draw_rect));
+	cmd->cmd.type = ui_cmd_draw_rect;
+	cmd->cmd.size = sizeof *cmd;
+	cmd->position = position;
+	cmd->dimentions = make_v2f(radius * 2.0f, radius * 2.0f);
+	cmd->colour = colour;
+	cmd->radius = radius;
+}
+
+void ui_draw_text(struct ui* ui, v2f position, const char* text, v4f colour) {
 	usize len = strlen(text);
 
 	struct ui_cmd_draw_text* cmd = ui_cmd_add(ui, sizeof(struct ui_cmd_draw_text) + len + 1);
@@ -138,7 +150,7 @@ static void ui_draw_text(struct ui* ui, v2f position, const char* text, v4f colo
 	((char*)(cmd + 1))[len] = '\0';
 }
 
-static void ui_clip(struct ui* ui, v4f rect) {
+void ui_clip(struct ui* ui, v4f rect) {
 	struct ui_cmd_clip* cmd = ui_cmd_add(ui, sizeof(struct ui_cmd_clip));
 	cmd->cmd.type = ui_cmd_clip;
 	cmd->cmd.size = sizeof *cmd;
@@ -236,14 +248,13 @@ struct ui* new_ui(const struct framebuffer* framebuffer) {
 	table_set(ui->stylesheet.normal, hash_string("label"), ((struct ui_style) {
 		.text_colour       = { true, make_rgba(0xffffff, 255) },
 		.background_colour = { true, make_rgba(0x111111, 255) },
+		.padding           = { true, 0.0f },
 		.align             = { true, ui_align_left },
-		.padding           = { true, 0.0f }
 	}));
 
 	table_set(ui->stylesheet.normal, hash_string("button"), ((struct ui_style) {
 		.text_colour       = { true, make_rgba(0xffffff, 255) },
 		.background_colour = { true, make_rgba(0x191b26, 255) },
-		.align             = { true, ui_align_left },
 		.padding           = { true, 3.0f }
 	}));
 
@@ -260,6 +271,14 @@ struct ui* new_ui(const struct framebuffer* framebuffer) {
 		.background_colour = { true, make_rgba(0x111111, 255) },
 		.padding           = { true, 5.0f },
 		.radius            = { true, 10.0f }
+	}));
+
+	table_set(ui->stylesheet.normal, hash_string("knob"), ((struct ui_style) {
+		.text_colour       = { true, make_rgba(0xffffff, 255) },
+		.background_colour = { true, make_rgba(0x191b26, 255) },
+		.padding           = { true, 5.0f },
+		.radius            = { true, 25.0f },
+		.align             = { true, ui_align_centre }
 	}));
 
 	return ui;
@@ -347,14 +366,20 @@ void ui_font(struct ui* ui, struct font* font) {
 static v2f get_ui_el_position(struct ui* ui, const struct ui_style* style, v2f dimentions) {
 	const struct ui_container* container = vector_end(ui->container_stack) - 1;
 
+	f32 x_margin = 0.0f;
+	for (usize i = 0; i < ui->column + 1; i++) {
+		x_margin += ui->columns[i] * container->rect.z;
+	}
+
 	switch (style->align.value) {
 		case ui_align_left:
 			return ui->cursor_pos;
 		case ui_align_right:
-			return make_v2f((container->rect.x + container->rect.z) - dimentions.x - container->padding, ui->cursor_pos.y);
-		case ui_align_centre:
-			return make_v2f((container->rect.x + container->rect.z * 0.5f) - (dimentions.x * 0.5f), ui->cursor_pos.y);
-			break;
+			return make_v2f((container->rect.x + x_margin) - dimentions.x - container->padding, ui->cursor_pos.y);
+		case ui_align_centre: {
+			f32 x_inner_margin = x_margin - ui->columns[ui->column] * container->rect.z;
+			return make_v2f((container->rect.x + x_inner_margin * 0.5f + x_margin * 0.5f) - (dimentions.x * 0.5f), ui->cursor_pos.y);
+		}
 		default:
 			return make_v2f(0.0f, 0.0f);
 	}
@@ -418,12 +443,22 @@ bool ui_label_ex(struct ui* ui, const char* class, const char* text) {
 	return false;
 }
 
-void ui_begin_window() {
+bool ui_knob_ex(struct ui* ui, const char* class, f32* val, f32 min, f32 max) {
+	const struct ui_container* container = vector_end(ui->container_stack) - 1;
 
-}
+	const u64 id = elf_hash((const u8*)&val, sizeof val);
 
-void ui_end_window() {
+	struct ui_style style = ui_get_style(ui, "knob", class, ui_style_variant_none);
 
+	const v2f dimentions = make_v2f(style.radius.value, style.radius.value);
+	const v2f position = get_ui_el_position(ui, &style, dimentions);
+
+	ui_draw_circle(ui, position, style.radius.value, style.background_colour.value);
+	ui_draw_circle(ui, v2f_add(position, make_v2f(style.radius.value - 5.0f, 5.0f)), 5.0f, style.text_colour.value);
+
+	advance(ui, dimentions.y + container->padding);
+
+	return false;
 }
 
 void ui_draw(const struct ui* ui) {
