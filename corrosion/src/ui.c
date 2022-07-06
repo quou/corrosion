@@ -6,6 +6,7 @@
 enum {
 	ui_cmd_draw_rect,
 	ui_cmd_draw_text,
+	ui_cmd_draw_circle,
 	ui_cmd_clip
 };
 
@@ -20,6 +21,13 @@ struct ui_cmd_draw_rect {
 	v2f dimentions;
 	v4f colour;
 	f32 radius;
+};
+
+struct ui_cmd_draw_circle {
+	struct ui_cmd cmd;
+	v2f position;
+	f32 radius;
+	v4f colour;
 };
 
 struct ui_cmd_draw_text {
@@ -100,6 +108,13 @@ static inline bool mouse_over_rect(v2f position, v2f dimentions) {
 		mouse_pos.y < (i32)position.y + dimentions.y;
 }
 
+/* Position is the top left of a bounding box around the circle. */
+static inline bool mouse_over_circle(v2f position, f32 radius) {
+	v2i mouse_pos = get_mouse_pos();
+
+	return v2_mag_sqrd(v2f_sub(make_v2f(mouse_pos.x, mouse_pos.y), v2f_add(position, make_v2f(radius, radius)))) < radius * radius;
+}
+
 static void* ui_last_cmd(struct ui* ui) {
 	return (ui->cmd_buffer + ui->cmd_buffer_idx) - ui->last_cmd_size;
 }
@@ -127,11 +142,10 @@ void ui_draw_rect(struct ui* ui, v2f position, v2f dimentions, v4f colour, f32 r
 }
 
 void ui_draw_circle(struct ui* ui, v2f position, f32 radius, v4f colour) {
-	struct ui_cmd_draw_rect* cmd = ui_cmd_add(ui, sizeof(struct ui_cmd_draw_rect));
-	cmd->cmd.type = ui_cmd_draw_rect;
+	struct ui_cmd_draw_circle* cmd = ui_cmd_add(ui, sizeof(struct ui_cmd_draw_circle));
+	cmd->cmd.type = ui_cmd_draw_circle;
 	cmd->cmd.size = sizeof *cmd;
 	cmd->position = position;
-	cmd->dimentions = make_v2f(radius * 2.0f, radius * 2.0f);
 	cmd->colour = colour;
 	cmd->radius = radius;
 }
@@ -279,6 +293,16 @@ struct ui* new_ui(const struct framebuffer* framebuffer) {
 		.padding           = { true, 5.0f },
 		.radius            = { true, 25.0f },
 		.align             = { true, ui_align_centre }
+	}));
+
+	table_set(ui->stylesheet.hovered, hash_string("knob"), ((struct ui_style) {
+		.text_colour       = { true, make_rgba(0xffffff, 255) },
+		.background_colour = { true, make_rgba(0x252839, 255) },
+	}));
+
+	table_set(ui->stylesheet.active, hash_string("knob"), ((struct ui_style) {
+		.text_colour       = { true, make_rgba(0x000000, 255) },
+		.background_colour = { true, make_rgba(0x8c91ac, 255) },
 	}));
 
 	return ui;
@@ -454,7 +478,19 @@ bool ui_knob_ex(struct ui* ui, const char* class, f32* val, f32 min, f32 max) {
 	const v2f position = get_ui_el_position(ui, &style, dimentions);
 
 	ui_draw_circle(ui, position, style.radius.value, style.background_colour.value);
+	struct ui_cmd_draw_circle* knob_cmd = ui_last_cmd(ui);
 	ui_draw_circle(ui, v2f_add(position, make_v2f(style.radius.value - 5.0f, 5.0f)), 5.0f, style.text_colour.value);
+	struct ui_cmd_draw_circle* handle_cmd = ui_last_cmd(ui);
+
+	bool hovered = mouse_over_circle(position, knob_cmd->radius);
+	if (ui_get_style_variant(ui, &style, "knob", class, hovered)) {
+		knob_cmd->radius   = style.radius.value;
+		knob_cmd->position = get_ui_el_position(ui, &style, dimentions);
+		knob_cmd->colour   = style.background_colour.value;
+
+		handle_cmd->position = v2f_add(knob_cmd->position, make_v2f(style.radius.value - 5.0f, 5.0f));
+		handle_cmd->colour = style.text_colour.value;
+	}
 
 	advance(ui, dimentions.y + container->padding);
 
@@ -474,6 +510,15 @@ void ui_draw(const struct ui* ui) {
 					.dimentions = make_v2f(rect->dimentions.x, rect->dimentions.y),
 					.colour     = rect->colour,
 					.radius     = rect->radius
+				});
+			} break;
+			case ui_cmd_draw_circle: {
+				struct ui_cmd_draw_circle* circle = (struct ui_cmd_draw_circle*)cmd;
+				ui_renderer_push(ui->renderer, &(struct ui_renderer_quad) {
+					.position   = make_v2f(circle->position.x, circle->position.y),
+					.dimentions = make_v2f(circle->radius * 2.0f, circle->radius * 2.0f),
+					.colour     = circle->colour,
+					.radius     = circle->radius
 				});
 			} break;
 			case ui_cmd_draw_text: {
