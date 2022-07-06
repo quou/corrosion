@@ -38,6 +38,10 @@ typedef m4(f32) m4f;
 		f64: (v_ * (180.0  / pi_d))  \
 	)
 
+#define lerp(a_, b_, t_) ((a_) + (t_) * ((b_) - (a_)))
+#define clamp(v_, min_, max_) ((v_) < (min_) ? (min_) : (v_) > (max_) ? (max_) : (v_))
+#define map(v_, min1_, max1_, min2_, max2_) ((min2_) + ((v_) - (min1_)) * ((max2_) - (min2_)) / ((max1_) - (min1_)))
+
 /* make_v */
 #define make_v2(t_, x_, y_)         ((t_) { x_, y_ })
 #define make_v3(t_, x_, y_, z_)     ((t_) { x_, y_, z_ })
@@ -187,6 +191,9 @@ _v4_normalised(v4f, f32)
 #define v4i_eq(a_, b_) _v4_eq(v4i, a_, b_)
 #define v4u_eq(a_, b_) _v4_eq(v4u, a_, b_)
 
+/* Quaternion. */
+
+/* 4x4 float matrix. */
 #define make_m4f(d_) \
 	((m4f) {{ \
 		{ d_,   0.0f, 0.0f, 0.0f }, \
@@ -242,7 +249,7 @@ _v4_normalised(v4f, f32)
 	}})
 
 
-#define m4f_translate(v_) \
+#define m4f_translation(v_) \
 	((m4f) {{ \
 		{ 0.0f,   0.0f,   0.0f,   0.0f }, \
 		{ 0.0f,   0.0f,   0.0f,   0.0f }, \
@@ -258,7 +265,7 @@ _v4_normalised(v4f, f32)
 		{ 0.0f,   0.0f,   0.0f,   0.0f }, \
 	}})
 
-force_inline m4f m4f_rotate(f32 a, v3f v) {
+force_inline m4f m4f_rotation(f32 a, v3f v) {
 	m4f r = m4f_identity();
 
 	const f32 c = cosf(a);
@@ -283,3 +290,9 @@ force_inline m4f m4f_rotate(f32 a, v3f v) {
 	return r;
 }
 
+#define m4f_transform(m_, p_) \
+	make_v4f( \
+		(m_).m[0][0] * (p_).x + (m_).m[1][0] * (p_).y + (m_).m[2][0] * (p_).z + (m_).m[3][0] + (p_).w, \
+		(m_).m[0][1] * (p_).x + (m_).m[1][1] * (p_).y + (m_).m[2][1] * (p_).z + (m_).m[3][1] + (p_).w, \
+		(m_).m[0][2] * (p_).x + (m_).m[1][2] * (p_).y + (m_).m[2][2] * (p_).z + (m_).m[3][2] + (p_).w, \
+		(m_).m[0][3] * (p_).x + (m_).m[1][3] * (p_).y + (m_).m[2][3] * (p_).z + (m_).m[3][3] + (p_).w)

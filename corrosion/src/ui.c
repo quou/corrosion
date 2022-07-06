@@ -90,7 +90,10 @@ struct ui {
 
 	vector(struct ui_container) container_stack;
 
-	u64 active_item;
+	u64 active;
+	u64 dragging;
+
+	f32 knob_angle_offset;
 
 	usize column_count;
 	usize column;
@@ -261,9 +264,9 @@ struct ui* new_ui(const struct framebuffer* framebuffer) {
 
 	table_set(ui->stylesheet.normal, hash_string("label"), ((struct ui_style) {
 		.text_colour       = { true, make_rgba(0xffffff, 255) },
-		.background_colour = { true, make_rgba(0x111111, 255) },
+		.background_colour = { true, make_rgba(0x111111, 0) },
 		.padding           = { true, 0.0f },
-		.align             = { true, ui_align_left },
+		.align             = { true, ui_align_centre },
 	}));
 
 	table_set(ui->stylesheet.normal, hash_string("button"), ((struct ui_style) {
@@ -334,6 +337,10 @@ void ui_begin(struct ui* ui) {
 
 void ui_end(struct ui* ui) {
 	ui_end_container(ui);
+
+	if (mouse_btn_just_released(mouse_btn_left)) {
+		ui->dragging = 0;
+	}
 }
 
 void ui_begin_container_ex(struct ui* ui, const char* class, v4f rect) {
@@ -474,23 +481,82 @@ bool ui_knob_ex(struct ui* ui, const char* class, f32* val, f32 min, f32 max) {
 
 	struct ui_style style = ui_get_style(ui, "knob", class, ui_style_variant_none);
 
-	const v2f dimentions = make_v2f(style.radius.value, style.radius.value);
+	const f32 handle_radius = 5.0f;
+
+	const v2f dimentions = make_v2f(style.radius.value * 2.0f, style.radius.value * 2.0f);
 	const v2f position = get_ui_el_position(ui, &style, dimentions);
 
 	ui_draw_circle(ui, position, style.radius.value, style.background_colour.value);
 	struct ui_cmd_draw_circle* knob_cmd = ui_last_cmd(ui);
-	ui_draw_circle(ui, v2f_add(position, make_v2f(style.radius.value - 5.0f, 5.0f)), 5.0f, style.text_colour.value);
+	ui_draw_circle(ui, make_v2f(0.0f, 0.0f), handle_radius, style.text_colour.value);
 	struct ui_cmd_draw_circle* handle_cmd = ui_last_cmd(ui);
 
 	bool hovered = mouse_over_circle(position, knob_cmd->radius);
-	if (ui_get_style_variant(ui, &style, "knob", class, hovered)) {
+
+	v2f knob_origin = make_v2f(
+		knob_cmd->position.x + style.radius.value - handle_radius,
+		knob_cmd->position.y + style.radius.value - handle_radius);
+
+	f32 min_angle = to_rad(40.0f);
+	f32 max_angle = to_rad(320.0f);
+	f32 angle = lerp(min_angle, max_angle, map(*val, max, min, 0.0f, 1.0f));
+
+	if (hovered && mouse_btn_just_pressed(mouse_btn_left)) {
+		ui->dragging = id;
+
+		v2i mouse_pos = get_mouse_pos();
+		v2f v = v2f_sub(make_v2f(mouse_pos.x, mouse_pos.y), knob_origin);
+		f32 to_mouse_angle = atan2f(-v.x, -v.y) + to_rad(180.0f);
+
+		to_mouse_angle = clamp(to_mouse_angle, min_angle, max_angle);
+
+		ui->knob_angle_offset = angle - to_mouse_angle;
+	}
+
+	if (ui->dragging == id) {
+		style = ui_get_style(ui, "knob", class, ui_style_variant_active);
+
 		knob_cmd->radius   = style.radius.value;
 		knob_cmd->position = get_ui_el_position(ui, &style, dimentions);
 		knob_cmd->colour   = style.background_colour.value;
 
-		handle_cmd->position = v2f_add(knob_cmd->position, make_v2f(style.radius.value - 5.0f, 5.0f));
+		handle_cmd->colour = style.text_colour.value;
+
+		knob_origin = make_v2f(
+			knob_cmd->position.x + style.radius.value - handle_radius,
+			knob_cmd->position.y + style.radius.value - handle_radius);
+
+		v2i mouse_pos = get_mouse_pos();
+		v2f v = v2f_sub(make_v2f(mouse_pos.x, mouse_pos.y), knob_origin);
+		angle = atan2f(-v.x, -v.y) + to_rad(180.0f);
+
+		angle += ui->knob_angle_offset;
+		angle = clamp(angle, min_angle, max_angle);
+
+		*val = map(angle, min_angle, max_angle, max, min);
+		*val = clamp(*val, min, max);
+	} else if (ui_get_style_variant(ui, &style, "knob", class, hovered)) {
+		knob_cmd->radius   = style.radius.value;
+		knob_cmd->position = get_ui_el_position(ui, &style, dimentions);
+		knob_cmd->colour   = style.background_colour.value;
+
 		handle_cmd->colour = style.text_colour.value;
 	}
+
+	/* Rotate the handle based on `val' around the centre of the knob.
+	 * The background circle doesn't need rotating, as it doesn't have
+	 * a background and any rotation will be invisible. */
+	f32 angle_rad = angle;
+	v2f rotation = make_v2f(
+		sinf(angle),
+		cosf(angle)
+	);
+
+	handle_cmd->position = v2f_add(
+		knob_origin,
+		v2f_mul(
+			rotation,
+			make_v2f(style.radius.value - handle_radius - style.padding.value, style.radius.value - handle_radius - style.padding.value)));
 
 	advance(ui, dimentions.y + container->padding);
 

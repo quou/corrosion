@@ -1,3 +1,5 @@
+#include <stdio.h>
+
 #include <corrosion/cr.h>
 
 struct {
@@ -123,9 +125,18 @@ void cr_update(f64 ts) {
 		info("Button B pressed.");
 	}
 
-	static f32 test = 0.0f;
+	static f32 test = 25.0f;
+	static f32 test2 = 50.0f;
+
+	char text[256];
 
 	ui_knob(app.ui, &test, 0.0f, 100.0f);
+	ui_knob(app.ui, &test2, 0.0f, 100.0f);
+
+	sprintf(text, "%.2f", test);
+	ui_label(app.ui, text);
+	sprintf(text, "%.2f", test2);
+	ui_label(app.ui, text);
 
 	ui_end_container(app.ui);
 	ui_end(app.ui);

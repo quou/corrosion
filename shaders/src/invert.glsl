@@ -30,7 +30,7 @@ layout (binding = 0) uniform sampler2D src;
 void main() {
 	vec4 src_col = texture(src, fs_in.uv);
 
-	colour = vec4(1.0 - src_col.rgb, src_col.a);
+	colour = vec4(src_col.rgb, src_col.a);
 }
 
 #end FRAGMENT
