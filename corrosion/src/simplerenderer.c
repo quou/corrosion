@@ -173,8 +173,8 @@ void simple_renderer_push(struct simple_renderer* renderer, const struct simple_
 
 		rect.x += (f32)atlas_rect->x;
 		rect.y += (f32)atlas_rect->y;
-		rect.z = minimum((f32)atlas_rect->z, rect.z);
-		rect.w = minimum((f32)atlas_rect->w, rect.w);
+		rect.z = min((f32)atlas_rect->z, rect.z);
+		rect.w = min((f32)atlas_rect->w, rect.w);
 
 		tx = rect.x / (f32)renderer->atlas->size.x;
 		ty = rect.y / (f32)renderer->atlas->size.y;

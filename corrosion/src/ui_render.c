@@ -185,8 +185,8 @@ void ui_renderer_push(struct ui_renderer* renderer, const struct ui_renderer_qua
 
 		rect.x += (f32)atlas_rect->x;
 		rect.y += (f32)atlas_rect->y;
-		rect.z = minimum((f32)atlas_rect->z, rect.z);
-		rect.w = minimum((f32)atlas_rect->w, rect.w);
+		rect.z = min((f32)atlas_rect->z, rect.z);
+		rect.w = min((f32)atlas_rect->w, rect.w);
 
 		tx = rect.x / (f32)renderer->atlas->size.x;
 		ty = rect.y / (f32)renderer->atlas->size.y;

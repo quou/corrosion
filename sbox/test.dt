@@ -1,0 +1,11 @@
+test = {
+	some_int = 300;
+	some_float = 44.6;
+	some_bool = true;
+	other_bool = false;
+	some_string = "Hello, world!";
+	child = {
+		some_int = 34;
+		some_int = 55;
+	}
+}

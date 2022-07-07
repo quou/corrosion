@@ -41,6 +41,7 @@ all: $(target)
 sources =                            \
           $(srcdir)/atlas.c          \
           $(srcdir)/core.c           \
+          $(srcdir)/dtable.c         \
           $(srcdir)/entrypoint.c     \
           $(srcdir)/font.c           \
           $(srcdir)/log.c            \

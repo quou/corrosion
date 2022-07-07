@@ -4,8 +4,8 @@
 
 #include "common.h"
 
-#define minimum(a_, b_) ((a_) < (b_) ? (a_) : (b_))
-#define maximum(a_, b_) ((a_) > (b_) ? (a_) : (b_))
+#define min(a_, b_) ((a_) < (b_) ? (a_) : (b_))
+#define max(a_, b_) ((a_) > (b_) ? (a_) : (b_))
 
 #define v2(t_) struct { t_ x; t_ y; }
 #define v3(t_) struct { t_ x; t_ y; t_ z; }

@@ -6,6 +6,7 @@
 #include "atlas.h"
 #include "common.h"
 #include "core.h"
+#include "dtable.h"
 #include "font.h"
 #include "maths.h"
 #include "res.h"

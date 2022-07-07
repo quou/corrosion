@@ -2180,12 +2180,12 @@ void video_vk_set_scissor(v4i rect) {
 	vkCmdSetScissor(vctx.command_buffers[vctx.current_frame], 0, 1,
 		&(VkRect2D) {
 			.offset = {
-				.x = maximum(rect.x, 0),
-				.y = maximum(rect.y, 0)
+				.x = max(rect.x, 0),
+				.y = max(rect.y, 0)
 			},
 			.extent = {
-				.width  = (u32)maximum(rect.z - d.x, 1), 
-				.height = (u32)maximum(rect.w - d.y, 1)
+				.width  = (u32)max(rect.z - d.x, 1), 
+				.height = (u32)max(rect.w - d.y, 1)
 			}
 		});
 }

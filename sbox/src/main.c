@@ -106,6 +106,22 @@ void cr_init() {
 	);
 
 	app.renderer = new_simple_renderer(app.fb);
+
+	struct dtable dt = new_dtable("test");
+
+	struct dtable n;
+	n = new_int_dtable("some_int", 300);      dtable_add_child(&dt, &n);
+	n = new_float_dtable("some_float", 44.6); dtable_add_child(&dt, &n);
+	n = new_bool_dtable("some_bool",  true);  dtable_add_child(&dt, &n);
+	n = new_bool_dtable("other_bool", false); dtable_add_child(&dt, &n);
+	n = new_string_dtable("some_string", "Hello, world!"); dtable_add_child(&dt, &n);
+
+	struct dtable ch = new_dtable("child");
+	n = new_int_dtable("some_int", 34); dtable_add_child(&ch, &n);
+	n = new_int_dtable("some_int", 55); dtable_add_child(&ch, &n);
+	dtable_add_child(&dt, &ch);
+
+	write_dtable(&dt, "test.dt");
 }
 
 void cr_update(f64 ts) {
