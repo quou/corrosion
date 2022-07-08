@@ -69,7 +69,7 @@ bool read_raw_text(const char* path, char** buf) {
 		warning("Failed to read all of file: `%s'\n", path);
 	}
 
-	buf[file_size] = '\0';
+	(*buf)[bytes_read] = '\0';
 
 	fclose(file);
 

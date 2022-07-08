@@ -107,21 +107,13 @@ void cr_init() {
 
 	app.renderer = new_simple_renderer(app.fb);
 
-	struct dtable dt = new_dtable("test");
+	char* text;
+	read_raw_text("res/uistyle.dt", &text);
 
-	struct dtable n;
-	n = new_int_dtable("some_int", 300);      dtable_add_child(&dt, &n);
-	n = new_float_dtable("some_float", 44.6); dtable_add_child(&dt, &n);
-	n = new_bool_dtable("some_bool",  true);  dtable_add_child(&dt, &n);
-	n = new_bool_dtable("other_bool", false); dtable_add_child(&dt, &n);
-	n = new_string_dtable("some_string", "Hello, world!"); dtable_add_child(&dt, &n);
+	struct dtable t = { 0 };
+	parse_dtable(&t, text);
 
-	struct dtable ch = new_dtable("child");
-	n = new_int_dtable("some_int", 34); dtable_add_child(&ch, &n);
-	n = new_int_dtable("some_int", 55); dtable_add_child(&ch, &n);
-	dtable_add_child(&dt, &ch);
-
-	write_dtable(&dt, "test.dt");
+	write_dtable(&t, "res/test.dt");
 }
 
 void cr_update(f64 ts) {

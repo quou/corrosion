@@ -2,6 +2,7 @@
 
 #include "common.h"
 #include "core.h"
+#include "maths.h"
 
 struct dtable_key {
 	char chars[64];
@@ -10,21 +11,21 @@ struct dtable_key {
 };
 
 enum {
-	dtable_empty = 0,
-	dtable_int,
-	dtable_float,
+	dtable_parent = 0,
+	dtable_number,
 	dtable_bool,
-	dtable_string
+	dtable_string,
+	dtable_colour
 };
 
 struct dtable_value {
 	u32 type;
 
 	union {
-		i64 integer;
-		f64 real;
+		f64 number;
 		bool boolean;
 		char* string;
+		v4f colour;
 	} as;
 };
 
@@ -37,12 +38,15 @@ struct dtable {
 };
 
 struct dtable new_dtable(const char* name);
-struct dtable new_int_dtable(const char* name, i64 value);
-struct dtable new_float_dtable(const char* name, f64 value);
+struct dtable new_number_dtable(const char* name, f64 value);
 struct dtable new_bool_dtable(const char* name, bool value);
 struct dtable new_string_dtable(const char* name, const char* string);
 struct dtable new_string_n_dtable(const char* name, const char* string, usize n);
+struct dtable new_colour_dtable(const char* name, v4f value);
 
 void dtable_add_child(struct dtable* dt, const struct dtable* child);
 
 void write_dtable(const struct dtable* dt, const char* filename);
+
+/* Adds a the parsed table as a child to `dt'. Returns zero on failure. */
+bool parse_dtable(struct dtable* dt, const char* text);

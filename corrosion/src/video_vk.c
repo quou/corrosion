@@ -633,6 +633,27 @@ void video_vk_init(bool enable_validation) {
 void video_vk_deinit() {
 	vkDeviceWaitIdle(vctx.device);
 
+	for (usize i = 0; i < vector_count(vctx.free_queue); i++) {
+		struct free_queue_item* item = vctx.free_queue + i;
+
+		switch (item->type) {
+			case video_vk_object_texture:
+				video_vk_free_texture(item->as.texture);
+				break;
+			case video_vk_object_pipeline:
+				video_vk_free_pipeline(item->as.pipeline);
+				break;
+			case video_vk_object_framebuffer:
+				video_vk_free_framebuffer(item->as.framebuffer);
+				break;
+			default: break;
+		}
+	}
+
+	vector_clear(vctx.free_queue);
+
+	free_vector(vctx.free_queue);
+
 	video_vk_free_framebuffer(vctx.default_fb);
 
 	for (u32 i = 0; i < max_frames_in_flight; i++) {

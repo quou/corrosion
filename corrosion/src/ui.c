@@ -312,7 +312,11 @@ struct ui* new_ui(const struct framebuffer* framebuffer) {
 }
 
 void free_ui(struct ui* ui) {
+	free_vector(ui->columns);
 	free_vector(ui->container_stack);
+	free_table(ui->stylesheet.normal);
+	free_table(ui->stylesheet.hovered);
+	free_table(ui->stylesheet.active);
 	free_font(ui->default_font);
 	free_ui_renderer(ui->renderer);
 	core_free(ui->cmd_buffer);
