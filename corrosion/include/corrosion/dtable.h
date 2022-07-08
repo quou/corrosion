@@ -15,7 +15,10 @@ enum {
 	dtable_number,
 	dtable_bool,
 	dtable_string,
-	dtable_colour
+	dtable_colour,
+	dtable_v2,
+	dtable_v3,
+	dtable_v4
 };
 
 struct dtable_value {
@@ -26,6 +29,9 @@ struct dtable_value {
 		bool boolean;
 		char* string;
 		v4f colour;
+		v2f v2;
+		v3f v3;
+		v4f v4;
 	} as;
 };
 

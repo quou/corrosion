@@ -172,6 +172,9 @@ enum {
 	tok_false,
 	tok_true,
 	tok_colour,
+	tok_v2,
+	tok_v3,
+	tok_v4,
 	tok_keyword_count
 };
 
@@ -277,7 +280,10 @@ static bool is_hex(char c) {
 static const char* keywords[] = {
 	[tok_colour] = "colour",
 	[tok_false]  = "false",
-	[tok_true]   = "true"
+	[tok_true]   = "true",
+	[tok_v2]     = "v2",
+	[tok_v3]     = "v3",
+	[tok_v4]     = "v4"
 };
 
 static struct token next_tok(struct parser* parser) {
@@ -472,6 +478,75 @@ static bool parse(struct dtable* dt, struct parser* parser) {
 
 			dt->value.type = dtable_colour;
 			dt->value.as.colour = make_rgba(val, a);
+
+			after_value();
+		} break;
+		case tok_v2: {
+			consume_tok(tok_left_paren, "Expected `(' after v2.");
+			consume_tok(tok_number, "Expected a number after `('.");
+
+			f64 val1 = strtod(tok.start, null);
+
+			consume_tok(tok_comma, "Expected `,' after number.");
+			consume_tok(tok_number, "Expected a number after `,'.");
+
+			f64 val2 = strtod(tok.start, null);
+
+			consume_tok(tok_right_paren, "Expected `)' after number.");
+
+			dt->value.type = dtable_v2;
+			dt->value.as.v2 = make_v2f((f32)val1, (f32)val2);
+
+			after_value();
+		} break;
+		case tok_v3: {
+			consume_tok(tok_left_paren, "Expected `(' after v3.");
+			consume_tok(tok_number, "Expected a number after `('.");
+
+			f64 val1 = strtod(tok.start, null);
+
+			consume_tok(tok_comma, "Expected `,' after number.");
+			consume_tok(tok_number, "Expected a number after `,'.");
+
+			f64 val2 = strtod(tok.start, null);
+
+			consume_tok(tok_comma, "Expected `,' after number.");
+			consume_tok(tok_number, "Expected a number after `,'.");
+
+			f64 val3 = strtod(tok.start, null);
+
+			consume_tok(tok_right_paren, "Expected `)' after number.");
+
+			dt->value.type = dtable_v3;
+			dt->value.as.v3 = make_v3f((f32)val1, (f32)val2, (f32)val3);
+
+			after_value();
+		} break;
+		case tok_v4: {
+			consume_tok(tok_left_paren, "Expected `(' after v4.");
+			consume_tok(tok_number, "Expected a number after `('.");
+
+			f64 val1 = strtod(tok.start, null);
+
+			consume_tok(tok_comma, "Expected `,' after number.");
+			consume_tok(tok_number, "Expected a number after `,'.");
+
+			f64 val2 = strtod(tok.start, null);
+
+			consume_tok(tok_comma, "Expected `,' after number.");
+			consume_tok(tok_number, "Expected a number after `,'.");
+
+			f64 val3 = strtod(tok.start, null);
+
+			consume_tok(tok_comma, "Expected `,' after number.");
+			consume_tok(tok_number, "Expected a number after `,'.");
+
+			f64 val4 = strtod(tok.start, null);
+
+			consume_tok(tok_right_paren, "Expected `)' after number.");
+
+			dt->value.type = dtable_v4;
+			dt->value.as.v4 = make_v4f((f32)val1, (f32)val2, (f32)val3, (f32)val4);
 
 			after_value();
 		} break;
