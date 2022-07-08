@@ -52,3 +52,5 @@ void write_dtable(const struct dtable* dt, const char* filename);
 bool parse_dtable(struct dtable* dt, const char* text);
 
 void deinit_dtable(struct dtable* dt);
+
+bool dtable_find_child(const struct dtable* dt, const char* key, struct dtable* dst);

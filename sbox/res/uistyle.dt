@@ -1,48 +1,27 @@
 normal = {
-	label = {
-		text_colour = colour(#ffffff);
-		background_color = colour(#111111, 0);
-		padding = 0;
-		align = "left";
-	}
-
-	button = {
-		background_colour = colour(#252839);
-	}
-
-	container = {
-		background_colour = colour(#111111);
-		padding = 5;
-		radius = 10;
-	}
-
-	knob = {
-		text_colour = colour(#ffffff);
-		background_colour = colour(#191b26);
-		padding = 5;
-		radius = 25;
+	knob_label = {
 		align = "centre";
+	}
+
+	align_right = {
+		align = "right";
+	}
+
+	red_knob = {
+		background_colour = colour(#cd6363);
+		text_colour = colour(#f0dede);
 	}
 }
 
 hovered = {
-	button = {
-		background_colour = colour(#252839);
-	}
-
-	knob = {
-		background_colour = colour(#252839);
+	red_knob = {
+		background_colour = colour(#e54747);
 	}
 }
 
 active = {
-	button = {	
-		text_colour = colour(#000000);
-		background_colour = colour(#8c91ac);
-	}
-
-	knob = {	
-		text_colour = colour(#000000);
-		background_colour = colour(#8c91ac);
+	red_knob = {
+		background_colour = colour(#f0dede);
+		text_colour = colour(#cd6363);
 	}
 }

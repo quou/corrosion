@@ -534,3 +534,16 @@ void deinit_dtable(struct dtable* dt) {
 
 	free_vector(dt->children);
 }
+
+bool dtable_find_child(const struct dtable* dt, const char* key, struct dtable* dst) {
+	u64 hash = hash_string(key);
+
+	for (usize i = 0; i < vector_count(dt->children); i++) {
+		if (dt->children[i].key.hash == hash) {
+			*dst = dt->children[i];
+			return true;
+		}
+	}
+
+	return false;
+}

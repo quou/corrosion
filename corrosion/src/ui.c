@@ -93,6 +93,9 @@ struct ui {
 
 	vector(struct ui_container) container_stack;
 
+	char* temp_str;
+	usize temp_str_size;
+
 	u64 active;
 	u64 dragging;
 
@@ -217,27 +220,26 @@ static struct ui_style ui_get_style(struct ui* ui, const char* base_class, const
 	struct ui_style base = *base_ptr;
 	ui_build_style_variant(ui, base_name_hash, &base, variant);
 
-	const char* cur_class_start = class;
-	usize cur_class_len = 0;
-	for (const char* c = class; *c; c++) {
-		if (*c == ' ' || *(c + 1) == '\0') {
-			if (*c == ' ')        { cur_class_len--; }
-			if (*(c + 1) == '\0') { cur_class_len++; }
+	usize class_name_size = strlen(class) + 1;
+	if (class_name_size > ui->temp_str_size) {
+		ui->temp_str = core_realloc(ui->temp_str, class_name_size);
+		ui->temp_str_size = class_name_size;
+	}
 
-			const u64 name_hash = elf_hash((const u8*)cur_class_start, cur_class_len);
-			const struct ui_style* class_ptr = table_get(ui->stylesheet->normal, name_hash);
-			if (!class_ptr) {
-				error("Class `%.*s' not found in stylesheet.", cur_class_len, cur_class_start);
-			} else {
-				ui_build_style(&base, class_ptr);
-				ui_build_style_variant(ui, name_hash, &base, variant);
-			}
+	memcpy(ui->temp_str, class, class_name_size);
 
-			cur_class_len = 0;
-			cur_class_start = c + 1;
+	char* cur_class = strtok(ui->temp_str, " ");
+	while (cur_class) {
+		const u64 name_hash = hash_string(cur_class);
+		const struct ui_style* class_ptr = table_get(ui->stylesheet->normal, name_hash);
+		if (!class_ptr) {
+			error("Class `%s' not found in stylesheet.", cur_class);
 		} else {
-			cur_class_len++;
+			ui_build_style(&base, class_ptr);
+			ui_build_style_variant(ui, name_hash, &base, variant);
 		}
+
+		cur_class = strtok(null, " ");
 	}
 
 	return base;
@@ -257,19 +259,91 @@ static bool ui_get_style_variant(struct ui* ui, struct ui_style* style, const ch
 	return false;
 }
 
-static void stylesheet_on_load(const char* filename, u8* raw, usize raw_size, void* payload, usize payload_size, void* udata) {
-	struct ui* ui = udata;
+static void stylesheet_table_from_dtable(void* dst_vptr, struct dtable* src) {
+	table(u64, struct ui_style)* dst = dst_vptr;
 
+	for (usize i = 0; i < vector_count(src->children); i++) {
+		struct dtable* class = src->children + i;
+
+		struct ui_style s = { 0 };
+		struct ui_style* got = table_get(*dst, class->key.hash);
+		if (got) { s = *got; }
+
+		for (usize j = 0; j < vector_count(class->children); j++) {
+			struct dtable* child = class->children + j;
+
+			switch (child->value.type) {
+				case dtable_colour:
+					if (child->key.hash == hash_string("text_colour")) {
+						s.text_colour.has_value = true;
+						s.text_colour.value = child->value.as.colour;
+					} else if (child->key.hash == hash_string("background_colour")) {
+						s.background_colour.has_value = true;
+						s.background_colour.value = child->value.as.colour;
+					}
+					break;
+				case dtable_number:
+					if (child->key.hash == hash_string("padding")) {	
+						s.padding.has_value = true;
+						s.padding.value = (f32)child->value.as.number;
+					} else if (child->key.hash == hash_string("radius")) {
+						s.radius.has_value = true;
+						s.radius.value = (f32)child->value.as.number;
+					}
+				case dtable_string:
+					if (child->key.hash == hash_string("align")) {
+						s.align.has_value = true;
+						s.align.value = strcmp(child->value.as.string, "left") == 0 ? ui_align_left :
+							strcmp(child->value.as.string, "centre") == 0 ? ui_align_centre :
+							ui_align_right;
+					}
+					break;
+			}
+		}
+
+		table_set(*dst, class->key.hash, s);
+	}
+}
+
+static void stylesheet_on_load(const char* filename, u8* raw, usize raw_size, void* payload, usize payload_size, void* udata) {
 	struct ui_stylesheet* stylesheet = payload;
-	for (u64* i = table_first(default_stylesheet.normal); i; table_next(default_stylesheet.normal, *i)) {
+	for (u64* i = table_first(default_stylesheet.normal); i; i = table_next(default_stylesheet.normal, *i)) {
 		table_set(stylesheet->normal, *i, *(struct ui_style*)table_get(default_stylesheet.normal, *i));
 	}
 
-	struct dtable data = { 0 };
+	for (u64* i = table_first(default_stylesheet.active); i; i = table_next(default_stylesheet.active, *i)) {
+		table_set(stylesheet->active, *i, *(struct ui_style*)table_get(default_stylesheet.active, *i));
+	}
+
+	for (u64* i = table_first(default_stylesheet.hovered); i; i = table_next(default_stylesheet.hovered, *i)) {
+		table_set(stylesheet->hovered, *i, *(struct ui_style*)table_get(default_stylesheet.hovered, *i));
+	}
+
+	struct dtable dt = { 0 };
+	parse_dtable(&dt, (const char*)raw);
+
+	struct dtable tab = { 0 };
+	if (dtable_find_child(&dt, "normal", &tab)) {
+		stylesheet_table_from_dtable(&stylesheet->normal, &tab);
+	}
+
+	if (dtable_find_child(&dt, "active", &tab)) {
+		stylesheet_table_from_dtable(&stylesheet->active, &tab);
+	}
+
+	if (dtable_find_child(&dt, "hovered", &tab)) {
+		stylesheet_table_from_dtable(&stylesheet->hovered, &tab);
+	}
+
+	deinit_dtable(&dt);
 }
 
 static void stylesheet_on_unload(void* payload, usize payload_size) {
+	struct ui_stylesheet* stylesheet = payload;
 
+	free_table(stylesheet->normal);
+	free_table(stylesheet->active);
+	free_table(stylesheet->hovered);
 }
 
 void ui_init() {
@@ -277,7 +351,7 @@ void ui_init() {
 		.text_colour       = { true, make_rgba(0xffffff, 255) },
 		.background_colour = { true, make_rgba(0x111111, 0) },
 		.padding           = { true, 0.0f },
-		.align             = { true, ui_align_centre },
+		.align             = { true, ui_align_left },
 	}));
 
 	table_set(default_stylesheet.normal, hash_string("button"), ((struct ui_style) {
@@ -351,6 +425,7 @@ struct ui* new_ui(const struct framebuffer* framebuffer) {
 }
 
 void free_ui(struct ui* ui) {
+	core_free(ui->temp_str);
 	free_vector(ui->columns);
 	free_vector(ui->container_stack);
 	free_ui_renderer(ui->renderer);
@@ -434,7 +509,7 @@ void ui_font(struct ui* ui, struct font* font) {
 }
 
 void ui_stylesheet(struct ui* ui, struct ui_stylesheet* ss) {
-	ss = ss ? ss : &default_stylesheet;
+	ui->stylesheet = ss ? ss : &default_stylesheet;
 }
 
 static v2f get_ui_el_position(struct ui* ui, const struct ui_style* style, v2f dimentions) {
@@ -556,6 +631,8 @@ bool ui_knob_ex(struct ui* ui, const char* class, f32* val, f32 min, f32 max) {
 		ui->knob_angle_offset = angle - to_mouse_angle;
 	}
 
+	bool changed = false;
+
 	if (ui->dragging == id) {
 		style = ui_get_style(ui, "knob", class, ui_style_variant_active);
 
@@ -578,6 +655,8 @@ bool ui_knob_ex(struct ui* ui, const char* class, f32* val, f32 min, f32 max) {
 
 		*val = map(angle, min_angle, max_angle, max, min);
 		*val = clamp(*val, min, max);
+
+		changed = true;
 	} else if (ui_get_style_variant(ui, &style, "knob", class, hovered)) {
 		knob_cmd->radius   = style.radius.value;
 		knob_cmd->position = get_ui_el_position(ui, &style, dimentions);
@@ -603,7 +682,7 @@ bool ui_knob_ex(struct ui* ui, const char* class, f32* val, f32 min, f32 max) {
 
 	advance(ui, dimentions.y + container->padding);
 
-	return false;
+	return changed;
 }
 
 void ui_draw(const struct ui* ui) {

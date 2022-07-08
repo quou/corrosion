@@ -41,6 +41,9 @@ void cr_init() {
 
 	app.ui = new_ui(video.get_default_fb());
 
+	struct ui_stylesheet* stylesheet = res_load("stylesheet", "res/uistyle.dt", 0);
+	ui_stylesheet(app.ui, stylesheet);
+
 	const struct shader* invert_shader = load_shader("shaderbin/invert.csh");
 
 	app.fb = video.new_framebuffer(framebuffer_flags_headless | framebuffer_flags_fit, get_window_size(),
@@ -133,12 +136,12 @@ void cr_update(f64 ts) {
 	char text[256];
 
 	ui_knob(app.ui, &test, 0.0f, 100.0f);
-	ui_knob(app.ui, &test2, 0.0f, 100.0f);
+	ui_knob_ex(app.ui, "align_right red_knob", &test2, 0.0f, 100.0f);
 
 	sprintf(text, "%.2f", test);
-	ui_label(app.ui, text);
+	ui_label_ex(app.ui, "knob_label", text);
 	sprintf(text, "%.2f", test2);
-	ui_label(app.ui, text);
+	ui_label_ex(app.ui, "knob_label align_right", text);
 
 	ui_end_container(app.ui);
 	ui_end(app.ui);
