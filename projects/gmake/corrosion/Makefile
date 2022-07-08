@@ -47,7 +47,6 @@ sources =                            \
           $(srcdir)/log.c            \
           $(srcdir)/res.c            \
           $(srcdir)/res_posix.c      \
-          $(srcdir)/serialise.c      \
           $(srcdir)/simplerenderer.c \
           $(srcdir)/stb.c            \
           $(srcdir)/timer_posix.c    \

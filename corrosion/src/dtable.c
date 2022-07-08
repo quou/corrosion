@@ -107,6 +107,14 @@ static void write_dtable_value(const struct dtable_value* val, FILE* file) {
 
 			break;
 		}
+		case dtable_v2:
+			fprintf(file, "v2(%g, %g)", val->as.v2.x, val->as.v2.y);
+			break;
+		case dtable_v3:
+			fprintf(file, "v3(%g, %g, %g)", val->as.v3.x, val->as.v3.y, val->as.v3.z);
+			break;
+		case dtable_v4:
+			fprintf(file, "v4(%g, %g, %g, %g)", val->as.v4.x, val->as.v4.y, val->as.v4.z, val->as.v4.w);
 		default: break;
 	}
 
