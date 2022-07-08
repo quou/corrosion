@@ -5,6 +5,10 @@
 #include "video.h"
 
 struct ui;
+struct ui_stylesheet;
+
+void ui_init();
+void ui_deinit();
 
 struct ui* new_ui(const struct framebuffer* framebuffer);
 void free_ui(struct ui* ui);
@@ -20,6 +24,7 @@ void ui_clip(struct ui* ui, v4f rect);
 u64 next_item_id();
 
 void ui_font(struct ui* ui, struct font* font);
+void ui_stylesheet(struct ui* ui, struct ui_stylesheet* ss);
 
 void ui_begin_container_ex(struct ui* ui, const char* class, v4f rect);
 #define ui_begin_container(ui_, r_) ui_begin_container_ex(ui_, "", r_)

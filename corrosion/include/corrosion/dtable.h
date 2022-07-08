@@ -50,3 +50,5 @@ void write_dtable(const struct dtable* dt, const char* filename);
 
 /* Adds a the parsed table as a child to `dt'. Returns zero on failure. */
 bool parse_dtable(struct dtable* dt, const char* text);
+
+void deinit_dtable(struct dtable* dt);

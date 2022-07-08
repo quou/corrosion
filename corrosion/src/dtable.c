@@ -522,3 +522,15 @@ bool parse_dtable(struct dtable* dt, const char* text) {
 
 	return true;
 }
+
+void deinit_dtable(struct dtable* dt) {
+	if (dt->value.type == dtable_string) {
+		core_free(dt->value.as.string);
+	}
+
+	for (usize i = 0; i < vector_count(dt->children); i++) {
+		deinit_dtable(dt->children + i);
+	}
+
+	free_vector(dt->children);
+}

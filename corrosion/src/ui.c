@@ -1,4 +1,5 @@
 #include "core.h"
+#include "dtable.h"
 #include "ui.h"
 #include "ui_atlas.h"
 #include "ui_render.h"
@@ -71,7 +72,9 @@ struct ui_stylesheet {
 	table(u64, struct ui_style) normal;
 	table(u64, struct ui_style) hovered;
 	table(u64, struct ui_style) active;
-};
+} default_stylesheet;
+
+struct font* default_font;
 
 struct ui {
 	struct ui_renderer* renderer;
@@ -84,7 +87,7 @@ struct ui {
 	usize cmd_buffer_capacity;
 	usize last_cmd_size;
 
-	struct ui_stylesheet stylesheet;
+	struct ui_stylesheet* stylesheet;
 
 	v2f cursor_pos;
 
@@ -185,14 +188,14 @@ static inline void ui_build_style(struct ui_style* dst, const struct ui_style* s
 static inline void ui_build_style_variant(struct ui* ui, u64 class_id, struct ui_style* dst, u32 variant) {
 	switch (variant) {
 		case ui_style_variant_hovered: {
-			const struct ui_style* hovered_ptr = table_get(ui->stylesheet.hovered, class_id);
+			const struct ui_style* hovered_ptr = table_get(ui->stylesheet->hovered, class_id);
 
 			if (hovered_ptr) {
 				ui_build_style(dst, hovered_ptr);
 			}
 		} break;
 		case ui_style_variant_active: {
-			const struct ui_style* active_ptr = table_get(ui->stylesheet.active, class_id);
+			const struct ui_style* active_ptr = table_get(ui->stylesheet->active, class_id);
 
 			if (active_ptr) {
 				ui_build_style(dst, active_ptr);
@@ -204,7 +207,7 @@ static inline void ui_build_style_variant(struct ui* ui, u64 class_id, struct ui
 
 static struct ui_style ui_get_style(struct ui* ui, const char* base_class, const char* class, u32 variant) {
 	const u64 base_name_hash = hash_string(base_class);
-	const struct ui_style* base_ptr = table_get(ui->stylesheet.normal, base_name_hash);
+	const struct ui_style* base_ptr = table_get(ui->stylesheet->normal, base_name_hash);
 
 	if (!base_ptr) {
 		error("Base class `%s' not found in stylesheet.", base_class);
@@ -222,7 +225,7 @@ static struct ui_style ui_get_style(struct ui* ui, const char* base_class, const
 			if (*(c + 1) == '\0') { cur_class_len++; }
 
 			const u64 name_hash = elf_hash((const u8*)cur_class_start, cur_class_len);
-			const struct ui_style* class_ptr = table_get(ui->stylesheet.normal, name_hash);
+			const struct ui_style* class_ptr = table_get(ui->stylesheet->normal, name_hash);
 			if (!class_ptr) {
 				error("Class `%.*s' not found in stylesheet.", cur_class_len, cur_class_start);
 			} else {
@@ -254,43 +257,51 @@ static bool ui_get_style_variant(struct ui* ui, struct ui_style* style, const ch
 	return false;
 }
 
-struct ui* new_ui(const struct framebuffer* framebuffer) {
-	struct ui* ui = core_calloc(1, sizeof(struct ui));
+static void stylesheet_on_load(const char* filename, u8* raw, usize raw_size, void* payload, usize payload_size, void* udata) {
+	struct ui* ui = udata;
 
-	ui->default_font = new_font(default_font, sizeof default_font, 14.0f);
+	struct ui_stylesheet* stylesheet = payload;
+	for (u64* i = table_first(default_stylesheet.normal); i; table_next(default_stylesheet.normal, *i)) {
+		table_set(stylesheet->normal, *i, *(struct ui_style*)table_get(default_stylesheet.normal, *i));
+	}
 
-	ui->renderer = new_ui_renderer(framebuffer);
-	ui->cmd_buffer = core_alloc(1024);
+	struct dtable data = { 0 };
+}
 
-	table_set(ui->stylesheet.normal, hash_string("label"), ((struct ui_style) {
+static void stylesheet_on_unload(void* payload, usize payload_size) {
+
+}
+
+void ui_init() {
+	table_set(default_stylesheet.normal, hash_string("label"), ((struct ui_style) {
 		.text_colour       = { true, make_rgba(0xffffff, 255) },
 		.background_colour = { true, make_rgba(0x111111, 0) },
 		.padding           = { true, 0.0f },
 		.align             = { true, ui_align_centre },
 	}));
 
-	table_set(ui->stylesheet.normal, hash_string("button"), ((struct ui_style) {
+	table_set(default_stylesheet.normal, hash_string("button"), ((struct ui_style) {
 		.text_colour       = { true, make_rgba(0xffffff, 255) },
 		.background_colour = { true, make_rgba(0x191b26, 255) },
 		.padding           = { true, 3.0f }
 	}));
 
-	table_set(ui->stylesheet.hovered, hash_string("button"), ((struct ui_style) {
+	table_set(default_stylesheet.hovered, hash_string("button"), ((struct ui_style) {
 		.background_colour = { true, make_rgba(0x252839, 255) },
 	}));
 
-	table_set(ui->stylesheet.active, hash_string("button"), ((struct ui_style) {
+	table_set(default_stylesheet.active, hash_string("button"), ((struct ui_style) {
 		.text_colour       = { true, make_rgba(0x000000, 255) },
 		.background_colour = { true, make_rgba(0x8c91ac, 255) },
 	}));
 
-	table_set(ui->stylesheet.normal, hash_string("container"), ((struct ui_style) {
+	table_set(default_stylesheet.normal, hash_string("container"), ((struct ui_style) {
 		.background_colour = { true, make_rgba(0x111111, 255) },
 		.padding           = { true, 5.0f },
 		.radius            = { true, 10.0f }
 	}));
 
-	table_set(ui->stylesheet.normal, hash_string("knob"), ((struct ui_style) {
+	table_set(default_stylesheet.normal, hash_string("knob"), ((struct ui_style) {
 		.text_colour       = { true, make_rgba(0xffffff, 255) },
 		.background_colour = { true, make_rgba(0x191b26, 255) },
 		.padding           = { true, 5.0f },
@@ -298,15 +309,43 @@ struct ui* new_ui(const struct framebuffer* framebuffer) {
 		.align             = { true, ui_align_centre }
 	}));
 
-	table_set(ui->stylesheet.hovered, hash_string("knob"), ((struct ui_style) {
+	table_set(default_stylesheet.hovered, hash_string("knob"), ((struct ui_style) {
 		.text_colour       = { true, make_rgba(0xffffff, 255) },
 		.background_colour = { true, make_rgba(0x252839, 255) },
 	}));
 
-	table_set(ui->stylesheet.active, hash_string("knob"), ((struct ui_style) {
+	table_set(default_stylesheet.active, hash_string("knob"), ((struct ui_style) {
 		.text_colour       = { true, make_rgba(0x000000, 255) },
 		.background_colour = { true, make_rgba(0x8c91ac, 255) },
 	}));
+
+	reg_res_type("stylesheet", &(struct res_config) {
+		.payload_size = sizeof(struct ui_stylesheet),
+		.free_raw_on_load = true,
+		.terminate_raw = true,
+		.on_load = stylesheet_on_load,
+		.on_unload = stylesheet_on_unload
+	});
+
+	default_font = new_font(default_font_atlas, sizeof default_font_atlas, 14.0f);
+}
+
+void ui_deinit() {
+	free_table(default_stylesheet.normal);
+	free_table(default_stylesheet.hovered);
+	free_table(default_stylesheet.active);
+
+	free_font(default_font);
+}
+
+struct ui* new_ui(const struct framebuffer* framebuffer) {
+	struct ui* ui = core_calloc(1, sizeof(struct ui));
+
+	ui->renderer = new_ui_renderer(framebuffer);
+	ui->cmd_buffer = core_alloc(1024);
+
+	ui->stylesheet = &default_stylesheet;
+	ui->font = default_font;
 
 	return ui;
 }
@@ -314,10 +353,6 @@ struct ui* new_ui(const struct framebuffer* framebuffer) {
 void free_ui(struct ui* ui) {
 	free_vector(ui->columns);
 	free_vector(ui->container_stack);
-	free_table(ui->stylesheet.normal);
-	free_table(ui->stylesheet.hovered);
-	free_table(ui->stylesheet.active);
-	free_font(ui->default_font);
 	free_ui_renderer(ui->renderer);
 	core_free(ui->cmd_buffer);
 	core_free(ui);
@@ -395,7 +430,11 @@ void ui_end_container(struct ui* ui) {
 }
 
 void ui_font(struct ui* ui, struct font* font) {
-	ui->font = font ? font : ui->default_font;
+	ui->font = font ? font : default_font;
+}
+
+void ui_stylesheet(struct ui* ui, struct ui_stylesheet* ss) {
+	ss = ss ? ss : &default_stylesheet;
 }
 
 static v2f get_ui_el_position(struct ui* ui, const struct ui_style* style, v2f dimentions) {

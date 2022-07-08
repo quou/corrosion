@@ -32,6 +32,8 @@ struct app_config cr_config() {
 }
 
 void cr_init() {
+	ui_init();
+
 	app.texturea = load_texture("res/chad.jpg", texture_flags_filter_linear);
 	app.textureb = load_texture("res/test.png", texture_flags_filter_linear);
 
@@ -106,14 +108,6 @@ void cr_init() {
 	);
 
 	app.renderer = new_simple_renderer(app.fb);
-
-	char* text;
-	read_raw_text("res/uistyle.dt", &text);
-
-	struct dtable t = { 0 };
-	parse_dtable(&t, text);
-
-	write_dtable(&t, "res/test.dt");
 }
 
 void cr_update(f64 ts) {
@@ -201,4 +195,6 @@ void cr_deinit() {
 	video.free_vertex_buffer(app.tri_vb);
 
 	free_simple_renderer(app.renderer);
+
+	ui_deinit();
 }
