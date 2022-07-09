@@ -35,6 +35,7 @@ struct ui_cmd_draw_text {
 	struct ui_cmd cmd;
 	struct font* font;
 	v2f position;
+	v2f dimentions;
 	v4f colour;
 };
 
@@ -101,6 +102,8 @@ struct ui {
 	u64 dragging;
 	u64 hovered;
 
+	vector(void*) cmd_free_queue;
+
 	u32 input_cursor;
 
 	f32 knob_angle_offset;
@@ -121,6 +124,15 @@ static inline bool mouse_over_rect(v2f position, v2f dimentions) {
 		mouse_pos.y < (i32)position.y + dimentions.y;
 }
 
+static bool rect_outside_clip(v2f position, v2f dimentions, v4i clip) {
+	return
+		position.x + dimentions.x > (f32)clip.x + (f32)clip.z ||
+		position.x                < (f32)clip.x               ||
+		position.y + dimentions.y > (f32)clip.y + (f32)clip.w ||
+		position.y                < (f32)clip.y;
+}
+
+
 /* Position is the top left of a bounding box around the circle. */
 static inline bool mouse_over_circle(v2f position, f32 radius) {
 	v2i mouse_pos = get_mouse_pos();
@@ -134,8 +146,12 @@ static void* ui_last_cmd(struct ui* ui) {
 
 static void* ui_cmd_add(struct ui* ui, usize size) {
 	if (ui->cmd_buffer_idx + size >= ui->cmd_buffer_capacity) {
+		usize old_cap = ui->cmd_buffer_capacity;
 		ui->cmd_buffer_capacity += 1024;
-		ui->cmd_buffer = core_realloc(ui->cmd_buffer, ui->cmd_buffer_capacity);
+		vector_push(ui->cmd_free_queue, ui->cmd_buffer);
+		void* old = ui->cmd_buffer;
+		ui->cmd_buffer = core_alloc(ui->cmd_buffer_capacity);
+		memcpy(ui->cmd_buffer, old, old_cap);
 	}
 
 	ui->last_cmd_size = size;
@@ -163,13 +179,14 @@ void ui_draw_circle(struct ui* ui, v2f position, f32 radius, v4f colour) {
 	cmd->radius = radius;
 }
 
-void ui_draw_text(struct ui* ui, v2f position, const char* text, v4f colour) {
+void ui_draw_text(struct ui* ui, v2f position, v2f dimentions, const char* text, v4f colour) {
 	usize len = strlen(text);
 
 	struct ui_cmd_draw_text* cmd = ui_cmd_add(ui, sizeof(struct ui_cmd_draw_text) + len + 1);
 	cmd->cmd.type = ui_cmd_draw_text;
 	cmd->cmd.size = (sizeof *cmd) + len + 1;
 	cmd->position = position;
+	cmd->dimentions = dimentions;
 	cmd->colour = colour;
 	cmd->font = ui->font;
 
@@ -452,6 +469,7 @@ void free_ui(struct ui* ui) {
 	core_free(ui->temp_str);
 	free_vector(ui->columns);
 	free_vector(ui->container_stack);
+	free_vector(ui->cmd_free_queue);
 	free_ui_renderer(ui->renderer);
 	core_free(ui->cmd_buffer);
 	core_free(ui);
@@ -599,13 +617,15 @@ bool ui_label_ex(struct ui* ui, const char* class, const char* text) {
 
 	struct ui_style style = ui_get_style(ui, "label", class, ui_style_variant_none);
 
-	const v2f dimentions = v2f_add(get_text_dimentions(ui->font, text), make_v2f(style.padding.value * 2.0f, style.padding.value * 2.0f));
+	const v2f text_dimentions = get_text_dimentions(ui->font, text);
+	const v2f dimentions = v2f_add(text_dimentions, make_v2f(style.padding.value * 2.0f, style.padding.value * 2.0f));
 
 	ui_draw_rect(ui, get_ui_el_position(ui, &style, dimentions), make_v2f(dimentions.x, dimentions.y),
 		style.background_colour.value, style.radius.value);
 	struct ui_cmd_draw_rect* rect_cmd = ui_last_cmd(ui);
 
-	ui_draw_text(ui, v2f_add(rect_cmd->position, make_v2f(style.padding.value, style.padding.value)), text, style.text_colour.value);
+	ui_draw_text(ui, v2f_add(rect_cmd->position, make_v2f(style.padding.value, style.padding.value)),
+		text_dimentions, text, style.text_colour.value);
 	struct ui_cmd_draw_text* text_cmd = ui_last_cmd(ui);
 
 	bool hovered = mouse_over_rect(rect_cmd->position, dimentions);
@@ -745,6 +765,8 @@ bool ui_input_ex2(struct ui* ui, const char* class, char* buf, usize buf_size, u
 
 	const v2f dimentions = v2f_add(make_v2f(ui->columns[ui->column] * container->rect.z, get_font_height(ui->font)),
 		make_v2f(style.padding.value * 2.0f, style.padding.value * 2.0f));
+	
+	const v2f text_dimentions = get_text_dimentions(ui->font, buf);
 	const f32 cursor_x_off = get_text_n_dimentions(ui->font, buf, ui->input_cursor).x;
 
 	ui_draw_rect(ui, get_ui_el_position(ui, &style, dimentions), make_v2f(dimentions.x, dimentions.y),
@@ -818,7 +840,7 @@ bool ui_input_ex2(struct ui* ui, const char* class, char* buf, usize buf_size, u
 		}
 	}
 
-	ui_draw_text(ui, make_v2f(text_pos.x + scroll, text_pos.y), buf, style.text_colour.value);
+	ui_draw_text(ui, make_v2f(text_pos.x + scroll, text_pos.y), text_dimentions, buf, style.text_colour.value);
 	struct ui_cmd_draw_text* text_cmd = ui_last_cmd(ui);
 
 	ui_clip(ui, prev_clip);
@@ -829,13 +851,23 @@ bool ui_input_ex2(struct ui* ui, const char* class, char* buf, usize buf_size, u
 }
 
 void ui_draw(const struct ui* ui) {
+#define commit_clip(p_, d_) \
+	if (rect_outside_clip(p_, d_, current_clip)) { \
+		ui_renderer_clip(ui->renderer, current_clip); \
+	}
+
 	struct ui_cmd* cmd = (void*)ui->cmd_buffer;
 	struct ui_cmd* end = (void*)(((u8*)ui->cmd_buffer) + ui->cmd_buffer_idx);
+
+	v4i current_clip = make_v4i(0, 0, get_window_size().x, get_window_size().y);
 
 	while (cmd != end) {
 		switch (cmd->type) {
 			case ui_cmd_draw_rect: {
 				struct ui_cmd_draw_rect* rect = (struct ui_cmd_draw_rect*)cmd;
+
+				commit_clip(rect->position, rect->dimentions);
+
 				ui_renderer_push(ui->renderer, &(struct ui_renderer_quad) {
 					.position   = make_v2f(rect->position.x,   rect->position.y),
 					.dimentions = make_v2f(rect->dimentions.x, rect->dimentions.y),
@@ -845,15 +877,23 @@ void ui_draw(const struct ui* ui) {
 			} break;
 			case ui_cmd_draw_circle: {
 				struct ui_cmd_draw_circle* circle = (struct ui_cmd_draw_circle*)cmd;
+
+				v2f dimentions = make_v2f(circle->radius * 2.0f, circle->radius * 2.0f);
+
+				commit_clip(circle->position, dimentions);
+
 				ui_renderer_push(ui->renderer, &(struct ui_renderer_quad) {
 					.position   = make_v2f(circle->position.x, circle->position.y),
-					.dimentions = make_v2f(circle->radius * 2.0f, circle->radius * 2.0f),
+					.dimentions = dimentions,
 					.colour     = circle->colour,
 					.radius     = circle->radius
 				});
 			} break;
 			case ui_cmd_draw_text: {
 				struct ui_cmd_draw_text* text = (struct ui_cmd_draw_text*)cmd;
+
+				commit_clip(text->position, text->dimentions);
+
 				ui_renderer_push_text(ui->renderer, &(struct ui_renderer_text) {
 					.position = text->position,
 					.text     = (char*)(text + 1),
@@ -863,7 +903,7 @@ void ui_draw(const struct ui* ui) {
 			} break;
 			case ui_cmd_clip: {
 				struct ui_cmd_clip* clip = (struct ui_cmd_clip*)cmd;
-				ui_renderer_clip(ui->renderer, clip->rect);
+				current_clip = clip->rect;
 			} break;
 		}
 
@@ -872,4 +912,12 @@ void ui_draw(const struct ui* ui) {
 
 	ui_renderer_flush(ui->renderer);
 	ui_renderer_end_frame(ui->renderer);
+
+	for (usize i = 0; i < vector_count(ui->cmd_free_queue); i++) {
+		core_free(ui->cmd_free_queue[i]);
+	}
+
+	vector_clear(ui->cmd_free_queue);
+
+#undef commit_clip
 }

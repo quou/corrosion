@@ -147,7 +147,7 @@ void cr_update(f64 ts) {
 
 	ui_columns(app.ui, 2, (f32[]) { 0.25f, 0.70f });
 	ui_label(app.ui, "Text input: ");
-	if (ui_input_ex(app.ui, "align_right", test_buf, sizeof test_buf)) {
+	if (ui_input(app.ui, test_buf, sizeof test_buf)) {
 		info("%s", test_buf);
 	}
 
