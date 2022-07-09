@@ -184,7 +184,7 @@ void render_text(const struct text_renderer* renderer, struct font* font, const 
 	}
 }
 
-v2f get_char_dimentions(struct font* font, const char* c) {
+v2f get_char_dimensions(struct font* font, const char* c) {
 	u32 codepoint;
 	utf8_to_codepoint(c, &codepoint);
 
@@ -193,7 +193,7 @@ v2f get_char_dimentions(struct font* font, const char* c) {
 	return make_v2f(g->xadvance, font->height);
 }
 
-v2f get_text_dimentions(struct font* font, const char* text) {
+v2f get_text_dimensions(struct font* font, const char* text) {
 	f32 x = 0.0f;
 
 	v2f r = { 0.0f, (f32)font->height };
@@ -221,7 +221,7 @@ v2f get_text_dimentions(struct font* font, const char* text) {
 	return r;
 }
 
-v2f get_text_n_dimentions(struct font* font, const char* text, usize n) {
+v2f get_text_n_dimensions(struct font* font, const char* text, usize n) {
 	f32 x = 0.0f;
 
 	v2f r = { 0.0f, (f32)font->height };

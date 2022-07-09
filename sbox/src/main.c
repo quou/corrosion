@@ -158,21 +158,21 @@ void cr_update(f64 ts) {
 		simple_renderer_clip(app.renderer, make_v4i(0, 0, window_size.x, window_size.y));
 		simple_renderer_push(app.renderer, &(struct simple_renderer_quad) {
 			.position   = make_v2f(0.0f, 0.0f),
-			.dimentions = make_v2f(100.0f, 100.0f),
+			.dimensions = make_v2f(100.0f, 100.0f),
 			.colour     = make_rgba(0xffffff, 255),
 			.rect       = { 197.0f, 52.0f, 973.0f, 1096.0f },
 			.texture    = app.texturea
 		});
 		simple_renderer_push(app.renderer, &(struct simple_renderer_quad) {
 			.position   = make_v2f(200.0f, 0.0f),
-			.dimentions = make_v2f(100.0f, 100.0f),
+			.dimensions = make_v2f(100.0f, 100.0f),
 			.colour     = make_rgba(0xffffff, 255),
 			.rect       = { 0.0f, 0.0f, 100.0f, 100.0f },
 			.texture    = app.textureb
 		});
 		simple_renderer_push(app.renderer, &(struct simple_renderer_quad) {
 			.position   = make_v2f(200.0f, 100.0f),
-			.dimentions = make_v2f(200.0f, 100.0f),
+			.dimensions = make_v2f(200.0f, 100.0f),
 			.colour     = make_rgba(0xff0000, 255),
 		});
 

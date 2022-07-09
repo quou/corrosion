@@ -21,7 +21,7 @@ struct text_renderer {
 };
 
 void render_text(const struct text_renderer* renderer, struct font* font, const char* text, v2f position, v4f colour);
-v2f get_char_dimentions(struct font* font, const char* c);
-v2f get_text_dimentions(struct font* font, const char* text);
-v2f get_text_n_dimentions(struct font* font, const char* text, usize n);
+v2f get_char_dimensions(struct font* font, const char* c);
+v2f get_text_dimensions(struct font* font, const char* text);
+v2f get_text_n_dimensions(struct font* font, const char* text, usize n);
 f32 get_font_height(const struct font* font);

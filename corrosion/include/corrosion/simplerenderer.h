@@ -41,7 +41,7 @@ struct simple_renderer {
 
 struct simple_renderer_quad {
 	v2f position;
-	v2f dimentions;
+	v2f dimensions;
 	v4f colour;
 	v4f rect;
 	const struct texture* texture;

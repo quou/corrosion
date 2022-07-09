@@ -43,7 +43,7 @@ struct ui_renderer {
 
 struct ui_renderer_quad {
 	v2f position;
-	v2f dimentions;
+	v2f dimensions;
 	v4f colour;
 	v4f rect;
 	f32 radius;

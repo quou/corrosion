@@ -80,7 +80,7 @@ static bool overlap_clip(const struct simple_renderer* renderer, v4f rect) {
 static void draw_text_character(void* uptr, const struct texture* atlas, v2f position, v4f rect, v4f colour) {
 	simple_renderer_push(uptr, &(struct simple_renderer_quad) {
 		.position = position,
-		.dimentions = make_v2f(rect.z, rect.w),
+		.dimensions = make_v2f(rect.z, rect.w),
 		.colour = colour,
 		.rect = rect,
 		.texture = atlas
@@ -147,8 +147,8 @@ void simple_renderer_push(struct simple_renderer* renderer, const struct simple_
 
 	f32 x1 = quad->position.x;
 	f32 y1 = quad->position.y;
-	f32 x2 = quad->position.x + quad->dimentions.x;
-	f32 y2 = quad->position.y + quad->dimentions.y;
+	f32 x2 = quad->position.x + quad->dimensions.x;
+	f32 y2 = quad->position.y + quad->dimensions.y;
 
 	if (!overlap_clip(renderer, make_v4f(x1, y1, x2, y2))) {
 		return;
