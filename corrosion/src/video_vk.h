@@ -31,6 +31,8 @@ void video_vk_end_pipeline(const struct pipeline* pipeline);
 void video_vk_recreate_pipeline(struct pipeline* pipeline);
 void video_vk_update_pipeline_uniform(struct pipeline* pipeline, const char* set, const char* descriptor, const void* data);
 void video_vk_bind_pipeline_descriptor_set(struct pipeline* pipeline, const char* set, usize target);
+void video_vk_pipeline_add_descriptor_set(struct pipeline* pipeline, const struct pipeline_descriptor_set* set);
+void video_vk_pipeline_change_shader(struct pipeline* pipeline, const struct shader* shader);
 
 void video_vk_register_resources();
 

@@ -33,6 +33,8 @@ void init_video(u32 api, bool enable_validation) {
 		video.recreate_pipeline            = video_vk_recreate_pipeline;
 		video.bind_pipeline_descriptor_set = video_vk_bind_pipeline_descriptor_set;
 		video.update_pipeline_uniform      = video_vk_update_pipeline_uniform;
+		video.pipeline_add_descriptor_set  = video_vk_pipeline_add_descriptor_set;
+		video.pipeline_change_shader       = video_vk_pipeline_change_shader;
 
 		video.new_vertex_buffer    = video_vk_new_vertex_buffer;
 		video.free_vertex_buffer   = video_vk_free_vertex_buffer;

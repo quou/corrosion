@@ -160,6 +160,8 @@ struct video {
 	void (*recreate_pipeline)(struct pipeline* pipeline);
 	void (*update_pipeline_uniform)(struct pipeline* pipeline, const char* set, const char* descriptor, const void* data);
 	void (*bind_pipeline_descriptor_set)(struct pipeline* pipeline, const char* set, usize target);
+	void (*pipeline_add_descriptor_set)(struct pipeline* pipeline, const struct pipeline_descriptor_set* set);
+	void (*pipeline_change_shader)(struct pipeline* pipeline, const struct shader* shader);
 
 	/* Vertex buffer. */
 	struct vertex_buffer* (*new_vertex_buffer)(void* verts, usize size, u32 flags);

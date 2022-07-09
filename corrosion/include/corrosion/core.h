@@ -266,26 +266,28 @@ struct vector_header {
 
 #define vector_allocate(v_, c_) \
 	do { \
-		if (!(v_)) { \
-			struct vector_header h_ = { \
-				.count = 0, \
-				.capacity = (c_), \
-				.element_size = sizeof(*(v_)) \
-			}; \
-			\
-			(v_) = core_alloc(sizeof(struct vector_header) + h_.element_size * h_.capacity); \
-			\
-			memcpy((v_), &h_, sizeof(struct vector_header)); \
-			\
-			(v_) = (void*)((struct vector_header*)(v_) + 1); \
-		} else { \
-			struct vector_header* h_ = ((struct vector_header*)(v_)) - 1; \
-			\
-			if ((c_) > h_->capacity) { \
-				h_->capacity = (c_); \
-				(v_) = core_realloc(h_, sizeof(struct vector_header) + h_->element_size * h_->capacity); \
-				h_ = (struct vector_header*)(v_); \
-				(v_) = (void*)(h_ + 1); \
+		if (c_ > 0) { \
+			if (!(v_)) { \
+				struct vector_header h_ = { \
+					.count = 0, \
+					.capacity = (c_), \
+					.element_size = sizeof(*(v_)) \
+				}; \
+				\
+				(v_) = core_alloc(sizeof(struct vector_header) + h_.element_size * h_.capacity); \
+				\
+				memcpy((v_), &h_, sizeof(struct vector_header)); \
+				\
+				(v_) = (void*)((struct vector_header*)(v_) + 1); \
+			} else { \
+				struct vector_header* h_ = ((struct vector_header*)(v_)) - 1; \
+				\
+				if ((c_) > h_->capacity) { \
+					h_->capacity = (c_); \
+					(v_) = core_realloc(h_, sizeof(struct vector_header) + h_->element_size * h_->capacity); \
+					h_ = (struct vector_header*)(v_); \
+					(v_) = (void*)(h_ + 1); \
+				} \
 			} \
 		} \
 	} while (0)

@@ -179,7 +179,7 @@ struct video_vk_pipeline {
 	const struct shader* shader;
 	const struct framebuffer* framebuffer;
 	struct pipeline_attributes attributes;
-	struct pipeline_descriptor_sets descriptor_sets;
+	vector(struct pipeline_descriptor_set) descriptor_sets;
 };
 
 struct video_vk_vertex_buffer {

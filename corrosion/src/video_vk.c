@@ -1916,6 +1916,32 @@ static void deinit_pipeline(struct video_vk_pipeline* pipeline) {
 	vkDestroyPipeline(vctx.device, pipeline->pipeline, null);
 }
 
+static void copy_pipeline_descriptor(struct pipeline_descriptor* dst, const struct pipeline_descriptor* src) {
+	dst->name     = copy_string(src->name);
+	dst->binding  = src->binding;
+	dst->stage    = src->stage;
+	dst->resource = src->resource;
+}
+
+static void copy_pipeline_descriptor_set(struct pipeline_descriptor_set* dst, const struct pipeline_descriptor_set* src) {
+	dst->name        = copy_string(src->name);
+	dst->count       = src->count;
+	dst->descriptors = null;
+	vector(struct pipeline_descriptor) descs_v = null;
+	vector_allocate(descs_v, src->count);
+
+	for (usize ii = 0; ii < src->count; ii++) {
+		struct pipeline_descriptor desc = { 0 };
+		const struct pipeline_descriptor* other_desc = src->descriptors + ii;
+
+		copy_pipeline_descriptor(&desc, other_desc);
+
+		vector_push(descs_v, desc);
+	}
+
+	dst->descriptors = descs_v;
+}
+
 struct pipeline* video_vk_new_pipeline(u32 flags, const struct shader* shader, const struct framebuffer* framebuffer,
 	struct pipeline_attributes attributes, struct pipeline_descriptor_sets descriptor_sets) {
 	struct video_vk_pipeline* pipeline = core_calloc(1, sizeof(struct video_vk_pipeline));
@@ -1924,27 +1950,16 @@ struct pipeline* video_vk_new_pipeline(u32 flags, const struct shader* shader, c
 	pipeline->shader = shader;
 	pipeline->framebuffer = framebuffer;
 
-	pipeline->descriptor_sets.count = descriptor_sets.count;
 	if (descriptor_sets.count > 0) {
-		pipeline->descriptor_sets.sets = core_calloc(descriptor_sets.count, sizeof(struct pipeline_descriptor_set));
+		vector_allocate(pipeline->descriptor_sets, descriptor_sets.count);
 
 		for (usize i = 0; i < descriptor_sets.count; i++) {
-			struct pipeline_descriptor_set* set = (void*)(pipeline->descriptor_sets.sets + i);
+			struct pipeline_descriptor_set set = { 0 };
 			const struct pipeline_descriptor_set* other = descriptor_sets.sets + i;
 
-			set->name        = copy_string(other->name);
-			set->count       = other->count;
-			set->descriptors = core_calloc(set->count, sizeof(struct pipeline_descriptor));
+			copy_pipeline_descriptor_set(&set, other);
 
-			for (usize ii = 0; ii < set->count; ii++) {
-				struct pipeline_descriptor* desc = (void*)(set->descriptors + ii);
-				const struct pipeline_descriptor* other_desc = other->descriptors + ii;
-
-				desc->name     = copy_string(other_desc->name);
-				desc->binding  = other_desc->binding;
-				desc->stage    = other_desc->stage;
-				desc->resource = other_desc->resource;
-			}
+			vector_push(pipeline->descriptor_sets, set);
 		}
 	}
 
@@ -1985,8 +2000,8 @@ void video_vk_free_pipeline(struct pipeline* pipeline_) {
 
 	deinit_pipeline(pipeline);
 
-	for (usize i = 0; i < pipeline->descriptor_sets.count; i++) {
-		struct pipeline_descriptor_set* set = (void*)(pipeline->descriptor_sets.sets + i);
+	for (usize i = 0; i < vector_count(pipeline->descriptor_sets); i++) {
+		struct pipeline_descriptor_set* set = (void*)(pipeline->descriptor_sets + i);
 
 		core_free((void*)set->name);
 
@@ -1994,10 +2009,10 @@ void video_vk_free_pipeline(struct pipeline* pipeline_) {
 			core_free((void*)set->descriptors[ii].name);
 		}
 
-		core_free((void*)set->descriptors);
+		free_vector((void*)set->descriptors);
 	}
 
-	core_free((void*)pipeline->descriptor_sets.sets);
+	free_vector(pipeline->descriptor_sets);
 
 	for (usize i = 0; i < pipeline->attributes.count; i++) {
 		core_free((void*)pipeline->attributes.attributes[i].name);
@@ -2023,7 +2038,10 @@ void video_vk_recreate_pipeline(struct pipeline* pipeline_) {
 	deinit_pipeline(pipeline);
 	init_pipeline(pipeline, pipeline->flags, (const struct video_vk_shader*)pipeline->shader,
 		(const struct video_vk_framebuffer*)pipeline->framebuffer,
-		&pipeline->attributes, &pipeline->descriptor_sets);
+		&pipeline->attributes, &(struct pipeline_descriptor_sets) {
+			.sets = pipeline->descriptor_sets,
+			.count = vector_count(pipeline->descriptor_sets)
+		});
 }
 
 void video_vk_update_pipeline_uniform(struct pipeline* pipeline_, const char* set, const char* descriptor, const void* data) {
@@ -2067,6 +2085,28 @@ void video_vk_bind_pipeline_descriptor_set(struct pipeline* pipeline_, const cha
 	vkCmdBindDescriptorSets(vctx.command_buffers[vctx.current_frame], VK_PIPELINE_BIND_POINT_GRAPHICS,
 		pipeline->layout, (u32)target, 1,
 		desc_set->sets + vctx.current_frame, 0, null);
+}
+
+void video_vk_pipeline_add_descriptor_set(struct pipeline* pipeline_, const struct pipeline_descriptor_set* set) {
+	struct video_vk_pipeline* pipeline = (struct video_vk_pipeline*)pipeline_;
+
+	struct pipeline_descriptor_set dst = { 0 };
+
+	copy_pipeline_descriptor_set(&dst, set);
+
+	vector_push(pipeline->descriptor_sets, dst);
+
+	video_vk_recreate_pipeline(pipeline_);
+}
+
+void video_vk_pipeline_change_shader(struct pipeline* pipeline_, const struct shader* shader) {
+	struct video_vk_pipeline* pipeline = (struct video_vk_pipeline*)pipeline_;
+
+	if (pipeline->shader != shader) {
+		pipeline->shader = shader;
+
+		video_vk_recreate_pipeline(pipeline_);
+	}
 }
 
 struct vertex_buffer* video_vk_new_vertex_buffer(void* verts, usize size, u32 flags) {
