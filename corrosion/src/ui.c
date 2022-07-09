@@ -90,6 +90,7 @@ struct ui {
 	struct ui_stylesheet* stylesheet;
 
 	v2f cursor_pos;
+	v4f current_clip;
 
 	vector(struct ui_container) container_stack;
 
@@ -98,6 +99,9 @@ struct ui {
 
 	u64 active;
 	u64 dragging;
+	u64 hovered;
+
+	u32 input_cursor;
 
 	f32 knob_angle_offset;
 
@@ -178,6 +182,8 @@ void ui_clip(struct ui* ui, v4f rect) {
 	cmd->cmd.type = ui_cmd_clip;
 	cmd->cmd.size = sizeof *cmd;
 	cmd->rect = make_v4i((f32)rect.x, (f32)rect.y, (f32)rect.z, (f32)rect.w);
+
+	ui->current_clip = rect;
 }
 
 static inline void ui_build_style(struct ui_style* dst, const struct ui_style* src) {
@@ -245,8 +251,11 @@ static struct ui_style ui_get_style(struct ui* ui, const char* base_class, const
 	return base;
 }
 
-static bool ui_get_style_variant(struct ui* ui, struct ui_style* style, const char* base, const char* class, bool hovered) {
-	if (hovered) {
+static bool ui_get_style_variant(struct ui* ui, struct ui_style* style, const char* base, const char* class, bool hovered, bool active) {
+	if (active) {
+		*style = ui_get_style(ui, base, class, ui_style_variant_active);
+		return true;
+	} else if (hovered) {
 		if (mouse_btn_pressed(mouse_btn_left)) {
 			*style = ui_get_style(ui, base, class, ui_style_variant_active);
 			return true;
@@ -369,6 +378,21 @@ void ui_init() {
 		.background_colour = { true, make_rgba(0x8c91ac, 255) },
 	}));
 
+	table_set(default_stylesheet.normal, hash_string("input"), ((struct ui_style) {
+		.text_colour       = { true, make_rgba(0xffffff, 255) },
+		.background_colour = { true, make_rgba(0x191b26, 255) },
+		.padding           = { true, 3.0f }
+	}));
+
+	table_set(default_stylesheet.hovered, hash_string("input"), ((struct ui_style) {
+		.background_colour = { true, make_rgba(0x252839, 255) },
+	}));
+
+	table_set(default_stylesheet.active, hash_string("input"), ((struct ui_style) {
+		.text_colour       = { true, make_rgba(0x000000, 255) },
+		.background_colour = { true, make_rgba(0x8c91ac, 255) },
+	}));
+
 	table_set(default_stylesheet.normal, hash_string("container"), ((struct ui_style) {
 		.background_colour = { true, make_rgba(0x111111, 255) },
 		.padding           = { true, 5.0f },
@@ -436,6 +460,8 @@ void free_ui(struct ui* ui) {
 void ui_begin(struct ui* ui) {
 	ui->cmd_buffer_idx = 0;
 
+	ui->hovered = 0;
+
 	ui_font(ui, null);
 
 	v2i window_size = get_window_size();
@@ -454,6 +480,10 @@ void ui_end(struct ui* ui) {
 
 	if (mouse_btn_just_released(mouse_btn_left)) {
 		ui->dragging = 0;
+
+		if (!ui->hovered) {
+			ui->active = 0;
+		}
 	}
 }
 
@@ -548,6 +578,7 @@ static void advance(struct ui* ui, f32 last_height) {
 		ui->cursor_pos.x = container->rect.x + container->padding;
 		ui->cursor_pos.y += ui->current_item_height;
 		ui->column = 0;
+		ui->current_item_height = 0.0f;
 	}
 }
 
@@ -560,6 +591,7 @@ void ui_columns(struct ui* ui, usize count, f32* columns) {
 
 	ui->column_count = count;
 	ui->column = 0;
+	ui->current_item_height = 0.0f;
 }
 
 bool ui_label_ex(struct ui* ui, const char* class, const char* text) {
@@ -577,7 +609,7 @@ bool ui_label_ex(struct ui* ui, const char* class, const char* text) {
 	struct ui_cmd_draw_text* text_cmd = ui_last_cmd(ui);
 
 	bool hovered = mouse_over_rect(rect_cmd->position, dimentions);
-	if (ui_get_style_variant(ui, &style, "label", class, hovered)) {
+	if (ui_get_style_variant(ui, &style, "label", class, hovered, false)) {
 		rect_cmd->position = get_ui_el_position(ui, &style, dimentions);
 		rect_cmd->radius   = style.radius.value;
 		text_cmd->position = v2f_add(rect_cmd->position, make_v2f(style.padding.value, style.padding.value));
@@ -619,16 +651,20 @@ bool ui_knob_ex(struct ui* ui, const char* class, f32* val, f32 min, f32 max) {
 	f32 max_angle = to_rad(320.0f);
 	f32 angle = lerp(min_angle, max_angle, map(*val, max, min, 0.0f, 1.0f));
 
-	if (hovered && mouse_btn_just_pressed(mouse_btn_left)) {
-		ui->dragging = id;
+	if (hovered) {
+		ui->hovered = id;
 
-		v2i mouse_pos = get_mouse_pos();
-		v2f v = v2f_sub(make_v2f(mouse_pos.x, mouse_pos.y), knob_origin);
-		f32 to_mouse_angle = atan2f(-v.x, -v.y) + to_rad(180.0f);
+		if (mouse_btn_just_pressed(mouse_btn_left)) {
+			ui->dragging = id;
 
-		to_mouse_angle = clamp(to_mouse_angle, min_angle, max_angle);
+			v2i mouse_pos = get_mouse_pos();
+			v2f v = v2f_sub(make_v2f(mouse_pos.x, mouse_pos.y), knob_origin);
+			f32 to_mouse_angle = atan2f(-v.x, -v.y) + to_rad(180.0f);
 
-		ui->knob_angle_offset = angle - to_mouse_angle;
+			to_mouse_angle = clamp(to_mouse_angle, min_angle, max_angle);
+
+			ui->knob_angle_offset = angle - to_mouse_angle;
+		}
 	}
 
 	bool changed = false;
@@ -657,7 +693,7 @@ bool ui_knob_ex(struct ui* ui, const char* class, f32* val, f32 min, f32 max) {
 		*val = clamp(*val, min, max);
 
 		changed = true;
-	} else if (ui_get_style_variant(ui, &style, "knob", class, hovered)) {
+	} else if (ui_get_style_variant(ui, &style, "knob", class, hovered, false)) {
 		knob_cmd->radius   = style.radius.value;
 		knob_cmd->position = get_ui_el_position(ui, &style, dimentions);
 		knob_cmd->colour   = style.background_colour.value;
@@ -683,6 +719,113 @@ bool ui_knob_ex(struct ui* ui, const char* class, f32* val, f32 min, f32 max) {
 	advance(ui, dimentions.y + container->padding);
 
 	return changed;
+}
+
+bool ui_text_input_filter(char c) {
+	return true;
+}
+
+bool ui_number_input_filter(char c) {
+	return (c >= '0' && c <= '9') || c == '.';
+}
+
+bool ui_alphanum_input_filter(char c) {
+	return
+		(c >= 'a' && c <= 'z') ||
+		(c >= 'A' && c <= 'Z') ||
+		ui_number_input_filter(c);
+}
+
+bool ui_input_ex2(struct ui* ui, const char* class, char* buf, usize buf_size, ui_input_filter filter) {
+	const u64 id = elf_hash((const u8*)&buf, sizeof buf);
+
+	const struct ui_container* container = vector_end(ui->container_stack) - 1;
+
+	struct ui_style style = ui_get_style(ui, "input", class, ui_style_variant_none);
+
+	const v2f dimentions = v2f_add(make_v2f(ui->columns[ui->column] * container->rect.z, get_font_height(ui->font)),
+		make_v2f(style.padding.value * 2.0f, style.padding.value * 2.0f));
+	const f32 cursor_x_off = get_text_n_dimentions(ui->font, buf, ui->input_cursor).x;
+
+	ui_draw_rect(ui, get_ui_el_position(ui, &style, dimentions), make_v2f(dimentions.x, dimentions.y),
+		style.background_colour.value, style.radius.value);
+	struct ui_cmd_draw_rect* rect_cmd = ui_last_cmd(ui);
+
+	struct ui_cmd_draw_rect* cursor_cmd = null;
+
+	bool hovered = mouse_over_rect(rect_cmd->position, dimentions);
+
+	if (hovered) {
+		ui->hovered = id;
+
+		if (mouse_btn_just_released(mouse_btn_left)) {
+			ui->active = id;
+			ui->input_cursor = strlen(buf);
+		}
+	}
+
+	bool active = ui->active == id;
+
+	if (ui_get_style_variant(ui, &style, "input", class, hovered, active)) {
+		rect_cmd->position = get_ui_el_position(ui, &style, dimentions);
+		rect_cmd->radius   = style.radius.value;
+
+		rect_cmd->colour = style.background_colour.value;
+	}
+
+	const v2f text_pos = v2f_add(rect_cmd->position, make_v2f(style.padding.value, style.padding.value));
+
+	bool submitted = false;
+
+	v4f prev_clip = ui->current_clip;
+	ui_clip(ui, make_v4f(text_pos.x, text_pos.y, dimentions.x - style.padding.value, dimentions.y - style.padding.value));
+
+	f32 scroll = 0.0f;
+	if (active) {
+		scroll = min(dimentions.x - cursor_x_off - style.padding.value - get_font_height(ui->font), 0.0f);
+
+		ui_draw_rect(ui, v2f_add(text_pos, make_v2f(cursor_x_off + scroll, 0.0f)), make_v2f(1.0f, get_font_height(ui->font)),
+			style.text_colour.value, 0.0f);
+		cursor_cmd = ui_last_cmd(ui);
+
+		usize input_len;
+		const char* input_string;
+
+		usize buf_len = strlen(buf);
+
+		if (get_input_string(&input_string, &input_len) && buf_len + input_len < buf_size) {
+			for (usize i = 0; i < input_len; i++) {
+				if (filter(input_string[i])) {
+					strncat(buf, input_string + i, 1);
+					ui->input_cursor++;
+				}
+			}
+		}
+
+		if (key_just_pressed(key_return)) {
+			submitted = true;
+			ui->active = 0;
+			active = false;
+		}
+
+		if (ui->input_cursor > 0 && key_just_pressed(key_backspace)) {
+			for (u32 i = ui->input_cursor - 1; i < buf_len - 1; i++) {
+				buf[i] = buf[i + 1];
+			}
+
+			buf[buf_len - 1] = '\0';
+			ui->input_cursor--;
+		}
+	}
+
+	ui_draw_text(ui, make_v2f(text_pos.x + scroll, text_pos.y), buf, style.text_colour.value);
+	struct ui_cmd_draw_text* text_cmd = ui_last_cmd(ui);
+
+	ui_clip(ui, prev_clip);
+
+	advance(ui, dimentions.y + container->padding);
+
+	return submitted;
 }
 
 void ui_draw(const struct ui* ui) {

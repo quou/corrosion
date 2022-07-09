@@ -219,7 +219,38 @@ v2f get_text_dimentions(struct font* font, const char* text) {
 	}
 
 	return r;
+}
 
+v2f get_text_n_dimentions(struct font* font, const char* text, usize n) {
+	f32 x = 0.0f;
+
+	v2f r = { 0.0f, (f32)font->height };
+
+	const char* p = text;
+	usize i = 0;
+	while (*p && i < n) {
+		if (*p == '\n') {
+			r.y += font->height;
+			x = 0.0f;
+			p++;
+			i++;
+			continue;
+		}
+
+		u32 codepoint;
+		p = utf8_to_codepoint(p, &codepoint);
+
+		struct glyph_set* set = get_glyph_set(font, codepoint);
+		stbtt_bakedchar* g = &set->glyphs[codepoint & 0xff];
+
+		x += g->xadvance;
+
+		if (x > r.x) { r.x = x; }
+
+		i++;
+	}
+
+	return r;
 }
 
 f32 get_font_height(const struct font* font) {

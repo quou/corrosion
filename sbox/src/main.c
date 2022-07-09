@@ -143,6 +143,14 @@ void cr_update(f64 ts) {
 	sprintf(text, "%.2f", test2);
 	ui_label_ex(app.ui, "knob_label align_right", text);
 
+	static char test_buf[256] = "Hello, world!";
+
+	ui_columns(app.ui, 2, (f32[]) { 0.25f, 0.70f });
+	ui_label(app.ui, "Text input: ");
+	if (ui_input_ex(app.ui, "align_right", test_buf, sizeof test_buf)) {
+		info("%s", test_buf);
+	}
+
 	ui_end_container(app.ui);
 	ui_end(app.ui);
 

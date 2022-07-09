@@ -22,6 +22,8 @@ Atom wm_delete_window_id, wm_protocols_id;
 struct window window;
 
 void init_window(struct window_config* config, u32 api) {
+	memset(&window, 0, sizeof window);
+
 	XInitThreads();
 
 	display = XOpenDisplay(null);
@@ -190,6 +192,8 @@ void update_events() {
 	memset(window.pressed_mouse_btns, 0, sizeof window.pressed_mouse_btns);
 	memset(window.released_mouse_btns, 0, sizeof window.released_mouse_btns);
 
+	window.input_string_len = 0;
+
 	XEvent e;
 
 	while (XPending(display)) {
@@ -223,6 +227,17 @@ void update_events() {
 
 				window.held_keys[key] = true;
 				window.pressed_keys[key] = true;
+
+				/* Text input. */
+				XLookupString(&e.xkey, window.input_string, sizeof window.input_string, null, null);
+				if ((window.input_string_len = strlen(window.input_string)) > 0) {
+					for (usize i = 0; i < window.input_string_len; i++) {
+						if (window.input_string[i] < ' ' || window.input_string[i] > '~') {
+							window.input_string[i] = '\0';
+							window.input_string_len--;
+						}
+					}
+				}
 			} break;
 			case KeyRelease: {
 				KeySym sym = XLookupKeysym(&e.xkey, 0);
@@ -308,4 +323,14 @@ v2i get_mouse_pos() {
 
 i32 get_scroll() {
 	return window.scroll;
+}
+
+bool get_input_string(const char** string, usize* len) {
+	if (window.input_string_len > 0) {
+		*string = window.input_string;
+		*len = window.input_string_len;
+		return true;
+	}
+
+	return false;
 }

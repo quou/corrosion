@@ -32,6 +32,9 @@ struct window {
 
 	i32 scroll;
 
+	char input_string[256];
+	usize input_string_len;
+
 	table(KeySym, u32) keymap;
 };
 

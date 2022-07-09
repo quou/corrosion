@@ -40,6 +40,16 @@ bool ui_label_ex(struct ui* ui, const char* class, const char* text);
 bool ui_knob_ex(struct ui* ui, const char* class, f32* val, f32 min, f32 max);
 #define ui_knob(ui_, v_, mi, ma_) ui_knob_ex(ui_, "", v_, mi, ma_)
 
+typedef bool (*ui_input_filter)(char c);
+
+bool ui_text_input_filter(char c);
+bool ui_number_input_filter(char c);
+bool ui_alphanum_input_filter(char c);
+
+bool ui_input_ex2(struct ui* ui, const char* class, char* buf, usize buf_size, ui_input_filter filter);
+#define ui_input_ex(ui_, c_, b_, s_) ui_input_ex2(ui_, c_, b_, s_, ui_text_input_filter)
+#define ui_input(ui_, b_, s_) ui_input_ex(ui_, "", b_, s_)
+
 void ui_begin_window();
 void ui_end_window();
 
