@@ -191,7 +191,46 @@ _v4_normalised(v4f, f32)
 #define v4i_eq(a_, b_) _v4_eq(v4i, a_, b_)
 #define v4u_eq(a_, b_) _v4_eq(v4u, a_, b_)
 
+#define v3f_cross(a_, b_) \
+	make_v3f((a_).y * (b_).z - (a_).z * (b_).y, (a_).z * (b_).x - (a_).x * (b_).z, (a_).x * (b_).y - (a_).y * (b_).x)
+
+#define v3f_dot(a_, b_) \
+	((a_).x * (b_).x + (a_).y * (b_).y + (a_).z * (b_).z)
+
 /* Quaternion. */
+typedef v4f quat;
+
+#define make_quat(a_, s_) make_v4f((a_).x, (a_).y, (a_).z, s_)
+
+#define quat_identity()	make_quat(make_v3f(0.0f, 0.0f, 0.0f), 1.0f)
+
+#define quat_scale(q_, s_) \
+	((quat) { (q_).x * s_, (q_).y * s_, (q_).z * s_, (q_).w })
+
+force_inline f32 quat_norm(quat q) {
+	return
+		(q.x * q.x) +
+		(q.y * q.y) +
+		(q.z * q.z) +
+		(q.w * q.w);
+}
+
+#define quat_normalised(q_) \
+	quat_scale(q_, 1.0f / sqrtf(quat_norm(q_)))
+
+force_inline quat quat_mul(quat a, quat b) {
+	return quat_normalised(((quat) {
+		(((a.w * b.x) + (a.x * b.w)) + (a.y * b.z)) - (a.z * b.y),
+		(((a.w * b.y) + (a.y * b.w)) + (a.z * b.x)) - (a.x * b.z),
+		(((a.w * b.z) + (a.z * b.w)) + (a.x * b.y)) - (a.y * b.x),
+		(((a.w * b.w) - (a.x * b.x)) - (a.y * b.y)) - (a.z * b.z)
+	}));
+}
+
+#define euler(a_) quat_mul(quat_mul( \
+	make_quat(make_v3f(1.0f, 0.0f, 0.0f), to_rad((a_).x)),  \
+	make_quat(make_v3f(0.0f, 1.0f, 0.0f), to_rad((a_).y))), \
+	make_quat(make_v3f(0.0f, 0.0f, 1.0f), to_rad((a_).z)))
 
 /* 4x4 float matrix. */
 #define make_m4f(d_) \
@@ -216,45 +255,46 @@ _v4_normalised(v4f, f32)
 	((m4f) {{ \
 		{ hw_,  0.0f,   0.0f, hw_  }, \
 		{ 0.0f, -(hh_), 0.0f, hh_  }, \
-		{ 0.0f, 0.0f,   0.0f, 0.0f }, \
-		{ 0.0f, 0.0f,   0.0f, 0.0f }, \
+		{ 0.0f, 0.0f,   1.0f, 0.0f }, \
+		{ 0.0f, 0.0f,   0.0f, 1.0f }, \
 	}})
 
-#define m4f_mul(a_, b_) \
-	((m4f) {{ \
-		{ \
-			(a_).m[0][0] * (b_).m[0][0] + (a_).m[1][0] * (b_).m[0][1] + (a_).m[2][0] * (b_).m[0][2] + (a_).m[3][0] * (b_).m[0][3], \
-			(a_).m[0][1] * (b_).m[0][0] + (a_).m[1][1] * (b_).m[0][1] + (a_).m[2][1] * (b_).m[0][2] + (a_).m[3][1] * (b_).m[0][3], \
-			(a_).m[0][2] * (b_).m[0][0] + (a_).m[1][2] * (b_).m[0][1] + (a_).m[2][2] * (b_).m[0][2] + (a_).m[3][2] * (b_).m[0][3], \
-			(a_).m[0][3] * (b_).m[0][0] + (a_).m[1][3] * (b_).m[0][1] + (a_).m[2][3] * (b_).m[0][2] + (a_).m[3][3] * (b_).m[0][3] \
-		}, \
-		{ \
-			(a_).m[0][0] * (b_).m[1][0] + (a_).m[1][0] * (b_).m[1][1] + (a_).m[2][0] * (b_).m[1][2] + (a_).m[3][0] * (b_).m[1][3], \
-			(a_).m[0][1] * (b_).m[1][0] + (a_).m[1][1] * (b_).m[1][1] + (a_).m[2][1] * (b_).m[1][2] + (a_).m[3][1] * (b_).m[1][3], \
-			(a_).m[0][2] * (b_).m[1][0] + (a_).m[1][2] * (b_).m[1][1] + (a_).m[2][2] * (b_).m[1][2] + (a_).m[3][2] * (b_).m[1][3], \
-			(a_).m[0][3] * (b_).m[1][0] + (a_).m[1][3] * (b_).m[1][1] + (a_).m[2][3] * (b_).m[1][2] + (a_).m[3][3] * (b_).m[1][3] \
-		}, \
-		{ \
-			(a_).m[0][0] * (b_).m[2][0] + (a_).m[1][0] * (b_).m[2][1] + (a_).m[2][0] * (b_).m[2][2] + (a_).m[3][0] * (b_).m[2][3], \
-			(a_).m[0][1] * (b_).m[2][0] + (a_).m[1][1] * (b_).m[2][1] + (a_).m[2][1] * (b_).m[2][2] + (a_).m[3][1] * (b_).m[2][3], \
-			(a_).m[0][2] * (b_).m[2][0] + (a_).m[1][2] * (b_).m[2][1] + (a_).m[2][2] * (b_).m[2][2] + (a_).m[3][2] * (b_).m[2][3], \
-			(a_).m[0][3] * (b_).m[2][0] + (a_).m[1][3] * (b_).m[2][1] + (a_).m[2][3] * (b_).m[2][2] + (a_).m[3][3] * (b_).m[2][3] \
-		}, \
-		{ \
-			(a_).m[0][0] * (b_).m[3][0] + (a_).m[1][0] * (b_).m[3][1] + (a_).m[2][0] * (b_).m[3][2] + (a_).m[3][0] * (b_).m[3][3], \
-			(a_).m[0][1] * (b_).m[3][0] + (a_).m[1][1] * (b_).m[3][1] + (a_).m[2][1] * (b_).m[3][2] + (a_).m[3][1] * (b_).m[3][3], \
-			(a_).m[0][2] * (b_).m[3][0] + (a_).m[1][2] * (b_).m[3][1] + (a_).m[2][2] * (b_).m[3][2] + (a_).m[3][2] * (b_).m[3][3], \
-			(a_).m[0][3] * (b_).m[3][0] + (a_).m[1][3] * (b_).m[3][1] + (a_).m[2][3] * (b_).m[3][2] + (a_).m[3][3] * (b_).m[3][3] \
-		}, \
-	}})
+force_inline m4f m4f_mul(m4f a, m4f b) {
+	return ((m4f) {{ \
+		{
+			a.m[0][0] * b.m[0][0] + a.m[1][0] * b.m[0][1] + a.m[2][0] * b.m[0][2] + a.m[3][0] * b.m[0][3],
+			a.m[0][1] * b.m[0][0] + a.m[1][1] * b.m[0][1] + a.m[2][1] * b.m[0][2] + a.m[3][1] * b.m[0][3],
+			a.m[0][2] * b.m[0][0] + a.m[1][2] * b.m[0][1] + a.m[2][2] * b.m[0][2] + a.m[3][2] * b.m[0][3],
+			a.m[0][3] * b.m[0][0] + a.m[1][3] * b.m[0][1] + a.m[2][3] * b.m[0][2] + a.m[3][3] * b.m[0][3] 
+		},
+		{
+			a.m[0][0] * b.m[1][0] + a.m[1][0] * b.m[1][1] + a.m[2][0] * b.m[1][2] + a.m[3][0] * b.m[1][3],
+			a.m[0][1] * b.m[1][0] + a.m[1][1] * b.m[1][1] + a.m[2][1] * b.m[1][2] + a.m[3][1] * b.m[1][3],
+			a.m[0][2] * b.m[1][0] + a.m[1][2] * b.m[1][1] + a.m[2][2] * b.m[1][2] + a.m[3][2] * b.m[1][3],
+			a.m[0][3] * b.m[1][0] + a.m[1][3] * b.m[1][1] + a.m[2][3] * b.m[1][2] + a.m[3][3] * b.m[1][3] 
+		},
+		{
+			a.m[0][0] * b.m[2][0] + a.m[1][0] * b.m[2][1] + a.m[2][0] * b.m[2][2] + a.m[3][0] * b.m[2][3],
+			a.m[0][1] * b.m[2][0] + a.m[1][1] * b.m[2][1] + a.m[2][1] * b.m[2][2] + a.m[3][1] * b.m[2][3],
+			a.m[0][2] * b.m[2][0] + a.m[1][2] * b.m[2][1] + a.m[2][2] * b.m[2][2] + a.m[3][2] * b.m[2][3],
+			a.m[0][3] * b.m[2][0] + a.m[1][3] * b.m[2][1] + a.m[2][3] * b.m[2][2] + a.m[3][3] * b.m[2][3] 
+		},
+		{
+			a.m[0][0] * b.m[3][0] + a.m[1][0] * b.m[3][1] + a.m[2][0] * b.m[3][2] + a.m[3][0] * b.m[3][3],
+			a.m[0][1] * b.m[3][0] + a.m[1][1] * b.m[3][1] + a.m[2][1] * b.m[3][2] + a.m[3][1] * b.m[3][3],
+			a.m[0][2] * b.m[3][0] + a.m[1][2] * b.m[3][1] + a.m[2][2] * b.m[3][2] + a.m[3][2] * b.m[3][3],
+			a.m[0][3] * b.m[3][0] + a.m[1][3] * b.m[3][1] + a.m[2][3] * b.m[3][2] + a.m[3][3] * b.m[3][3] 
+		},
+	}});
 
+}
 
 #define m4f_translation(v_) \
 	((m4f) {{ \
-		{ 0.0f,   0.0f,   0.0f,   0.0f }, \
-		{ 0.0f,   0.0f,   0.0f,   0.0f }, \
-		{ 0.0f,   0.0f,   0.0f,   0.0f }, \
-		{ (v_).x, (v_).y, (v_).z, 0.0f }, \
+		{ 1.0f,   0.0f,   0.0f,   0.0f }, \
+		{ 0.0f,   1.0f,   0.0f,   0.0f }, \
+		{ 0.0f,   0.0f,   1.0f,   0.0f }, \
+		{ (v_).x, (v_).y, (v_).z, 1.0f }, \
 	}})
 
 #define m4f_scale(v_) \
@@ -262,37 +302,76 @@ _v4_normalised(v4f, f32)
 		{ (v_).x, 0.0f,   0.0f,   0.0f }, \
 		{ 0.0f,   (v_).y, 0.0f,   0.0f }, \
 		{ 0.0f,   0.0f,   (v_).z, 0.0f }, \
-		{ 0.0f,   0.0f,   0.0f,   0.0f }, \
+		{ 0.0f,   0.0f,   0.0f,   1.0f }, \
 	}})
 
-force_inline m4f m4f_rotation(f32 a, v3f v) {
+force_inline m4f m4f_rotation(quat q) {
 	m4f r = m4f_identity();
 
-	const f32 c = cosf(a);
-	const f32 s = sinf(a);
+	f32 qx, qy, qz, qw, qx2, qy2, qz2, qxqx2, qyqy2, qzqz2, qxqy2, qyqz2, qzqw2, qxqz2, qyqw2, qxqw2;
+	qx = q.x;
+	qy = q.y;
+	qz = q.z;
+	qw = q.w;
+	qx2 = (qx + qx);
+	qy2 = (qy + qy);
+	qz2 = (qz + qz);
+	qxqx2 = (qx * qx2);
+	qxqy2 = (qx * qy2);
+	qxqz2 = (qx * qz2);
+	qxqw2 = (qw * qx2);
+	qyqy2 = (qy * qy2);
+	qyqz2 = (qy * qz2);
+	qyqw2 = (qw * qy2);
+	qzqz2 = (qz * qz2);
+	qzqw2 = (qw * qz2);
 
-	const f32 omc = 1.0f - c;
+	r.m[0][0] = ((1.0f - qyqy2) - qzqz2);
+	r.m[0][1] = (qxqy2 - qzqw2);
+	r.m[0][2] = (qxqz2 + qyqw2);
+	r.m[0][3] = 0.0f;
 
-	const f32 x = v.x;
-	const f32 y = v.y;
-	const f32 z = v.z;
+	r.m[1][0] = (qxqy2 + qzqw2);
+	r.m[1][1] = ((1.0f - qxqx2) - qzqz2);
+	r.m[1][2] = (qyqz2 - qxqw2);
+	r.m[1][3] = 0.0f;
 
-	r.m[0][0] = x * x * omc + c;
-	r.m[0][1] = y * x * omc + z * s;
-	r.m[0][2] = x * z * omc - y * s;
-	r.m[1][0] = x * y * omc - z * s;
-	r.m[1][1] = y * y * omc + c;
-	r.m[1][2] = y * z * omc + x * s;
-	r.m[2][0] = x * z * omc + y * s;
-	r.m[2][1] = y * z * omc - x * s;
-	r.m[2][2] = z * z * omc + c;
+	r.m[2][0] = (qxqz2 - qyqw2);
+	r.m[2][1] = (qyqz2 + qxqw2);
+	r.m[2][2] = ((1.0f - qxqx2) - qyqy2);
+	r.m[2][3] = 0.0f;
 
 	return r;
 }
 
-#define m4f_transform(m_, p_) \
-	make_v4f( \
-		(m_).m[0][0] * (p_).x + (m_).m[1][0] * (p_).y + (m_).m[2][0] * (p_).z + (m_).m[3][0] + (p_).w, \
-		(m_).m[0][1] * (p_).x + (m_).m[1][1] * (p_).y + (m_).m[2][1] * (p_).z + (m_).m[3][1] + (p_).w, \
-		(m_).m[0][2] * (p_).x + (m_).m[1][2] * (p_).y + (m_).m[2][2] * (p_).z + (m_).m[3][2] + (p_).w, \
-		(m_).m[0][3] * (p_).x + (m_).m[1][3] * (p_).y + (m_).m[2][3] * (p_).z + (m_).m[3][3] + (p_).w)
+force_inline m4f m4f_lookat(v3f c, v3f o, v3f u) {
+	m4f r = m4f_identity();
+
+	const v3f f = v3f_normalised(v3f_sub(o, c));
+	u = v3f_normalised(u);
+	const v3f s = v3f_normalised(v3f_cross(f, u));
+	u = v3f_cross(s, f);
+
+	r.m[0][0] = s.x;
+	r.m[1][0] = s.y;
+	r.m[2][0] = s.z;
+	r.m[0][1] = u.x;
+	r.m[1][1] = u.y;
+	r.m[2][1] = u.z;
+	r.m[0][2] = -f.x;
+	r.m[1][2] = -f.y;
+	r.m[2][2] = -f.z;
+	r.m[3][0] = -v3f_dot(s, c);
+	r.m[3][1] = -v3f_dot(u, c);
+	r.m[3][2] =  v3f_dot(f, c);
+
+	return r;
+}
+
+force_inline v4f m4f_transform(m4f m, v4f p) {
+	return make_v4f(
+		m.m[0][0] * p.x + m.m[1][0] * p.y + m.m[2][0] * p.z + m.m[3][0] * p.w,
+		m.m[0][1] * p.x + m.m[1][1] * p.y + m.m[2][1] * p.z + m.m[3][1] * p.w,
+		m.m[0][2] * p.x + m.m[1][2] * p.y + m.m[2][2] * p.z + m.m[3][2] * p.w,
+		m.m[0][3] * p.x + m.m[1][3] * p.y + m.m[2][3] * p.z + m.m[3][3] * p.w);
+}

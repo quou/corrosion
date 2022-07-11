@@ -8,6 +8,7 @@
 #include "core.h"
 #include "dtable.h"
 #include "font.h"
+#include "gizmo.h"
 #include "maths.h"
 #include "res.h"
 #include "simplerenderer.h"

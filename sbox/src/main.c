@@ -16,6 +16,8 @@ struct {
 	struct font* dejavusans;
 
 	struct ui* ui;
+
+	f32 r;
 } app;
 
 struct app_config cr_config() {
@@ -33,6 +35,8 @@ struct app_config cr_config() {
 
 void cr_init() {
 	ui_init();
+
+	app.r = 0.0f;
 
 	app.texturea = load_texture("res/chad.jpg", texture_flags_filter_linear);
 	app.textureb = load_texture("res/test.png", texture_flags_filter_linear);
@@ -64,7 +68,7 @@ void cr_init() {
 	app.tri_vb = video.new_vertex_buffer(tri_verts, sizeof tri_verts, vertex_buffer_flags_none);
 
 	app.invert_pip = video.new_pipeline(
-		pipeline_flags_none,
+		pipeline_flags_draw_tris,
 		invert_shader,
 		video.get_default_fb(),
 		(struct pipeline_attributes) {
@@ -130,6 +134,15 @@ void cr_update(f64 ts) {
 		info("Button B pressed.");
 	}
 
+	gizmo_camera(&(struct camera) {
+		.fov = 70.0f,
+		.near = 0.1f,
+		.far = 100.0f
+	});
+
+	gizmo_colour(make_rgba(0x00ffff, 255));
+	gizmo_box(make_v3f(-1.0f, -1.0f, 3.0f), make_v3f(1.0f, 1.0f, 1.0f), euler(make_v3f(0.0f, 25.0f, 0.0f)));
+
 	static f32 test = 25.0f;
 	static f32 test2 = 50.0f;
 
@@ -194,7 +207,9 @@ void cr_update(f64 ts) {
 			video.draw(3, 0, 1);
 		video.end_pipeline(app.invert_pip);
 
+
 		ui_draw(app.ui);
+		gizmos_draw();
 	video.end_framebuffer(video.get_default_fb());
 }
 

@@ -3,7 +3,7 @@
 
 static void create_pipeline(struct simple_renderer* renderer) {
 	renderer->pipeline = video.new_pipeline(
-		pipeline_flags_blend | pipeline_flags_dynamic_scissor,
+		pipeline_flags_blend | pipeline_flags_dynamic_scissor | pipeline_flags_draw_tris,
 		renderer->shader,
 		renderer->framebuffer,
 		(struct pipeline_attributes) {

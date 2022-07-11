@@ -55,6 +55,7 @@ void init_video(u32 api, bool enable_validation) {
 		video.texture_copy     = video_vk_texture_copy;
 
 		video.ortho = video_vk_ortho;
+		video.persp = video_vk_persp;
 
 		video_vk_register_resources();
 		break;
@@ -67,4 +68,20 @@ void init_video(u32 api, bool enable_validation) {
 
 void deinit_video() {
 	video.deinit();
+}
+
+m4f get_camera_view(const struct camera* camera) {
+	v3f cam_dir = make_v3f(
+		cosf(to_rad(camera->rotation.x)) * sinf(to_rad(camera->rotation.y)),
+		sinf(to_rad(camera->rotation.x)),
+		cosf(to_rad(camera->rotation.x)) * cosf(to_rad(camera->rotation.y))
+	);
+
+	return m4f_lookat(camera->position, v3f_add(camera->position, cam_dir), make_v3f(0.0f, 1.0f, 0.0f));
+}
+
+m4f get_camera_projection(const struct camera* camera) {
+	v2i size = get_window_size();
+
+	return video.persp(camera->fov, (f32)size.x / (f32)size.y, camera->near, camera->far);
 }

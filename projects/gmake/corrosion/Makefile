@@ -44,6 +44,7 @@ sources =                            \
           $(srcdir)/dtable.c         \
           $(srcdir)/entrypoint.c     \
           $(srcdir)/font.c           \
+          $(srcdir)/gizmo.c          \
           $(srcdir)/log.c            \
           $(srcdir)/res.c            \
           $(srcdir)/res_posix.c      \

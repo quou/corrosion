@@ -1,5 +1,6 @@
 #include "app.h"
 
+#include "gizmo.h"
 #include "res.h"
 #include "timer.h"
 #include "video.h"
@@ -21,6 +22,8 @@ i32 main(i32 argc, const char** argv) {
 
 	init_video(cfg.api, cfg.enable_validation);
 
+	gizmos_init();
+
 	cr_init();
 
 	u64 now = get_timer(), last = get_timer();
@@ -39,6 +42,8 @@ i32 main(i32 argc, const char** argv) {
 	}
 
 	cr_deinit();
+
+	gizmos_deinit();
 
 	res_deinit();
 

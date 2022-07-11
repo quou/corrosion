@@ -1522,9 +1522,16 @@ static void init_pipeline(struct video_vk_pipeline* pipeline, u32 flags, const s
 		.pVertexAttributeDescriptions = vk_attribs
 	};
 
+	VkPrimitiveTopology topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+	if (flags & pipeline_flags_draw_lines) {
+		topology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+	} else if (flags & pipeline_flags_draw_line_strip) {
+		topology = VK_PRIMITIVE_TOPOLOGY_LINE_STRIP;
+	}
+
 	VkPipelineInputAssemblyStateCreateInfo input_assembly = {
 		.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
-		.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+		.topology = topology,
 		.primitiveRestartEnable = VK_FALSE
 	};
 
@@ -2524,19 +2531,34 @@ m4f video_vk_ortho(f32 l, f32 r, f32 b, f32 t, f32 n, f32 f) {
 	t = b;
 	b = temp;
 
-	f32* data = (f32*)res.m;
-
 	f32 lr = 1.0f / (l - r);
 	f32 bt = 1.0f / (b - t);
 	f32 nf = 1.0f / (n - f);
 
-	data[0] = -2.0f * lr;
-	data[5] = -2.0f * bt;
-	data[10] = 2.0f * nf;
-	
-	data[12] = (l + r) * lr;
-	data[13] = (t + b) * bt;
-	data[14] = (f + n) * nf;
+	res.m[0][0] = -2.0f * lr;
+	res.m[1][1] = -2.0f * bt;
+	res.m[2][2] =  2.0f * nf;
+
+	res.m[3][0] = (l + r) * lr;
+	res.m[3][1] = (t + b) * bt;
+	res.m[3][2] = (f + n) * nf;
 
 	return res;
+}
+
+m4f video_vk_persp(f32 fov, f32 aspect, f32 near, f32 far) {
+	m4f r = m4f_identity();
+
+	const f32 q = 1.0f / tanf(to_rad(fov) / 2.0f);
+	const f32 a = q / aspect;
+	const f32 b = (near + far) / (near - far);
+	const f32 c = (2.0f * near * far) / (near - far);
+
+	r.m[0][0] = a;
+	r.m[1][1] = -q;
+	r.m[2][2] = b;
+	r.m[2][3] = -1.0f;
+	r.m[3][2] = c;
+
+	return r;
 }

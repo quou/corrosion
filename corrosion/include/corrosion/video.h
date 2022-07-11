@@ -42,7 +42,10 @@ enum {
 	pipeline_flags_wo_clockwise      = 1 << 4,
 	pipeline_flags_wo_anti_clockwise = 1 << 5,
 	pipeline_flags_blend             = 1 << 6,
-	pipeline_flags_dynamic_scissor   = 1 << 7
+	pipeline_flags_dynamic_scissor   = 1 << 7,
+	pipeline_flags_draw_lines        = 1 << 8,
+	pipeline_flags_draw_line_strip   = 1 << 9,
+	pipeline_flags_draw_tris         = 1 << 10
 };
 
 enum {
@@ -126,6 +129,18 @@ enum {
 	index_buffer_flags_none              = 1 << 0,
 };
 
+struct camera {
+	v3f position;
+	v3f rotation;
+
+	f32 fov;
+	f32 near;
+	f32 far;
+};
+
+m4f get_camera_view(const struct camera* camera);
+m4f get_camera_projection(const struct camera* camera);
+
 struct pipeline;
 struct vertex_buffer;
 struct index_buffer;
@@ -186,6 +201,7 @@ struct video {
 
 	/* Maths. */
 	m4f (*ortho)(f32 l, f32 r, f32 b, f32 t, f32 n, f32 f);
+	m4f (*persp)(f32 fov, f32 aspect, f32 near, f32 far);
 };
 
 extern struct video video;
