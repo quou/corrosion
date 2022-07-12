@@ -204,10 +204,11 @@ typedef v4f quat;
 
 #define quat_identity()	make_quat(make_v3f(0.0f, 0.0f, 0.0f), 1.0f)
 
-#define quat_scale(q_, s_) \
-	((quat) { (q_).x * s_, (q_).y * s_, (q_).z * s_, (q_).w })
+force_inline quat quat_scale(quat q, f32 s) {
+	return (quat) { q.x * s, q.y * s, q.z * s, q.w };
+}
 
-force_inline f32 quat_norm(quat q) {
+force_inline f32 quat_normal(quat q) {
 	return
 		(q.x * q.x) +
 		(q.y * q.y) +
@@ -215,16 +216,41 @@ force_inline f32 quat_norm(quat q) {
 		(q.w * q.w);
 }
 
-#define quat_normalised(q_) \
-	quat_scale(q_, 1.0f / sqrtf(quat_norm(q_)))
+force_inline quat quat_conjugate(quat q) {
+	return (quat) {
+		-q.x,
+		-q.y,
+		-q.z,
+		 q.w
+	};
+}
+
+force_inline quat quat_normalised(quat q) {
+	return quat_scale(q, 1.0f / sqrtf(quat_normal(q)));
+}
 
 force_inline quat quat_mul(quat a, quat b) {
-	return quat_normalised(((quat) {
-		(((a.w * b.x) + (a.x * b.w)) + (a.y * b.z)) - (a.z * b.y),
-		(((a.w * b.y) + (a.y * b.w)) + (a.z * b.x)) - (a.x * b.z),
-		(((a.w * b.z) + (a.z * b.w)) + (a.x * b.y)) - (a.y * b.x),
-		(((a.w * b.w) - (a.x * b.x)) - (a.y * b.y)) - (a.z * b.z)
-	}));
+	return (quat) {
+		 a.x * b.w +
+		 a.y * b.z -
+		 a.z * b.y +
+		 a.w * b.x,
+
+		-a.x * b.z +
+		 a.y * b.w +
+		 a.z * b.x +
+		 a.w * b.y,
+
+		 a.x * b.y -
+		 a.y * b.x +
+		 a.z * b.w +
+		 a.w * b.z,
+
+		-a.x * b.x -
+		 a.y * b.y -
+		 a.z * b.z +
+		 a.w * b.w
+	};
 }
 
 #define euler(a_) quat_mul(quat_mul( \
@@ -289,57 +315,40 @@ force_inline m4f m4f_mul(m4f a, m4f b) {
 
 }
 
-#define m4f_translation(v_) \
-	((m4f) {{ \
-		{ 1.0f,   0.0f,   0.0f,   0.0f }, \
-		{ 0.0f,   1.0f,   0.0f,   0.0f }, \
-		{ 0.0f,   0.0f,   1.0f,   0.0f }, \
-		{ (v_).x, (v_).y, (v_).z, 1.0f }, \
-	}})
+force_inline m4f m4f_translation(v3f v) {
+	return (m4f) { {
+		{ 1.0f, 0.0f, 0.0f, 0.0f },
+		{ 0.0f, 1.0f, 0.0f, 0.0f },
+		{ 0.0f, 0.0f, 1.0f, 0.0f },
+		{ v.x,  v.y,  v.z,  1.0f },
+	} };
+}
 
-#define m4f_scale(v_) \
-	((m4f) {{ \
-		{ (v_).x, 0.0f,   0.0f,   0.0f }, \
-		{ 0.0f,   (v_).y, 0.0f,   0.0f }, \
-		{ 0.0f,   0.0f,   (v_).z, 0.0f }, \
-		{ 0.0f,   0.0f,   0.0f,   1.0f }, \
-	}})
+force_inline m4f m4f_scale(v3f v) {
+	return (m4f) { {
+		{ v.x,  0.0f, 0.0f, 0.0f },
+		{ 0.0f, v.y,  0.0f, 0.0f },
+		{ 0.0f, 0.0f, v.z,  0.0f },
+		{ 0.0f, 0.0f, 0.0f, 1.0f },
+	} };
+}
 
 force_inline m4f m4f_rotation(quat q) {
 	m4f r = m4f_identity();
 
-	f32 qx, qy, qz, qw, qx2, qy2, qz2, qxqx2, qyqy2, qzqz2, qxqy2, qyqz2, qzqw2, qxqz2, qyqw2, qxqw2;
-	qx = q.x;
-	qy = q.y;
-	qz = q.z;
-	qw = q.w;
-	qx2 = (qx + qx);
-	qy2 = (qy + qy);
-	qz2 = (qz + qz);
-	qxqx2 = (qx * qx2);
-	qxqy2 = (qx * qy2);
-	qxqz2 = (qx * qz2);
-	qxqw2 = (qw * qx2);
-	qyqy2 = (qy * qy2);
-	qyqz2 = (qy * qz2);
-	qyqw2 = (qw * qy2);
-	qzqz2 = (qz * qz2);
-	qzqw2 = (qw * qz2);
+	quat n = quat_normalised(q);
 
-	r.m[0][0] = ((1.0f - qyqy2) - qzqz2);
-	r.m[0][1] = (qxqy2 - qzqw2);
-	r.m[0][2] = (qxqz2 + qyqw2);
-	r.m[0][3] = 0.0f;
+    r.m[0][0] = 1.0f - 2.0f * n.y * n.y - 2.0f * n.z * n.z;
+    r.m[0][1] = 2.0f * n.x * n.y - 2.0f * n.z * n.w;
+    r.m[0][2] = 2.0f * n.x * n.z + 2.0f * n.y * n.w;
 
-	r.m[1][0] = (qxqy2 + qzqw2);
-	r.m[1][1] = ((1.0f - qxqx2) - qzqz2);
-	r.m[1][2] = (qyqz2 - qxqw2);
-	r.m[1][3] = 0.0f;
+    r.m[1][0] = 2.0f * n.x * n.y + 2.0f * n.z * n.w;
+    r.m[1][1] = 1.0f - 2.0f * n.x * n.x - 2.0f * n.z * n.z;
+    r.m[1][2] = 2.0f * n.y * n.z - 2.0f * n.x * n.w;
 
-	r.m[2][0] = (qxqz2 - qyqw2);
-	r.m[2][1] = (qyqz2 + qxqw2);
-	r.m[2][2] = ((1.0f - qxqx2) - qyqy2);
-	r.m[2][3] = 0.0f;
+    r.m[2][0] = 2.0f * n.x * n.z - 2.0f * n.y * n.w;
+    r.m[2][1] = 2.0f * n.y * n.z + 2.0f * n.x * n.w;
+    r.m[2][2] = 1.0f - 2.0f * n.x * n.x - 2.0f * n.y * n.y;
 
 	return r;
 }
