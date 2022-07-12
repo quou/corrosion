@@ -80,3 +80,15 @@ bool atlas_add_texture(struct atlas* atlas, const struct texture* new_texture) {
 
 	return recreated;
 }
+
+void atlas_update_texture(struct atlas* atlas, const struct texture* texture) {
+	v4i* rect_ptr = table_get(atlas->rects, texture);
+	if (!rect_ptr) {
+		error("Cannot update an atlas with a texture that has not been added.");
+		return;
+	}
+
+	v4i rect = *rect_ptr;
+
+	video.texture_copy(atlas->texture, make_v2i(rect.x, rect.y), texture, make_v2i(0, 0), video.get_texture_size(texture));
+}

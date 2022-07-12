@@ -107,7 +107,7 @@ struct ui_renderer* new_ui_renderer(const struct framebuffer* framebuffer) {
 		.draw_character = draw_text_character
 	};
 
-	renderer->atlas = new_atlas(texture_flags_filter_none);
+	renderer->atlas = new_atlas(texture_flags_filter_linear);
 
 	renderer->shader = load_shader("shaderbin/ui.csh");
 	renderer->framebuffer = framebuffer;

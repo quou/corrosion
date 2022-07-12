@@ -19,3 +19,4 @@ void free_atlas(struct atlas* atlas);
 
 /* Returns true if the texture was re-created. */
 bool atlas_add_texture(struct atlas* atlas, const struct texture* texture);
+void atlas_update_texture(struct atlas* atlas, const struct texture* texture);

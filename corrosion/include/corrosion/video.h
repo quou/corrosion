@@ -165,6 +165,7 @@ struct video {
 	void (*resize_framebuffer)(struct framebuffer* fb, v2i new_size);
 	void (*begin_framebuffer)(struct framebuffer* fb);
 	void (*end_framebuffer)(struct framebuffer* fb);
+	struct texture* (*get_current_framebuffer_texture)(struct framebuffer* fb);
 
 	/* Pipeline. */
 	struct pipeline* (*new_pipeline)(u32 flags, const struct shader* shader, const struct framebuffer* framebuffer,

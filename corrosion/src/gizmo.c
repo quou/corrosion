@@ -145,7 +145,6 @@ void gizmo_box(v3f centre, v3f dimensions, quat orientation) {
 }
 
 void gizmo_sphere(v3f centre, f32 radius) {
-
 }
 
 void gizmos_draw() {

@@ -7,6 +7,7 @@
 enum {
 	ui_cmd_draw_rect,
 	ui_cmd_draw_text,
+	ui_cmd_draw_texture,
 	ui_cmd_draw_circle,
 	ui_cmd_clip
 };
@@ -44,6 +45,16 @@ struct ui_cmd_clip {
 	v4i rect;
 };
 
+struct ui_cmd_texture {
+	struct ui_cmd cmd;
+	v4i rect;
+	v2f position;
+	v2f dimensions;
+	v4f colour;
+	const struct texture* texture;
+	f32 radius;
+};
+
 struct ui_container {
 	v4f rect;
 	f32 padding;
@@ -67,6 +78,8 @@ struct ui_style {
 	optional(u32) align;
 	optional(f32) padding;
 	optional(f32) radius;
+	optional(v2f) max_size;
+	optional(v2f) min_size;
 };
 
 struct ui_stylesheet {
@@ -203,12 +216,26 @@ void ui_clip(struct ui* ui, v4f rect) {
 	ui->current_clip = rect;
 }
 
+void ui_draw_texture(struct ui* ui, v2f position, v2f dimensions, const struct texture* texture, v4i rect, v4f colour, f32 radius) {
+	struct ui_cmd_texture* cmd = ui_cmd_add(ui, sizeof(struct ui_cmd_texture));
+	cmd->cmd.type = ui_cmd_draw_texture;
+	cmd->cmd.size = sizeof *cmd;
+	cmd->rect = rect;
+	cmd->position = position;
+	cmd->dimensions = dimensions;
+	cmd->texture = texture;
+	cmd->colour = colour;
+	cmd->radius = radius;
+}
+
 static inline void ui_build_style(struct ui_style* dst, const struct ui_style* src) {
 	if (src->text_colour.has_value)       { dst->text_colour       = src->text_colour; }
 	if (src->background_colour.has_value) { dst->background_colour = src->background_colour; }
 	if (src->align.has_value)             { dst->align             = src->align; }
 	if (src->padding.has_value)           { dst->padding           = src->padding; }
 	if (src->radius.has_value)            { dst->radius            = src->radius; }
+	if (src->min_size.has_value)          { dst->min_size          = src->min_size; }
+	if (src->max_size.has_value)          { dst->max_size          = src->max_size; }
 }
 
 static inline void ui_build_style_variant(struct ui* ui, u64 class_id, struct ui_style* dst, u32 variant) {
@@ -301,27 +328,29 @@ static void stylesheet_table_from_dtable(void* dst_vptr, struct dtable* src) {
 			switch (child->value.type) {
 				case dtable_colour:
 					if (child->key.hash == hash_string("text_colour")) {
-						s.text_colour.has_value = true;
-						s.text_colour.value = child->value.as.colour;
+						optional_set(s.text_colour, child->value.as.colour);
 					} else if (child->key.hash == hash_string("background_colour")) {
-						s.background_colour.has_value = true;
-						s.background_colour.value = child->value.as.colour;
+						optional_set(s.background_colour, child->value.as.colour);
 					}
 					break;
 				case dtable_number:
 					if (child->key.hash == hash_string("padding")) {	
-						s.padding.has_value = true;
-						s.padding.value = (f32)child->value.as.number;
+						optional_set(s.padding, (f32)child->value.as.number);
 					} else if (child->key.hash == hash_string("radius")) {
-						s.radius.has_value = true;
-						s.radius.value = (f32)child->value.as.number;
+						optional_set(s.radius, (f32)child->value.as.number);
 					}
 				case dtable_string:
 					if (child->key.hash == hash_string("align")) {
-						s.align.has_value = true;
-						s.align.value = strcmp(child->value.as.string, "left") == 0 ? ui_align_left :
+						optional_set(s.align, strcmp(child->value.as.string, "left") == 0 ? ui_align_left :
 							strcmp(child->value.as.string, "centre") == 0 ? ui_align_centre :
-							ui_align_right;
+							ui_align_right);
+					}
+					break;
+				case dtable_v2:
+					if (child->key.hash == hash_string("max_size")) {
+						optional_set(s.max_size, child->value.as.v2);
+					} else if (child->key.hash == hash_string("min_size")) {
+						optional_set(s.min_size, child->value.as.v2);
 					}
 					break;
 			}
@@ -431,6 +460,24 @@ void ui_init() {
 
 	table_set(default_stylesheet.active, hash_string("knob"), ((struct ui_style) {
 		.text_colour       = { true, make_rgba(0x000000, 255) },
+		.background_colour = { true, make_rgba(0x8c91ac, 255) },
+	}));
+
+	table_set(default_stylesheet.normal, hash_string("picture"), ((struct ui_style) {
+		.text_colour       = { true, make_rgba(0xffffff, 255) },
+		.background_colour = { true, make_rgba(0x191b26, 255) },
+		.padding           = { true, 3.0f },
+		.align             = { true, ui_align_left },
+		.max_size          = { true, { 100.0f, 100.0f } },
+		.min_size          = { true, { 100.0f, 100.0f } }
+	}));
+
+	table_set(default_stylesheet.hovered, hash_string("picture"), ((struct ui_style) {
+		.text_colour       = { true, make_rgba(0xd9d9ff, 255) },
+		.background_colour = { true, make_rgba(0x252839, 255) },
+	}));
+
+	table_set(default_stylesheet.active, hash_string("picture"), ((struct ui_style) {
 		.background_colour = { true, make_rgba(0x8c91ac, 255) },
 	}));
 
@@ -741,6 +788,52 @@ bool ui_knob_ex(struct ui* ui, const char* class, f32* val, f32 min, f32 max) {
 	return changed;
 }
 
+bool ui_picture_ex(struct ui* ui, const char* class, const struct texture* texture, v4i rect) {
+	const struct ui_container* container = vector_end(ui->container_stack) - 1;
+
+	struct ui_style style = ui_get_style(ui, "picture", class, ui_style_variant_none);
+
+	v2i texture_size = video.get_texture_size(texture);
+	v2f dimensions = make_v2f(texture_size.x, texture_size.y);
+
+	if (style.max_size.has_value) {
+		dimensions.x = min(dimensions.x, style.max_size.value.x);
+		dimensions.y = min(dimensions.y, style.max_size.value.y);
+	}
+
+	if (style.min_size.has_value) {
+		dimensions.x = max(dimensions.x, style.min_size.value.x);
+		dimensions.y = max(dimensions.y, style.min_size.value.y);
+	}
+
+	const v2f rect_dimensions = make_v2f(dimensions.x + style.padding.value * 2.0f, dimensions.y + style.padding.value * 2.0f);
+
+	ui_draw_rect(ui, get_ui_el_position(ui, &style, dimensions),
+		rect_dimensions,
+		style.background_colour.value, style.radius.value);
+	struct ui_cmd_draw_rect* rect_cmd = ui_last_cmd(ui);
+
+	ui_draw_texture(ui, v2f_add(rect_cmd->position, make_v2f(style.padding.value, style.padding.value)), dimensions,
+		texture, rect, style.text_colour.value, style.radius.value);
+	struct ui_cmd_texture* text_cmd = ui_last_cmd(ui);
+
+	bool hovered = mouse_over_rect(rect_cmd->position, rect_dimensions);
+	if (ui_get_style_variant(ui, &style, "picture", class, hovered, false)) {
+		rect_cmd->position = get_ui_el_position(ui, &style, dimensions);
+		rect_cmd->radius   = style.radius.value;
+		text_cmd->position = v2f_add(rect_cmd->position, make_v2f(style.padding.value, style.padding.value));
+		text_cmd->radius   = style.radius.value;
+
+		rect_cmd->colour = style.background_colour.value;
+		text_cmd->colour = style.text_colour.value;
+	}
+
+	advance(ui, rect_cmd->dimensions.y + container->padding);
+
+	if (hovered && mouse_btn_just_released(mouse_btn_left)) { return true; }
+	return false;
+}
+
 bool ui_text_input_filter(char c) {
 	return true;
 }
@@ -860,6 +953,9 @@ void ui_draw(const struct ui* ui) {
 	struct ui_cmd* end = (void*)(((u8*)ui->cmd_buffer) + ui->cmd_buffer_idx);
 
 	v4i current_clip = make_v4i(0, 0, get_window_size().x, get_window_size().y);
+	i32 current_clip_area = current_clip.z * current_clip.w;
+
+	vector(struct ui_renderer_quad) rects = null;
 
 	while (cmd != end) {
 		switch (cmd->type) {
@@ -903,7 +999,33 @@ void ui_draw(const struct ui* ui) {
 			} break;
 			case ui_cmd_clip: {
 				struct ui_cmd_clip* clip = (struct ui_cmd_clip*)cmd;
+
+				i32 area = clip->rect.z * clip->rect.w;
+
+				if (area > current_clip_area) {
+					ui_renderer_clip(ui->renderer, clip->rect);
+				}
+
 				current_clip = clip->rect;
+				current_clip_area = area;
+			} break;
+			case ui_cmd_draw_texture: {
+				struct ui_cmd_texture* texture = (struct ui_cmd_texture*)cmd;
+
+				commit_clip(texture->position, texture->dimensions);
+
+				ui_renderer_push(ui->renderer, &(struct ui_renderer_quad) {
+					.position   = texture->position,
+					.dimensions = texture->dimensions,
+					.colour     = texture->colour,
+					.rect       = make_v4f(
+						(f32)texture->rect.x,
+						(f32)texture->rect.y,
+						(f32)texture->rect.z,
+						(f32)texture->rect.w),
+					.texture    = texture->texture,
+					.radius     = texture->radius
+				});
 			} break;
 		}
 
@@ -916,6 +1038,8 @@ void ui_draw(const struct ui* ui) {
 	for (usize i = 0; i < vector_count(ui->cmd_free_queue); i++) {
 		core_free(ui->cmd_free_queue[i]);
 	}
+
+	free_vector(rects);
 
 	vector_clear(ui->cmd_free_queue);
 

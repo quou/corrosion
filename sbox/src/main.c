@@ -141,7 +141,17 @@ void cr_update(f64 ts) {
 	});
 
 	gizmo_colour(make_rgba(0x00ffff, 255));
-	gizmo_box(make_v3f(-1.0f, -1.0f, 3.0f), make_v3f(1.0f, 1.0f, 1.0f), euler(make_v3f(0.0f, 25.0f, 0.0f)));
+	gizmo_box(make_v3f(1.0f, -1.0f, 3.0f), make_v3f(1.0f, 1.0f, 1.0f), euler(make_v3f(0.0f, 25.0f, 0.0f)));
+	gizmo_sphere(make_v3f(0.0f, 0.0f, 0.0f), 1.0f);
+
+
+	static char test_buf[256] = "Hello, world!";
+
+	ui_columns(app.ui, 2, (f32[]) { 0.25f, 0.70f });
+	ui_label(app.ui, "Text input: ");
+	if (ui_input(app.ui, test_buf, sizeof test_buf)) {
+		info("%s", test_buf);
+	}
 
 	static f32 test = 25.0f;
 	static f32 test2 = 50.0f;
@@ -156,13 +166,14 @@ void cr_update(f64 ts) {
 	sprintf(text, "%.2f", test2);
 	ui_label_ex(app.ui, "knob_label align_right", text);
 
-	static char test_buf[256] = "Hello, world!";
-
-	ui_columns(app.ui, 2, (f32[]) { 0.25f, 0.70f });
-	ui_label(app.ui, "Text input: ");
-	if (ui_input(app.ui, test_buf, sizeof test_buf)) {
-		info("%s", test_buf);
+	ui_columns(app.ui, 2, (f32[]) { 0.5f, 0.5f });
+	if (ui_picture(app.ui, app.texturea)) {
+		info("Picture clicked.");
 	}
+
+	ui_picture(app.ui, app.texturea);
+	ui_picture(app.ui, app.texturea);
+	ui_picture(app.ui, app.texturea);
 
 	ui_end_container(app.ui);
 	ui_end(app.ui);

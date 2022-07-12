@@ -19,6 +19,7 @@ void ui_end(struct ui* ui);
 void ui_draw_rect(struct ui* ui, v2f position, v2f dimensions, v4f colour, f32 radius);
 void ui_draw_circle(struct ui* ui, v2f position, f32 radius, v4f colour);
 void ui_draw_text(struct ui* ui, v2f position, v2f dimensions, const char* text, v4f colour);
+void ui_draw_texture(struct ui* ui, v2f position, v2f dimensions, const struct texture* texture, v4i rect, v4f colour, f32 radius);
 void ui_clip(struct ui* ui, v4f rect);
 
 u64 next_item_id();
@@ -39,6 +40,9 @@ bool ui_label_ex(struct ui* ui, const char* class, const char* text);
 
 bool ui_knob_ex(struct ui* ui, const char* class, f32* val, f32 min, f32 max);
 #define ui_knob(ui_, v_, mi, ma_) ui_knob_ex(ui_, "", v_, mi, ma_)
+
+bool ui_picture_ex(struct ui* ui, const char* class, const struct texture* texture, v4i rect);
+#define ui_picture(ui_, t_) ui_picture_ex(ui_, "", t_, make_v4i(0, 0, video.get_texture_size(t_).x, video.get_texture_size(t_).y))
 
 typedef bool (*ui_input_filter)(char c);
 
