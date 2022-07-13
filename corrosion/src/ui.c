@@ -58,6 +58,7 @@ struct ui_cmd_texture {
 struct ui_container {
 	v4f rect;
 	f32 padding;
+	f32 content_height;
 };
 
 enum {
@@ -637,6 +638,12 @@ void ui_end_container(struct ui* ui) {
 	struct ui_container* container = vector_pop(ui->container_stack);
 	ui->cursor_pos.x -= container->padding;
 	ui->cursor_pos.y += container->padding;
+
+	if (vector_count(ui->container_stack) > 0) {
+		struct ui_container* parent = vector_end(ui->container_stack) - 1;
+
+		ui_clip(ui, parent->rect);
+	}
 }
 
 void ui_font(struct ui* ui, struct font* font) {
@@ -1001,18 +1008,31 @@ bool ui_selectable_tree_node_ex(struct ui* ui, const char* class, const char* te
 	struct ui_style button_style = ui_get_style(ui, "tree_button", class, ui_style_variant_none);
 
 	const v2f text_dimensions = get_text_dimensions(ui->font, text);
-	const v2f button_dimensions = v2f_add(get_text_dimensions(ui->font, "+"),
-		make_v2f(button_style.padding.value * 2.0f, button_style.padding.value * 2.0f));
 
-	ui_draw_rect(ui, ui->cursor_pos, button_dimensions,
-		button_style.background_colour.value, button_style.radius.value);
-	struct ui_cmd_draw_rect* rect_cmd = ui_last_cmd(ui);
+	v2f header_pos;
+	v2f button_pos;
+	v2f button_dimensions = make_v2f(0.0f, 0.0f);
+	bool button_hovered = false;
 
-	bool hovered = mouse_over_rect(rect_cmd->position, button_dimensions);
-	if (ui_get_style_variant(ui, &button_style, "tree_button", class, hovered, false)) {
-		rect_cmd->radius   = button_style.radius.value;
+	if (!leaf) {
+		button_dimensions = v2f_add(get_text_dimensions(ui->font, "+"),
+			make_v2f(button_style.padding.value * 2.0f, button_style.padding.value * 2.0f));
 
-		rect_cmd->colour = button_style.background_colour.value;
+		ui_draw_rect(ui, ui->cursor_pos, button_dimensions,
+			button_style.background_colour.value, button_style.radius.value);
+		struct ui_cmd_draw_rect* rect_cmd = ui_last_cmd(ui);
+
+		button_hovered = mouse_over_rect(rect_cmd->position, button_dimensions);
+		if (ui_get_style_variant(ui, &button_style, "tree_button", class, button_hovered, false)) {
+			rect_cmd->radius   = button_style.radius.value;
+
+			rect_cmd->colour = button_style.background_colour.value;
+		}
+
+		header_pos = make_v2f(rect_cmd->position.x + button_dimensions.x, rect_cmd->position.y);
+		button_pos = rect_cmd->position;
+	} else {
+		header_pos = ui->cursor_pos;
 	}
 
 	struct ui_style background_style = ui_get_style(ui, "tree_header", class, ui_style_variant_none);
@@ -1020,12 +1040,12 @@ bool ui_selectable_tree_node_ex(struct ui* ui, const char* class, const char* te
 	const v2f background_dimensions = make_v2f(container->rect.z - button_dimensions.x - background_style.padding.value * 3.0f,
 		text_dimensions.y + background_style.padding.value * 2.0f);
 
-	ui_draw_rect(ui, make_v2f(rect_cmd->position.x + button_dimensions.x, rect_cmd->position.y),
+	ui_draw_rect(ui, header_pos,
 		background_dimensions, background_style.background_colour.value, background_style.radius.value);
 	struct ui_cmd_draw_rect* back_cmd = ui_last_cmd(ui);
 
-	ui_draw_text(ui, v2f_add(rect_cmd->position,
-		make_v2f(button_style.padding.value * 2.0f + button_dimensions.x, button_style.padding.value)),
+	ui_draw_text(ui, v2f_add(header_pos,
+		make_v2f(background_style.padding.value, background_style.padding.value)),
 		text_dimensions, text, background_style.text_colour.value);
 	struct ui_cmd_draw_text* text_cmd = ui_last_cmd(ui);
 	bool back_hovered = mouse_over_rect(back_cmd->position, back_cmd->dimensions);
@@ -1041,21 +1061,26 @@ bool ui_selectable_tree_node_ex(struct ui* ui, const char* class, const char* te
 		text_cmd->colour = background_style.text_colour.value;
 	}
 
-	ui->cursor_pos.y += button_dimensions.y;
+	ui->cursor_pos.y += background_dimensions.y;
 
-	if (hovered && mouse_btn_just_released(mouse_btn_left)) {
+	if (button_hovered && mouse_btn_just_released(mouse_btn_left)) {
 		open = !open;
 		table_set(ui->open_treenodes, id, open);
 	}
 
-	ui_draw_text(ui, v2f_add(rect_cmd->position, make_v2f(button_style.padding.value, button_style.padding.value)),
-		text_dimensions, open ? " -" : "+", button_style.text_colour.value);
+	if (!leaf) {
+		ui_draw_text(ui, v2f_add(button_pos, make_v2f(button_style.padding.value, button_style.padding.value)),
+			text_dimensions, open ? " -" : "+", button_style.text_colour.value);
+	}
 
 	if (open) {
 		v2f pos = make_v2f(0.0f, (ui->cursor_pos.y - container->rect.y) / container->rect.w);
 		v2f dim = make_v2f(1.0f, 1.0f - pos.y);
 
-		ui_begin_container_ex(ui, "tree_container", make_v4f(pos.x, pos.y, dim.x, dim.y));
+		if (!leaf) {
+			ui_begin_container_ex(ui, "tree_container", make_v4f(pos.x, pos.y, dim.x, dim.y));
+		}
+
 		ui_columns(ui, 1, (f32[]) { 1.0f });
 	} else {
 		ui->cursor_pos.y += container->padding;
