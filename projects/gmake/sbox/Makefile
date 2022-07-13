@@ -31,11 +31,11 @@ endif
 ifeq ($(config),release)
   target_dir = bin/release
   target = $(target_dir)/$(target_name)
-  defines += -Drelease
+  defines += -Dndebug
   libs += ../corrosion/bin/release/libcr.a
   deps += ../corrosion/bin/release/libcr.a
   lflags = -L/usr/lib64 -m64 -s
-  clfags = -MMD -MP -m64 -02 $(includes) $(defines)
+  cflags = -MMD -MP -m64 -O2 $(includes) $(defines)
   objdir = obj/release
 endif
 

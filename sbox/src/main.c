@@ -18,6 +18,8 @@ struct {
 	struct ui* ui;
 
 	f32 r;
+
+	f64 fps_timer;
 } app;
 
 struct app_config cr_config() {
@@ -37,6 +39,7 @@ void cr_init() {
 	ui_init();
 
 	app.r = 0.0f;
+	app.fps_timer = 1.0;
 
 	app.texturea = load_texture("res/chad.jpg", texture_flags_filter_linear);
 	app.textureb = load_texture("res/test.png", texture_flags_filter_linear);
@@ -121,6 +124,17 @@ void cr_update(f64 ts) {
 	v2i window_size = get_window_size();
 
 	ui_begin(app.ui);
+	ui_columns(app.ui, 1, (f32[]) { 1.0f });
+
+
+	static char fps_buf[32];
+	app.fps_timer += ts;
+	if (app.fps_timer >= 1.0) {
+		app.fps_timer = 0.0;
+		sprintf(fps_buf, "FPS: %g", 1.0 / ts);
+	}
+	ui_label(app.ui, fps_buf);
+
 	ui_columns(app.ui, 2, (f32[]) { 0.5f, 0.5f });
 	ui_begin_container(app.ui, make_v4f(0.5f, 0.0f, 0.5f, 1.0f));
 	ui_label(app.ui, "Hello, world.");

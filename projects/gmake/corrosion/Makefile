@@ -30,9 +30,9 @@ endif
 ifeq ($(config),release)
   target_dir = bin/release
   target = $(target_dir)/lib$(target_name).a
-  defines += -Drelease
-  clfags += -MMD -MP -m64 -02 $(includes) $(defines)
-  cppflags += -MMD -MP -m64 -02 $(includes) $(defines)
+  defines += -Dndebug
+  cflags += -MMD -MP -m64 -O2 $(includes) $(defines)
+  cppflags += -MMD -MP -m64 -O2 $(includes) $(defines)
   objdir = obj/release
 endif
 
