@@ -54,6 +54,12 @@ bool ui_input_ex2(struct ui* ui, const char* class, char* buf, usize buf_size, u
 #define ui_input_ex(ui_, c_, b_, s_) ui_input_ex2(ui_, c_, b_, s_, ui_text_input_filter)
 #define ui_input(ui_, b_, s_) ui_input_ex(ui_, "", b_, s_)
 
+bool ui_selectable_tree_node_ex(struct ui* ui, const char* class, const char* text, bool leaf, bool* selected, u64 id);
+#define ui_selectable_tree_node(ui_, t_, l_, s_) ui_selectable_tree_node_ex(ui_, "", t_, l_, s_, 0)
+#define ui_tree_node_ex(ui_, c_, t_, l_, i_) ui_selectable_tree_node_ex(ui_, c_, t_, l_, null, i_)
+#define ui_tree_node(ui_, t_, l_) ui_selectable_tree_node_ex(ui_, "", t_, l_, null, 0)
+void ui_tree_pop(struct ui* ui);
+
 void ui_begin_window();
 void ui_end_window();
 

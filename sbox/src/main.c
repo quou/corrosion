@@ -166,14 +166,37 @@ void cr_update(f64 ts) {
 	sprintf(text, "%.2f", test2);
 	ui_label_ex(app.ui, "knob_label align_right", text);
 
-	ui_columns(app.ui, 2, (f32[]) { 0.5f, 0.5f });
-	if (ui_picture(app.ui, app.texturea)) {
-		info("Picture clicked.");
-	}
+	if (ui_tree_node(app.ui, "Tree Node", false)) {
+		ui_columns(app.ui, 2, (f32[]) { 0.5f, 0.5f });
 
-	ui_picture(app.ui, app.texturea);
-	ui_picture(app.ui, app.texturea);
-	ui_picture(app.ui, app.texturea);
+		ui_picture(app.ui, app.texturea);
+		ui_picture(app.ui, app.texturea);
+		ui_picture(app.ui, app.texturea);
+		ui_picture(app.ui, app.texturea);
+
+		static bool selected = false;
+		if (ui_selectable_tree_node(app.ui, "Child Tree Node", false, &selected)) {
+			ui_label(app.ui, "I'm some text");
+			ui_button(app.ui, "I'm a button");
+
+			ui_tree_pop(app.ui);
+		}
+
+		if (ui_tree_node(app.ui, "Child Tree Node", false)) {
+			if (ui_tree_node(app.ui, "Child Tree Node", false)) {
+				for (u32 i = 0; i < 10; i++) {
+					ui_tree_node(app.ui, "Leaf", true);
+				}
+
+				ui_tree_pop(app.ui);
+			}
+
+			ui_tree_pop(app.ui);
+		}
+
+
+		ui_tree_pop(app.ui);
+	}
 
 	ui_end_container(app.ui);
 	ui_end(app.ui);
@@ -217,7 +240,6 @@ void cr_update(f64 ts) {
 			video.bind_pipeline_descriptor_set(app.invert_pip, "primary", 0);
 			video.draw(3, 0, 1);
 		video.end_pipeline(app.invert_pip);
-
 
 		ui_draw(app.ui);
 		gizmos_draw();

@@ -293,7 +293,7 @@ struct vector_header {
 	} while (0)
 
 #define vector_pop(v_) \
-	(v_) + ((((struct vector_header*)(v_)) - 1)->count--)
+	(v_) + (((((struct vector_header*)(v_)) - 1)->count--) - 1)
 
 #define vector_count(v_) ((v_) != null ? (((struct vector_header*)(v_)) - 1)->count : 0)
 
