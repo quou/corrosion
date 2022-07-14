@@ -50,9 +50,12 @@ bool ui_text_input_filter(char c);
 bool ui_number_input_filter(char c);
 bool ui_alphanum_input_filter(char c);
 
-bool ui_input_ex2(struct ui* ui, const char* class, char* buf, usize buf_size, ui_input_filter filter);
-#define ui_input_ex(ui_, c_, b_, s_) ui_input_ex2(ui_, c_, b_, s_, ui_text_input_filter)
+bool ui_input_ex2(struct ui* ui, const char* class, char* buf, usize buf_size, ui_input_filter filter, u64 id);
+#define ui_input_ex(ui_, c_, b_, s_) ui_input_ex2(ui_, c_, b_, s_, ui_text_input_filter, 0)
 #define ui_input(ui_, b_, s_) ui_input_ex(ui_, "", b_, s_)
+
+bool ui_number_input_ex(struct ui* ui, const char* class, f64* target);
+#define ui_number_input(ui_, t_) ui_number_input_ex(ui_, "", t_)
 
 bool ui_selectable_tree_node_ex(struct ui* ui, const char* class, const char* text, bool leaf, bool* selected, u64 id);
 #define ui_selectable_tree_node(ui_, t_, l_, s_) ui_selectable_tree_node_ex(ui_, "", t_, l_, s_, 0)

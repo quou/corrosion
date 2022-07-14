@@ -1,3 +1,5 @@
+#include <stdio.h>
+
 #include "core.h"
 #include "dtable.h"
 #include "ui.h"
@@ -126,6 +128,9 @@ struct ui {
 
 	u64 treenode_id;
 	table(u64, bool) open_treenodes;
+
+	/* Probably not the best way to solve this problem. */
+	table(u64, bool) number_input_trailing_fullstops;
 
 	usize column_count;
 	usize column;
@@ -561,6 +566,7 @@ void free_ui(struct ui* ui) {
 	free_vector(ui->container_stack);
 	free_vector(ui->cmd_free_queue);
 	free_table(ui->open_treenodes);
+	free_table(ui->number_input_trailing_fullstops);
 	free_ui_renderer(ui->renderer);
 	core_free(ui->cmd_buffer);
 	core_free(ui);
@@ -905,8 +911,10 @@ bool ui_alphanum_input_filter(char c) {
 		ui_number_input_filter(c);
 }
 
-bool ui_input_ex2(struct ui* ui, const char* class, char* buf, usize buf_size, ui_input_filter filter) {
-	const u64 id = elf_hash((const u8*)&buf, sizeof buf);
+bool ui_input_ex2(struct ui* ui, const char* class, char* buf, usize buf_size, ui_input_filter filter, u64 id) {
+	if (id == 0) {
+		id = elf_hash((const u8*)&buf, sizeof buf);
+	}
 
 	const struct ui_container* container = vector_end(ui->container_stack) - 1;
 
@@ -918,7 +926,7 @@ bool ui_input_ex2(struct ui* ui, const char* class, char* buf, usize buf_size, u
 	const v2f text_dimensions = get_text_dimensions(ui->font, buf);
 	const f32 cursor_x_off = get_text_n_dimensions(ui->font, buf, ui->input_cursor).x;
 
-	ui_draw_rect(ui, get_ui_el_position(ui, &style, dimensions), make_v2f(dimensions.x, dimensions.y),
+	ui_draw_rect(ui, get_ui_el_position(ui, &style, dimensions), dimensions,
 		style.background_colour.value, style.radius.value);
 	struct ui_cmd_draw_rect* rect_cmd = ui_last_cmd(ui);
 
@@ -995,6 +1003,30 @@ bool ui_input_ex2(struct ui* ui, const char* class, char* buf, usize buf_size, u
 	ui_clip(ui, prev_clip);
 
 	advance(ui, dimensions.y + container->spacing);
+
+	return submitted;
+}
+
+bool ui_number_input_ex(struct ui* ui, const char* class, f64* target) {
+	char buf[64];
+
+	u64 id = elf_hash((const u8*)&target, sizeof target);
+
+	bool* trailing_ptr = table_get(ui->number_input_trailing_fullstops, id);
+
+	sprintf(buf, "%g", *target);
+	if (trailing_ptr && *trailing_ptr) {
+		strcat(buf, ".");
+	}
+
+	bool submitted = ui_input_ex2(ui, class, buf, sizeof buf, ui_number_input_filter, id);
+	if (buf[strlen(buf) - 1] == '.') {
+		table_set(ui->number_input_trailing_fullstops, id, true); 
+	} else {
+		table_set(ui->number_input_trailing_fullstops, id, false);
+	}
+
+	*target = strtod(buf, null);
 
 	return submitted;
 }

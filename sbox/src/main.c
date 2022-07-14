@@ -126,7 +126,6 @@ void cr_update(f64 ts) {
 	ui_begin(app.ui);
 	ui_columns(app.ui, 1, (f32[]) { 1.0f });
 
-
 	static char fps_buf[32];
 	app.fps_timer += ts;
 	if (app.fps_timer >= 1.0) {
@@ -165,6 +164,13 @@ void cr_update(f64 ts) {
 	ui_label(app.ui, "Text input: ");
 	if (ui_input(app.ui, test_buf, sizeof test_buf)) {
 		info("%s", test_buf);
+	}
+
+	static f64 test_num = 10.0;
+
+	ui_label(app.ui, "Number input: ");
+	if (ui_number_input(app.ui, &test_num)) {
+		info("%g", test_num);
 	}
 
 	static f32 test = 25.0f;
