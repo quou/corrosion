@@ -57,7 +57,7 @@ struct ui_cmd_texture {
 
 struct ui_container {
 	v4f rect;
-	f32 padding;
+	v2f padding;
 	f32 content_height;
 };
 
@@ -77,7 +77,7 @@ struct ui_style {
 	optional(v4f) text_colour;
 	optional(v4f) background_colour;
 	optional(u32) align;
-	optional(f32) padding;
+	optional(v2f) padding;
 	optional(f32) radius;
 	optional(v2f) max_size;
 	optional(v2f) min_size;
@@ -337,10 +337,8 @@ static void stylesheet_table_from_dtable(void* dst_vptr, struct dtable* src) {
 						optional_set(s.background_colour, child->value.as.colour);
 					}
 					break;
-				case dtable_number:
-					if (child->key.hash == hash_string("padding")) {	
-						optional_set(s.padding, (f32)child->value.as.number);
-					} else if (child->key.hash == hash_string("radius")) {
+				case dtable_number: 
+					if (child->key.hash == hash_string("radius")) {
 						optional_set(s.radius, (f32)child->value.as.number);
 					}
 				case dtable_string:
@@ -355,6 +353,8 @@ static void stylesheet_table_from_dtable(void* dst_vptr, struct dtable* src) {
 						optional_set(s.max_size, child->value.as.v2);
 					} else if (child->key.hash == hash_string("min_size")) {
 						optional_set(s.min_size, child->value.as.v2);
+					} else if (child->key.hash == hash_string("padding")) {	
+						optional_set(s.padding, child->value.as.v2);
 					}
 					break;
 			}
@@ -409,14 +409,13 @@ void ui_init() {
 	table_set(default_stylesheet.normal, hash_string("label"), ((struct ui_style) {
 		.text_colour       = { true, make_rgba(0xffffff, 255) },
 		.background_colour = { true, make_rgba(0x111111, 0) },
-		.padding           = { true, 0.0f },
 		.align             = { true, ui_align_left },
 	}));
 
 	table_set(default_stylesheet.normal, hash_string("button"), ((struct ui_style) {
 		.text_colour       = { true, make_rgba(0xffffff, 255) },
 		.background_colour = { true, make_rgba(0x191b26, 255) },
-		.padding           = { true, 3.0f }
+		.padding           = { true, make_v2f(3.0f, 3.0f) }
 	}));
 
 	table_set(default_stylesheet.hovered, hash_string("button"), ((struct ui_style) {
@@ -431,7 +430,7 @@ void ui_init() {
 	table_set(default_stylesheet.normal, hash_string("input"), ((struct ui_style) {
 		.text_colour       = { true, make_rgba(0xffffff, 255) },
 		.background_colour = { true, make_rgba(0x191b26, 255) },
-		.padding           = { true, 3.0f }
+		.padding           = { true, make_v2f(3.0f, 3.0f) }
 	}));
 
 	table_set(default_stylesheet.hovered, hash_string("input"), ((struct ui_style) {
@@ -445,14 +444,14 @@ void ui_init() {
 
 	table_set(default_stylesheet.normal, hash_string("container"), ((struct ui_style) {
 		.background_colour = { true, make_rgba(0x111111, 255) },
-		.padding           = { true, 5.0f },
+		.padding           = { true, make_v2f(5.0f, 5.0f) },
 		.radius            = { true, 10.0f }
 	}));
 
 	table_set(default_stylesheet.normal, hash_string("knob"), ((struct ui_style) {
 		.text_colour       = { true, make_rgba(0xffffff, 255) },
 		.background_colour = { true, make_rgba(0x191b26, 255) },
-		.padding           = { true, 5.0f },
+		.padding           = { true, make_v2f(5.0f, 5.0f) },
 		.radius            = { true, 25.0f },
 		.align             = { true, ui_align_centre }
 	}));
@@ -470,7 +469,7 @@ void ui_init() {
 	table_set(default_stylesheet.normal, hash_string("picture"), ((struct ui_style) {
 		.text_colour       = { true, make_rgba(0xffffff, 255) },
 		.background_colour = { true, make_rgba(0x191b26, 255) },
-		.padding           = { true, 3.0f },
+		.padding           = { true, make_v2f(3.0f, 3.0f) },
 		.align             = { true, ui_align_left },
 		.max_size          = { true, { 100.0f, 100.0f } },
 		.min_size          = { true, { 100.0f, 100.0f } }
@@ -488,7 +487,7 @@ void ui_init() {
 	table_set(default_stylesheet.normal, hash_string("tree_button"), ((struct ui_style) {
 		.text_colour       = { true, make_rgba(0xffffff, 255) },
 		.background_colour = { true, make_rgba(0x191b26, 255) },
-		.padding           = { true, 3.0f }
+		.padding           = { true, make_v2f(3.0f, 3.0f) }
 	}));
 
 	table_set(default_stylesheet.hovered, hash_string("tree_button"), ((struct ui_style) {
@@ -503,7 +502,7 @@ void ui_init() {
 	table_set(default_stylesheet.normal, hash_string("tree_header"), ((struct ui_style) {
 		.text_colour       = { true, make_rgba(0xffffff, 255) },
 		.background_colour = { true, make_rgba(0x191b26, 255) },
-		.padding           = { true, 3.0f }
+		.padding           = { true, make_v2f(3.0f, 3.0f) }
 	}));
 
 	table_set(default_stylesheet.hovered, hash_string("tree_header"), ((struct ui_style) {
@@ -516,7 +515,7 @@ void ui_init() {
 	}));
 
 	table_set(default_stylesheet.normal, hash_string("tree_container"), ((struct ui_style) {
-		.padding           = { true, 5.0f },
+		.padding           = { true, make_v2f(5.0f, 5.0f) },
 	}));
 
 	reg_res_type("stylesheet", &(struct res_config) {
@@ -602,18 +601,18 @@ void ui_begin_container_ex(struct ui* ui, const char* class, v4f rect) {
 	v2i window_size = get_window_size();
 
 	f32 pad_top_bottom = 0.0f;
-	f32 padding = 0.0f;
+	v2f padding = make_v2f(0.0f, 0.0f);
 	v4f clip;
 	if (parent) {
 		const struct ui_style style = ui_get_style(ui, "container", class, ui_style_variant_none);
-		pad_top_bottom = parent->padding;
+		pad_top_bottom = parent->padding.y;
 		padding = style.padding.value;
 
 		clip = make_v4f(
-			rect.x * (f32)(parent->rect.z) + style.padding.value + parent->rect.x,
-			rect.y * (f32)(parent->rect.w) + style.padding.value + parent->rect.y,
-			rect.z * (f32)(parent->rect.z) - style.padding.value * 2.0f,
-			rect.w * (f32)(parent->rect.w) - style.padding.value * 2.0f);
+			rect.x * (f32)(parent->rect.z) + style.padding.value.x + parent->rect.x,
+			rect.y * (f32)(parent->rect.w) + style.padding.value.x + parent->rect.y,
+			rect.z * (f32)(parent->rect.z) - style.padding.value.y * 2.0f,
+			rect.w * (f32)(parent->rect.w) - style.padding.value.y * 2.0f);
 
 		ui_clip(ui, clip);
 		ui_draw_rect(ui, make_v2f(clip.x, clip.y), make_v2f(clip.z, clip.w), style.background_colour.value, style.radius.value);
@@ -631,13 +630,13 @@ void ui_begin_container_ex(struct ui* ui, const char* class, v4f rect) {
 		.padding = padding
 	}));
 
-	ui->cursor_pos = make_v2f(clip.x + padding, clip.y + padding);
+	ui->cursor_pos = make_v2f(clip.x + padding.x, clip.y + padding.y);
 }
 
 void ui_end_container(struct ui* ui) {
 	struct ui_container* container = vector_pop(ui->container_stack);
-	ui->cursor_pos.x -= container->padding;
-	ui->cursor_pos.y += container->padding;
+	ui->cursor_pos.x -= container->padding.x;
+	ui->cursor_pos.y += container->padding.y;
 
 	if (vector_count(ui->container_stack) > 0) {
 		struct ui_container* parent = vector_end(ui->container_stack) - 1;
@@ -666,7 +665,7 @@ static v2f get_ui_el_position(struct ui* ui, const struct ui_style* style, v2f d
 		case ui_align_left:
 			return ui->cursor_pos;
 		case ui_align_right:
-			return make_v2f((container->rect.x + x_margin) - dimensions.x - container->padding, ui->cursor_pos.y);
+			return make_v2f((container->rect.x + x_margin) - dimensions.x - container->padding.x, ui->cursor_pos.y);
 		case ui_align_centre: {
 			f32 x_inner_margin = x_margin - ui->columns[ui->column] * container->rect.z;
 			return make_v2f((container->rect.x + x_inner_margin * 0.5f + x_margin * 0.5f) - (dimensions.x * 0.5f), ui->cursor_pos.y);
@@ -687,7 +686,7 @@ static void advance(struct ui* ui, f32 last_height) {
 	ui->column++;
 
 	if (ui->column >= ui->column_count) {
-		ui->cursor_pos.x = container->rect.x + container->padding;
+		ui->cursor_pos.x = container->rect.x + container->padding.x;
 		ui->cursor_pos.y += ui->current_item_height;
 		ui->column = 0;
 		ui->current_item_height = 0.0f;
@@ -712,13 +711,13 @@ bool ui_label_ex(struct ui* ui, const char* class, const char* text) {
 	struct ui_style style = ui_get_style(ui, "label", class, ui_style_variant_none);
 
 	const v2f text_dimensions = get_text_dimensions(ui->font, text);
-	const v2f dimensions = v2f_add(text_dimensions, make_v2f(style.padding.value * 2.0f, style.padding.value * 2.0f));
+	const v2f dimensions = v2f_add(text_dimensions, v2f_mul(style.padding.value, make_v2f(2.0f, 2.0f)));
 
 	ui_draw_rect(ui, get_ui_el_position(ui, &style, dimensions), make_v2f(dimensions.x, dimensions.y),
 		style.background_colour.value, style.radius.value);
 	struct ui_cmd_draw_rect* rect_cmd = ui_last_cmd(ui);
 
-	ui_draw_text(ui, v2f_add(rect_cmd->position, make_v2f(style.padding.value, style.padding.value)),
+	ui_draw_text(ui, v2f_add(rect_cmd->position, style.padding.value),
 		text_dimensions, text, style.text_colour.value);
 	struct ui_cmd_draw_text* text_cmd = ui_last_cmd(ui);
 
@@ -726,13 +725,13 @@ bool ui_label_ex(struct ui* ui, const char* class, const char* text) {
 	if (ui_get_style_variant(ui, &style, "label", class, hovered, false)) {
 		rect_cmd->position = get_ui_el_position(ui, &style, dimensions);
 		rect_cmd->radius   = style.radius.value;
-		text_cmd->position = v2f_add(rect_cmd->position, make_v2f(style.padding.value, style.padding.value));
+		text_cmd->position = v2f_add(rect_cmd->position, style.padding.value);
 
 		rect_cmd->colour = style.background_colour.value;
 		text_cmd->colour = style.text_colour.value;
 	}
 
-	advance(ui, dimensions.y + container->padding);
+	advance(ui, dimensions.y + container->padding.y);
 
 	if (hovered && mouse_btn_just_released(mouse_btn_left)) { return true; }
 	return false;
@@ -828,9 +827,10 @@ bool ui_knob_ex(struct ui* ui, const char* class, f32* val, f32 min, f32 max) {
 		knob_origin,
 		v2f_mul(
 			rotation,
-			make_v2f(style.radius.value - handle_radius - style.padding.value, style.radius.value - handle_radius - style.padding.value)));
+			make_v2f(style.radius.value - handle_radius - style.padding.value.x,
+			style.radius.value - handle_radius - style.padding.value.y)));
 
-	advance(ui, dimensions.y + container->padding);
+	advance(ui, dimensions.y + container->padding.y);
 
 	return changed;
 }
@@ -853,14 +853,14 @@ bool ui_picture_ex(struct ui* ui, const char* class, const struct texture* textu
 		dimensions.y = max(dimensions.y, style.min_size.value.y);
 	}
 
-	const v2f rect_dimensions = make_v2f(dimensions.x + style.padding.value * 2.0f, dimensions.y + style.padding.value * 2.0f);
+	const v2f rect_dimensions = make_v2f(dimensions.x + style.padding.value.x * 2.0f, dimensions.y + style.padding.value.y * 2.0f);
 
 	ui_draw_rect(ui, get_ui_el_position(ui, &style, dimensions),
 		rect_dimensions,
 		style.background_colour.value, style.radius.value);
 	struct ui_cmd_draw_rect* rect_cmd = ui_last_cmd(ui);
 
-	ui_draw_texture(ui, v2f_add(rect_cmd->position, make_v2f(style.padding.value, style.padding.value)), dimensions,
+	ui_draw_texture(ui, v2f_add(rect_cmd->position, style.padding.value), dimensions,
 		texture, rect, style.text_colour.value, style.radius.value);
 	struct ui_cmd_texture* text_cmd = ui_last_cmd(ui);
 
@@ -868,14 +868,14 @@ bool ui_picture_ex(struct ui* ui, const char* class, const struct texture* textu
 	if (ui_get_style_variant(ui, &style, "picture", class, hovered, false)) {
 		rect_cmd->position = get_ui_el_position(ui, &style, dimensions);
 		rect_cmd->radius   = style.radius.value;
-		text_cmd->position = v2f_add(rect_cmd->position, make_v2f(style.padding.value, style.padding.value));
+		text_cmd->position = v2f_add(rect_cmd->position, style.padding.value);
 		text_cmd->radius   = style.radius.value;
 
 		rect_cmd->colour = style.background_colour.value;
 		text_cmd->colour = style.text_colour.value;
 	}
 
-	advance(ui, rect_cmd->dimensions.y + container->padding);
+	advance(ui, rect_cmd->dimensions.y + container->padding.y);
 
 	if (hovered && mouse_btn_just_released(mouse_btn_left)) { return true; }
 	return false;
@@ -904,7 +904,7 @@ bool ui_input_ex2(struct ui* ui, const char* class, char* buf, usize buf_size, u
 	struct ui_style style = ui_get_style(ui, "input", class, ui_style_variant_none);
 
 	const v2f dimensions = v2f_add(make_v2f(ui->columns[ui->column] * container->rect.z, get_font_height(ui->font)),
-		make_v2f(style.padding.value * 2.0f, style.padding.value * 2.0f));
+		v2f_add(style.padding.value, make_v2f(2.0f, 2.0f)));
 	
 	const v2f text_dimensions = get_text_dimensions(ui->font, buf);
 	const f32 cursor_x_off = get_text_n_dimensions(ui->font, buf, ui->input_cursor).x;
@@ -935,16 +935,16 @@ bool ui_input_ex2(struct ui* ui, const char* class, char* buf, usize buf_size, u
 		rect_cmd->colour = style.background_colour.value;
 	}
 
-	const v2f text_pos = v2f_add(rect_cmd->position, make_v2f(style.padding.value, style.padding.value));
+	const v2f text_pos = v2f_add(rect_cmd->position, style.padding.value);
 
 	bool submitted = false;
 
 	v4f prev_clip = ui->current_clip;
-	ui_clip(ui, make_v4f(text_pos.x, text_pos.y, dimensions.x - style.padding.value, dimensions.y - style.padding.value));
+	ui_clip(ui, make_v4f(text_pos.x, text_pos.y, dimensions.x - style.padding.value.x, dimensions.y - style.padding.value.y));
 
 	f32 scroll = 0.0f;
 	if (active) {
-		scroll = min(dimensions.x - cursor_x_off - style.padding.value - get_font_height(ui->font), 0.0f);
+		scroll = min(dimensions.x - cursor_x_off - style.padding.value.x - get_font_height(ui->font), 0.0f);
 
 		ui_draw_rect(ui, v2f_add(text_pos, make_v2f(cursor_x_off + scroll, 0.0f)), make_v2f(1.0f, get_font_height(ui->font)),
 			style.text_colour.value, 0.0f);
@@ -985,7 +985,7 @@ bool ui_input_ex2(struct ui* ui, const char* class, char* buf, usize buf_size, u
 
 	ui_clip(ui, prev_clip);
 
-	advance(ui, dimensions.y + container->padding);
+	advance(ui, dimensions.y + container->padding.y);
 
 	return submitted;
 }
@@ -1016,7 +1016,7 @@ bool ui_selectable_tree_node_ex(struct ui* ui, const char* class, const char* te
 
 	if (!leaf) {
 		button_dimensions = v2f_add(get_text_dimensions(ui->font, "+"),
-			make_v2f(button_style.padding.value * 2.0f, button_style.padding.value * 2.0f));
+			v2f_add(button_style.padding.value, make_v2f(2.0f, 2.0f)));
 
 		ui_draw_rect(ui, ui->cursor_pos, button_dimensions,
 			button_style.background_colour.value, button_style.radius.value);
@@ -1037,15 +1037,14 @@ bool ui_selectable_tree_node_ex(struct ui* ui, const char* class, const char* te
 
 	struct ui_style background_style = ui_get_style(ui, "tree_header", class, ui_style_variant_none);
 
-	const v2f background_dimensions = make_v2f(container->rect.z - button_dimensions.x - background_style.padding.value * 3.0f,
-		text_dimensions.y + background_style.padding.value * 2.0f);
+	const v2f background_dimensions = make_v2f(container->rect.z - button_dimensions.x - background_style.padding.value.x * 3.0f,
+		text_dimensions.y + background_style.padding.value.y * 2.0f);
 
 	ui_draw_rect(ui, header_pos,
 		background_dimensions, background_style.background_colour.value, background_style.radius.value);
 	struct ui_cmd_draw_rect* back_cmd = ui_last_cmd(ui);
 
-	ui_draw_text(ui, v2f_add(header_pos,
-		make_v2f(background_style.padding.value, background_style.padding.value)),
+	ui_draw_text(ui, v2f_add(header_pos, background_style.padding.value),
 		text_dimensions, text, background_style.text_colour.value);
 	struct ui_cmd_draw_text* text_cmd = ui_last_cmd(ui);
 	bool back_hovered = mouse_over_rect(back_cmd->position, back_cmd->dimensions);
@@ -1069,7 +1068,7 @@ bool ui_selectable_tree_node_ex(struct ui* ui, const char* class, const char* te
 	}
 
 	if (!leaf) {
-		ui_draw_text(ui, v2f_add(button_pos, make_v2f(button_style.padding.value, button_style.padding.value)),
+		ui_draw_text(ui, v2f_add(button_pos, button_style.padding.value),
 			text_dimensions, open ? " -" : "+", button_style.text_colour.value);
 	}
 
@@ -1083,7 +1082,7 @@ bool ui_selectable_tree_node_ex(struct ui* ui, const char* class, const char* te
 
 		ui_columns(ui, 1, (f32[]) { 1.0f });
 	} else {
-		ui->cursor_pos.y += container->padding;
+		ui->cursor_pos.y += container->padding.y;
 	}
 
 	return open;
