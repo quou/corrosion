@@ -25,8 +25,11 @@ struct {
 struct app_config cr_config() {
 	return (struct app_config) {
 		.name = "Sandbox",
-		.api = video_api_vulkan,
-		.enable_validation = true,
+		.video_config = (struct video_config) {
+			.api = video_api_vulkan,
+			.enable_validation = true,
+			.clear_colour = make_rgba(0x000000, 255)
+		},
 		.window_config = (struct window_config) {
 			.title = "Sandbox",
 			.size = make_v2i(800, 600),
@@ -57,7 +60,8 @@ void cr_init() {
 		(struct framebuffer_attachment_desc[]) {
 			{
 				.type   = framebuffer_attachment_colour,
-				.format = framebuffer_format_rgba16f
+				.format = framebuffer_format_rgba16f,
+				.clear_colour = make_rgba(0x010111, 255)
 			}
 		}, 1);
 

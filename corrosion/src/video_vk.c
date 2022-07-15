@@ -469,7 +469,7 @@ static void init_swapchain();
 static void deinit_swapchain();
 static void recreate();
 
-void video_vk_init(bool enable_validation) {
+void video_vk_init(bool enable_validation, v4f clear_colour) {
 	memset(&vctx, 0, sizeof vctx);
 
 	vector(const char*) extensions = null;
@@ -625,7 +625,8 @@ void video_vk_init(bool enable_validation) {
 		(struct framebuffer_attachment_desc[]) {
 			{
 				.type = framebuffer_attachment_colour,
-				.format = framebuffer_format_rgba8i
+				.format = framebuffer_format_rgba8i,
+				.clear_colour = clear_colour
 			}
 		}, 1);
 }
@@ -1016,7 +1017,8 @@ static void init_vk_framebuffer(struct video_vk_framebuffer* fb,
 
 		for (usize i = 0; i < depth_index; i++) {
 			v_attachments[i] = ca_descs[i];
-			fb->clear_colours[i].color = (VkClearColorValue) { 0.0f, 0.0f, 0.0f, 0.0f };
+			v4f c = attachments[i].clear_colour;
+			fb->clear_colours[i].color = (VkClearColorValue) { c.x, c.y, c.z, c.w };
 		}
 
 		v_attachments[depth_index] = depth_attachment;
@@ -1024,7 +1026,8 @@ static void init_vk_framebuffer(struct video_vk_framebuffer* fb,
 
 		for (usize i = depth_index + 1; i < attachment_count; i++) {
 			v_attachments[i] = ca_descs[i - 1];
-			fb->clear_colours[i].color = (VkClearColorValue) { 0.0f, 0.0f, 0.0f, 0.0f };
+			v4f c = attachments[i].clear_colour;
+			fb->clear_colours[i].color = (VkClearColorValue) { c.x, c.y, c.z, c.w };
 		}
 	} else if (fb->use_depth && fb->colour_count == 0) {
 		v_attachments = core_calloc(1, sizeof(VkAttachmentDescription));
@@ -1034,7 +1037,8 @@ static void init_vk_framebuffer(struct video_vk_framebuffer* fb,
 		v_attachments = ca_descs;
 
 		for (usize i = 0; i < attachment_count; i++) {
-			fb->clear_colours[i].color = (VkClearColorValue) { 0.0f, 0.0f, 0.0f, 0.0f };
+			v4f c = attachments[i].clear_colour;
+			fb->clear_colours[i].color = (VkClearColorValue) { c.x, c.y, c.z, c.w };
 		}
 	}
 

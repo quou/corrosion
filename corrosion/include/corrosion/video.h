@@ -30,6 +30,7 @@ enum {
 struct framebuffer_attachment_desc {
 	u32 type;
 	u32 format;
+	v4f clear_colour;
 };
 
 struct framebuffer;
@@ -150,7 +151,7 @@ struct texture;
 struct video {
 	u32 api;
 
-	void (*init)(bool enable_validation);
+	void (*init)(bool enable_validation, v4f clear_colour);
 	void (*deinit)();
 
 	void (*begin)();
@@ -207,5 +208,5 @@ struct video {
 
 extern struct video video;
 
-void init_video(u32 api, bool enable_validation);
+void init_video(u32 api, bool enable_validation, v4f clear_colour);
 void deinit_video();

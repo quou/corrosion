@@ -4,7 +4,7 @@
 #include "video.h"
 #include "window.h"
 
-void video_vk_init(bool enable_validation);
+void video_vk_init(bool enable_validation, v4f clear_colour);
 void video_vk_deinit();
 
 void video_vk_begin();

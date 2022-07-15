@@ -16,11 +16,11 @@ i32 main(i32 argc, const char** argv) {
 
 	init_timer();
 
-	init_window(&cfg.window_config, cfg.api);
+	init_window(&cfg.window_config, cfg.video_config.api);
 
 	res_init(argv[0]);
 
-	init_video(cfg.api, cfg.enable_validation);
+	init_video(cfg.video_config.api, cfg.video_config.enable_validation, cfg.video_config.clear_colour);
 
 	gizmos_init();
 

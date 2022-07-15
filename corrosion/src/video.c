@@ -4,7 +4,7 @@
 
 struct video video;
 
-void init_video(u32 api, bool enable_validation) {
+void init_video(u32 api, bool enable_validation, v4f clear_colour) {
 	video.api = api;
 
 	switch (api) {
@@ -63,7 +63,7 @@ void init_video(u32 api, bool enable_validation) {
 		abort_with("Unable to create the video context: Unknown API.");
 	}
 
-	video.init(enable_validation);
+	video.init(enable_validation, clear_colour);
 }
 
 void deinit_video() {

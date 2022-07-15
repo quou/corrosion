@@ -14,7 +14,7 @@ includes = -I../../../corrosion/include
 target_name = sbox
 deps =
 srcdir = ../../../sbox/src
-libs = -lm -lX11 -lvulkan -lGL
+libs = -lm -lX11 -lvulkan
 defines =
 
 ifeq ($(config),debug)
