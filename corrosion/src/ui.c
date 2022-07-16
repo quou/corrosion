@@ -579,6 +579,7 @@ void free_ui(struct ui* ui) {
 	free_vector(ui->cmd_free_queue);
 	free_table(ui->open_treenodes);
 	free_table(ui->number_input_trailing_fullstops);
+	free_table(ui->container_meta);
 	free_ui_renderer(ui->renderer);
 	core_free(ui->cmd_buffer);
 	core_free(ui);
