@@ -22,6 +22,10 @@ void ui_draw_text(struct ui* ui, v2f position, v2f dimensions, const char* text,
 void ui_draw_texture(struct ui* ui, v2f position, v2f dimensions, const struct texture* texture, v4i rect, v4f colour, f32 radius);
 void ui_clip(struct ui* ui, v4f rect);
 
+v2f ui_get_cursor_pos(const struct ui* ui);
+void ui_set_cursor_pos(struct ui* ui, v2f pos);
+void ui_advance(struct ui* ui, v2f dimensions);
+
 u64 next_item_id();
 
 void ui_font(struct ui* ui, struct font* font);

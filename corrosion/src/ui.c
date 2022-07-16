@@ -251,6 +251,14 @@ void ui_draw_texture(struct ui* ui, v2f position, v2f dimensions, const struct t
 	cmd->radius = radius;
 }
 
+v2f ui_get_cursor_pos(const struct ui* ui) {
+	return ui->cursor_pos;
+}
+
+void ui_set_cursor_pos(struct ui* ui, v2f pos) {
+	ui->cursor_pos = pos;
+}
+
 static inline void ui_build_style(struct ui_style* dst, const struct ui_style* src) {
 	if (src->text_colour.has_value)       { dst->text_colour       = src->text_colour; }
 	if (src->background_colour.has_value) { dst->background_colour = src->background_colour; }
@@ -757,7 +765,7 @@ static v2f get_ui_el_position(struct ui* ui, const struct ui_style* style, v2f d
 	}
 }
 
-static void advance(struct ui* ui, v2f dimensions) {
+void ui_advance(struct ui* ui, v2f dimensions) {
 	struct ui_container* container = vector_end(ui->container_stack) - 1;
 
 	ui->current_item_height = max(ui->current_item_height, dimensions.y);
@@ -820,7 +828,7 @@ bool ui_label_ex(struct ui* ui, const char* class, const char* text) {
 		text_cmd->colour = style.text_colour.value;
 	}
 
-	advance(ui, make_v2f(dimensions.x, dimensions.y + container->spacing));
+	ui_advance(ui, make_v2f(dimensions.x, dimensions.y + container->spacing));
 
 	if (hovered && mouse_btn_just_released(mouse_btn_left)) { return true; }
 	return false;
@@ -919,7 +927,7 @@ bool ui_knob_ex(struct ui* ui, const char* class, f32* val, f32 min, f32 max) {
 			make_v2f(style.radius.value - handle_radius - style.padding.value.x,
 			style.radius.value - handle_radius - style.padding.value.y)));
 
-	advance(ui, make_v2f(dimensions.x, dimensions.y + container->spacing));
+	ui_advance(ui, make_v2f(dimensions.x, dimensions.y + container->spacing));
 
 	return changed;
 }
@@ -964,7 +972,7 @@ bool ui_picture_ex(struct ui* ui, const char* class, const struct texture* textu
 		text_cmd->colour = style.text_colour.value;
 	}
 
-	advance(ui, make_v2f(rect_cmd->dimensions.x, rect_cmd->dimensions.y + container->spacing));
+	ui_advance(ui, make_v2f(rect_cmd->dimensions.x, rect_cmd->dimensions.y + container->spacing));
 
 	if (hovered && mouse_btn_just_released(mouse_btn_left)) { return true; }
 	return false;
@@ -1076,7 +1084,7 @@ bool ui_input_ex2(struct ui* ui, const char* class, char* buf, usize buf_size, u
 
 	ui_clip(ui, prev_clip);
 
-	advance(ui, make_v2f(dimensions.x, dimensions.y + container->spacing));
+	ui_advance(ui, make_v2f(dimensions.x, dimensions.y + container->spacing));
 
 	return submitted;
 }

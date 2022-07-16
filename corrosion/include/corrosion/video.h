@@ -199,7 +199,7 @@ struct video {
 	struct texture* (*new_texture)(const struct image* image, u32 flags);
 	void (*free_texture)(struct texture* texture);
 	v2i  (*get_texture_size)(const struct texture* texture);
-	void (*texture_copy)(struct texture* dst, v2i dst_offset, const struct texture* src, v2i src_offset, v2i dimentions);
+	void (*texture_copy)(struct texture* dst, v2i dst_offset, const struct texture* src, v2i src_offset, v2i dimensions);
 
 	/* Maths. */
 	m4f (*ortho)(f32 l, f32 r, f32 b, f32 t, f32 n, f32 f);

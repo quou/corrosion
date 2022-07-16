@@ -2384,7 +2384,7 @@ v2i video_vk_get_texture_size(const struct texture* texture) {
 	return ((const struct video_vk_texture*)texture)->size;
 }
 
-void video_vk_texture_copy(struct texture* dst_, v2i dst_offset, const struct texture* src_, v2i src_offset, v2i dimentions) {
+void video_vk_texture_copy(struct texture* dst_, v2i dst_offset, const struct texture* src_, v2i src_offset, v2i dimensions) {
 	struct video_vk_texture* dst = (struct video_vk_texture*)dst_;
 	const struct video_vk_texture* src = (const struct video_vk_texture*)src_;
 
@@ -2434,7 +2434,7 @@ void video_vk_texture_copy(struct texture* dst_, v2i dst_offset, const struct te
 				.dstSubresource = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 },
 				.srcOffset = { src_offset.x, src_offset.y, 0 },
 				.dstOffset = { dst_offset.x, dst_offset.y, 0 },
-				.extent    = { dimentions.x, dimentions.y, 1 }
+				.extent    = { dimensions.x, dimensions.y, 1 }
 			}
 		});
 	

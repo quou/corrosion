@@ -210,7 +210,7 @@ void ui_renderer_push(struct ui_renderer* renderer, const struct ui_renderer_qua
 }
 
 void ui_renderer_flush(struct ui_renderer* renderer) {
-	v2i window_size = get_window_size();
+	v2i window_size = video.get_framebuffer_size(renderer->framebuffer);
 
 	renderer->vertex_ub.projection = video.ortho(0.0f, (f32)window_size.x, (f32)window_size.y, 0.0f, -1.0f, 1.0f);
 	video.update_pipeline_uniform(renderer->pipeline, "primary", "VertexUniformData", &renderer->vertex_ub);
