@@ -62,6 +62,13 @@ struct ui_container {
 	v2f padding;
 	f32 content_height;
 	f32 spacing;
+
+	u64 id;
+	bool scrollable;
+};
+
+struct ui_container_meta {
+	f32 scroll;
 };
 
 enum {
@@ -128,6 +135,9 @@ struct ui {
 
 	u64 treenode_id;
 	table(u64, bool) open_treenodes;
+
+	u64 container_id;
+	table(u64, struct ui_container_meta) container_meta;
 
 	/* Probably not the best way to solve this problem. */
 	table(u64, bool) number_input_trailing_fullstops;
@@ -586,8 +596,9 @@ void ui_begin(struct ui* ui) {
 	ui->current_item_height = 0.0f;
 
 	ui->treenode_id = 0;
+	ui->container_id = 0;
 
-	ui_begin_container(ui, make_v4f(0.0f, 0.0f, 1.0f, 1.0f));
+	ui_begin_container(ui, make_v4f(0.0f, 0.0f, 1.0f, 1.0f), false);
 
 	ui_columns(ui, 1, (f32[]) { 1.0f });
 }
@@ -604,13 +615,32 @@ void ui_end(struct ui* ui) {
 	}
 }
 
-void ui_begin_container_ex(struct ui* ui, const char* class, v4f rect) {
+static struct ui_container_meta* get_container_meta(struct ui* ui, u64 id) {
+	struct ui_container_meta* meta = table_get(ui->container_meta, id);
+	if (!meta) {
+		table_set(ui->container_meta, id, (struct ui_container_meta) { 0 });
+		meta = table_get(ui->container_meta, id);
+	}
+	return meta;
+}
+
+void ui_begin_container_ex(struct ui* ui, const char* class, v4f rect, bool scrollable) {
 	struct ui_container* parent = null;
 	if (vector_count(ui->container_stack) > 0) {
 		parent = vector_end(ui->container_stack) - 1;
 	}
 
+	u64 id = ui->container_id++;
+	struct ui_container_meta* meta = get_container_meta(ui, id);
+
 	v2i window_size = get_window_size();
+
+	f32 scroll = 0.0f;
+	if (scrollable) {
+		scroll = meta->scroll;
+	} else {
+		scroll = 0.0f;
+	}
 
 	f32 pad_top_bottom = 0.0f;
 	v2f padding = make_v2f(0.0f, 0.0f);
@@ -642,14 +672,33 @@ void ui_begin_container_ex(struct ui* ui, const char* class, v4f rect) {
 	vector_push(ui->container_stack, ((struct ui_container) {
 		.rect = clip,
 		.padding = padding,
-		.spacing = spacing
+		.spacing = spacing,
+		.id = id,
+		.scrollable = scrollable
 	}));
 
-	ui->cursor_pos = make_v2f(clip.x + padding.x, clip.y + padding.y);
+	ui->cursor_pos = make_v2f(clip.x + padding.x, clip.y + padding.y + scroll);
 }
 
 void ui_end_container(struct ui* ui) {
 	struct ui_container* container = vector_pop(ui->container_stack);
+
+	struct ui_container_meta* meta = get_container_meta(ui, container->id);
+	if (container->scrollable) {
+		meta->scroll += (f32)get_scroll() * get_font_height(ui->font);
+
+		f32 content_size = ((ui->cursor_pos.y - meta->scroll) - container->rect.y);
+		f32 max_scroll = content_size - container->rect.w;
+
+		if (meta->scroll < -max_scroll) {
+			meta->scroll = -max_scroll;
+		}
+
+		if (meta->scroll > 0.0f) {
+			meta->scroll = 0.0f;
+		}
+	}
+
 	ui->cursor_pos.x -= container->padding.x;
 	ui->cursor_pos.y += container->padding.y;
 
@@ -1118,7 +1167,7 @@ bool ui_selectable_tree_node_ex(struct ui* ui, const char* class, const char* te
 		v2f dim = make_v2f(1.0f, 1.0f - pos.y);
 
 		if (!leaf) {
-			ui_begin_container_ex(ui, "tree_container", make_v4f(pos.x, pos.y, dim.x, dim.y));
+			ui_begin_container_ex(ui, "tree_container", make_v4f(pos.x, pos.y, dim.x, dim.y), false);
 		}
 
 		ui_columns(ui, 1, (f32[]) { 1.0f });

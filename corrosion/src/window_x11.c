@@ -193,6 +193,7 @@ void update_events() {
 	memset(window.released_mouse_btns, 0, sizeof window.released_mouse_btns);
 
 	window.input_string_len = 0;
+	window.scroll = 0;
 
 	XEvent e;
 
