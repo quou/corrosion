@@ -113,6 +113,6 @@ bool mouse_btn_just_released(u32 code);
 
 v2i get_mouse_pos();
 
-i32 get_scroll();
+v2i get_scroll();
 
 bool get_input_string(const char** string, usize* len);

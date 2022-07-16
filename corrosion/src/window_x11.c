@@ -193,7 +193,7 @@ void update_events() {
 	memset(window.released_mouse_btns, 0, sizeof window.released_mouse_btns);
 
 	window.input_string_len = 0;
-	window.scroll = 0;
+	window.scroll = make_v2i(0, 0);
 
 	XEvent e;
 
@@ -264,10 +264,16 @@ void update_events() {
 						window.pressed_mouse_btns[e.xbutton.button - 1] = true;
 						break;
 					case 4:
-						window.scroll++;
+						window.scroll.y++;
 						break;
 					case 5:
-						window.scroll--;
+						window.scroll.y--;
+						break;
+					case 6:
+						window.scroll.x++;
+						break;
+					case 7:
+						window.scroll.x--;
 						break;
 				}
 				break;
@@ -279,12 +285,6 @@ void update_events() {
 					case 3:
 						window.held_mouse_btns[e.xbutton.button - 1] = false;
 						window.released_mouse_btns[e.xbutton.button - 1] = true;
-						break;
-					case 4:
-						window.scroll++;
-						break;
-					case 5:
-						window.scroll--;
 						break;
 				}
 				break;
@@ -322,7 +322,7 @@ v2i get_mouse_pos() {
 	return window.mouse_pos;
 }
 
-i32 get_scroll() {
+v2i get_scroll() {
 	return window.scroll;
 }
 

@@ -30,7 +30,7 @@ struct window {
 
 	v2i mouse_pos;
 
-	i32 scroll;
+	v2i scroll;
 
 	char input_string[256];
 	usize input_string_len;

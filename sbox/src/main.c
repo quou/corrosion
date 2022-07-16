@@ -182,6 +182,8 @@ void cr_update(f64 ts) {
 
 	char text[256];
 
+	ui_columns(app.ui, 2, (f32[]) { 0.5f, 0.5f });
+
 	ui_knob(app.ui, &test, 0.0f, 100.0f);
 	ui_knob_ex(app.ui, "align_right red_knob", &test2, 0.0f, 100.0f);
 

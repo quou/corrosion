@@ -60,15 +60,17 @@ struct ui_cmd_texture {
 struct ui_container {
 	v4f rect;
 	v2f padding;
-	f32 content_height;
 	f32 spacing;
 
 	u64 id;
 	bool scrollable;
+
+	v2f content_size;
+	f32 left_bound;
 };
 
 struct ui_container_meta {
-	f32 scroll;
+	v2f scroll;
 };
 
 enum {
@@ -635,11 +637,11 @@ void ui_begin_container_ex(struct ui* ui, const char* class, v4f rect, bool scro
 
 	v2i window_size = get_window_size();
 
-	f32 scroll = 0.0f;
+	v2f scroll = make_v2f(0.0f, 0.0f);
 	if (scrollable) {
 		scroll = meta->scroll;
 	} else {
-		scroll = 0.0f;
+		scroll = make_v2f(0.0f, 0.0f);
 	}
 
 	f32 pad_top_bottom = 0.0f;
@@ -653,7 +655,7 @@ void ui_begin_container_ex(struct ui* ui, const char* class, v4f rect, bool scro
 		spacing = style.spacing.value;
 
 		clip = make_v4f(
-			rect.x * (f32)(parent->rect.z) + style.padding.value.x + parent->rect.x,
+			rect.x * (f32)(parent->rect.z) + parent->left_bound,
 			rect.y * (f32)(parent->rect.w) + style.padding.value.y + parent->rect.y,
 			rect.z * (f32)(parent->rect.z) - style.padding.value.x * 2.0f,
 			rect.w * (f32)(parent->rect.w) - style.padding.value.y * 2.0f);
@@ -674,28 +676,43 @@ void ui_begin_container_ex(struct ui* ui, const char* class, v4f rect, bool scro
 		.padding = padding,
 		.spacing = spacing,
 		.id = id,
-		.scrollable = scrollable
+		.scrollable = scrollable,
+		.left_bound = clip.x + padding.x + scroll.x,
+		.content_size = make_v2f(0.0f, 0.0f)
 	}));
 
-	ui->cursor_pos = make_v2f(clip.x + padding.x, clip.y + padding.y + scroll);
+	ui->cursor_pos = make_v2f(clip.x + padding.x + scroll.x, clip.y + padding.y + scroll.y);
 }
 
 void ui_end_container(struct ui* ui) {
 	struct ui_container* container = vector_pop(ui->container_stack);
 
 	struct ui_container_meta* meta = get_container_meta(ui, container->id);
+
+	container->content_size.y = (ui->cursor_pos.y - container->rect.y);
+	container->content_size.x += container->padding.x;
+
 	if (container->scrollable) {
-		meta->scroll += (f32)get_scroll() * get_font_height(ui->font);
+		meta->scroll.x += (f32)get_scroll().x * 10.0f;
+		meta->scroll.y += (f32)get_scroll().y * get_font_height(ui->font) * 3.0f;
 
-		f32 content_size = ((ui->cursor_pos.y - meta->scroll) - container->rect.y);
-		f32 max_scroll = content_size - container->rect.w;
+		v2f max_scroll = make_v2f(container->content_size.x - container->rect.z - meta->scroll.x,
+			container->content_size.y - container->rect.w - meta->scroll.y);
 
-		if (meta->scroll < -max_scroll) {
-			meta->scroll = -max_scroll;
+		if (meta->scroll.y < -max_scroll.y) {
+			meta->scroll.y = -max_scroll.y;
 		}
 
-		if (meta->scroll > 0.0f) {
-			meta->scroll = 0.0f;
+		if (meta->scroll.y > 0.0f) {
+			meta->scroll.y = 0.0f;
+		}
+		
+		if (meta->scroll.x < -max_scroll.x) {
+			meta->scroll.x = -max_scroll.x;
+		}
+
+		if (meta->scroll.x > 0.0f) {
+			meta->scroll.x = 0.0f;
 		}
 	}
 
@@ -729,29 +746,36 @@ static v2f get_ui_el_position(struct ui* ui, const struct ui_style* style, v2f d
 		case ui_align_left:
 			return ui->cursor_pos;
 		case ui_align_right:
-			return make_v2f((container->rect.x + x_margin) - dimensions.x - container->padding.x, ui->cursor_pos.y);
+			return make_v2f(((container->left_bound - container->padding.x) + x_margin) - dimensions.x - container->padding.x, ui->cursor_pos.y);
 		case ui_align_centre: {
 			f32 x_inner_margin = x_margin - ui->columns[ui->column] * container->rect.z;
-			return make_v2f((container->rect.x + x_inner_margin * 0.5f + x_margin * 0.5f) - (dimensions.x * 0.5f), ui->cursor_pos.y);
+			return make_v2f(((container->left_bound - container->padding.x) + x_inner_margin * 0.5f + x_margin * 0.5f) - (dimensions.x * 0.5f), ui->cursor_pos.y);
 		}
 		default:
 			return make_v2f(0.0f, 0.0f);
 	}
 }
 
-static void advance(struct ui* ui, f32 last_height) {
-	const struct ui_container* container = vector_end(ui->container_stack) - 1;
+static void advance(struct ui* ui, v2f dimensions) {
+	struct ui_container* container = vector_end(ui->container_stack) - 1;
 
-	if (last_height > ui->current_item_height) {
-		ui->current_item_height = last_height;
+	ui->current_item_height = max(ui->current_item_height, dimensions.y);
+	v2f last = ui->cursor_pos;
+	if (dimensions.y > ui->current_item_height) {
+		ui->current_item_height = dimensions.y;
 	}
+
+	container->content_size.x = max(container->content_size.x, (ui->cursor_pos.x - container->rect.x) + dimensions.x);
 
 	ui->cursor_pos.x += ui->columns[ui->column] * container->rect.z;
 	ui->column++;
 
+
 	if (ui->column >= ui->column_count) {
-		ui->cursor_pos.x = container->rect.x + container->padding.x;
+		ui->cursor_pos.x = container->left_bound;
 		ui->cursor_pos.y += ui->current_item_height;
+		container->content_size.y += ui->cursor_pos.y - last.y;
+		container->content_size.x = max(container->content_size.x, (ui->cursor_pos.x - container->rect.x) + dimensions.x);
 		ui->column = 0;
 		ui->current_item_height = 0.0f;
 	}
@@ -795,7 +819,7 @@ bool ui_label_ex(struct ui* ui, const char* class, const char* text) {
 		text_cmd->colour = style.text_colour.value;
 	}
 
-	advance(ui, dimensions.y + container->spacing);
+	advance(ui, make_v2f(dimensions.x, dimensions.y + container->spacing));
 
 	if (hovered && mouse_btn_just_released(mouse_btn_left)) { return true; }
 	return false;
@@ -894,7 +918,7 @@ bool ui_knob_ex(struct ui* ui, const char* class, f32* val, f32 min, f32 max) {
 			make_v2f(style.radius.value - handle_radius - style.padding.value.x,
 			style.radius.value - handle_radius - style.padding.value.y)));
 
-	advance(ui, dimensions.y + container->spacing);
+	advance(ui, make_v2f(dimensions.x, dimensions.y + container->spacing));
 
 	return changed;
 }
@@ -939,7 +963,7 @@ bool ui_picture_ex(struct ui* ui, const char* class, const struct texture* textu
 		text_cmd->colour = style.text_colour.value;
 	}
 
-	advance(ui, rect_cmd->dimensions.y + container->spacing);
+	advance(ui, make_v2f(rect_cmd->dimensions.x, rect_cmd->dimensions.y + container->spacing));
 
 	if (hovered && mouse_btn_just_released(mouse_btn_left)) { return true; }
 	return false;
@@ -969,7 +993,7 @@ bool ui_input_ex2(struct ui* ui, const char* class, char* buf, usize buf_size, u
 
 	struct ui_style style = ui_get_style(ui, "input", class, ui_style_variant_none);
 
-	const v2f dimensions = v2f_add(make_v2f(ui->columns[ui->column] * container->rect.z, get_font_height(ui->font)),
+	const v2f dimensions = v2f_add(make_v2f(ui->columns[ui->column] * container->rect.z + container->padding.x, get_font_height(ui->font)),
 		v2f_add(style.padding.value, make_v2f(2.0f, 2.0f)));
 	
 	const v2f text_dimensions = get_text_dimensions(ui->font, buf);
@@ -1051,7 +1075,7 @@ bool ui_input_ex2(struct ui* ui, const char* class, char* buf, usize buf_size, u
 
 	ui_clip(ui, prev_clip);
 
-	advance(ui, dimensions.y + container->spacing);
+	advance(ui, make_v2f(dimensions.x, dimensions.y + container->spacing));
 
 	return submitted;
 }
@@ -1242,7 +1266,7 @@ void ui_draw(const struct ui* ui) {
 				i32 area = clip->rect.z * clip->rect.w;
 
 				if (area > current_clip_area) {
-					ui_renderer_clip(ui->renderer, clip->rect);
+					//ui_renderer_clip(ui->renderer, clip->rect);
 				}
 
 				current_clip = clip->rect;
