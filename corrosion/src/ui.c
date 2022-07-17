@@ -1270,9 +1270,11 @@ void ui_colour_picker_ex(struct ui* ui, const char* class, v4f* colour, u64 id) 
 	const v2f slider_pos = make_v2f(position.x + box_dimensions.x + style.padding.value.x, position.y);
 	const v2f result_pos = make_v2f(slider_pos.x + slider_dimensions.x + style.padding.value.x, position.y);
 
+	v4f hsva = rgba_to_hsva(*colour);
+
 	const f32 slider_gradient_size = 0.166f;
 	
-	/* Slider. Made of multiple rectangles. */
+	/* Hue slider. Made of multiple rectangles. */
 	ui_draw_gradient(ui, make_v2f(slider_pos.x, slider_pos.y + slider_dimensions.y * slider_gradient_size * 0),
 		make_v2f(slider_dimensions.x, slider_dimensions.y * slider_gradient_size),
 		make_rgba(0xff0000, 255), make_rgba(0xff0000, 255),
@@ -1298,22 +1300,26 @@ void ui_colour_picker_ex(struct ui* ui, const char* class, v4f* colour, u64 id) 
 		make_rgba(0xffff00, 255), make_rgba(0xffff00, 255),
 		make_rgba(0xff0000, 255), make_rgba(0xff0000, 255), 0.0f);
 
-	/* Main box */
+	/* Brightness box */
+	v4f top_colour = hsva_to_rgba((v4f) { hsva.h, 1.0f, 1.0f, 1.0f });
 	ui_draw_gradient(ui, position, box_dimensions,
-		make_rgba(0xffffff, 255), *colour,
+		make_rgba(0xffffff, 255), top_colour,
 		make_rgba(0x000000, 255), make_rgba(0x000000, 255), style.radius.value);
 
 	/* Brightness handle */
-	v2f handle_pos = make_v2f(0.0f, 0.0f);
-
 	if (mouse_over_rect(position, box_dimensions)) {
 		v2i mouse_pos = get_mouse_pos();
-		handle_pos = make_v2f((f32)mouse_pos.x - position.x - 2.5f, (f32)mouse_pos.y - position.y - 2.5f);
+		hsva.s =        saturate(((f32)mouse_pos.x - position.x) / (box_dimensions.x - 1.0f));
+		hsva.v = 1.0f - saturate(((f32)mouse_pos.y - position.y) / (box_dimensions.y - 1.0f));
 	}
+
+	v2f handle_pos = make_v2f(hsva.s * box_dimensions.x, (1.0f - hsva.v) * box_dimensions.y);
 
 	v2f handle_off = v2f_sub(position, make_v2f(2.5f, 2.5f));
 	ui_draw_circle(ui, v2f_add(handle_off, handle_pos), 5.0f, make_rgba(0x000000, 255));
 	ui_draw_circle(ui, v2f_add(handle_off, v2f_add(handle_pos, make_v2f(1.0f, 1.0f))), 4.0f, style.text_colour.value);
+
+	*colour = hsva_to_rgba(hsva);
 
 	/* Result */
 	ui_draw_rect(ui, result_pos, result_dimensions, *colour, style.radius.value);

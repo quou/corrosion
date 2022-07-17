@@ -9,7 +9,12 @@
 
 #define v2(t_) struct { t_ x; t_ y; }
 #define v3(t_) struct { t_ x; t_ y; t_ z; }
-#define v4(t_) struct { t_ x; t_ y; t_ z; t_ w; }
+#define v4(t_) struct { \
+	union { t_ x; t_ r; t_ h; }; \
+	union { t_ y; t_ g; t_ s; }; \
+	union { t_ z; t_ b; t_ v; }; \
+	union { t_ w; t_ a;       }; \
+}
 
 #define m4(t_) struct { t_ m[4][4]; }
 
@@ -39,8 +44,9 @@ typedef m4(f32) m4f;
 	)
 
 #define lerp(a_, b_, t_) ((a_) + (t_) * ((b_) - (a_)))
-#define clamp(v_, min_, max_) ((v_) < (min_) ? (min_) : (v_) > (max_) ? (max_) : (v_))
+#define clamp(v_, min_, max_) (max(min_, min(max_, v_)))
 #define map(v_, min1_, max1_, min2_, max2_) ((min2_) + ((v_) - (min1_)) * ((max2_) - (min2_)) / ((max1_) - (min1_)))
+#define saturate(v_) (clamp(v_, 0.0f, 1.0f))
 
 /* make_v */
 #define make_v2(t_, x_, y_)         ((t_) { x_, y_ })
@@ -67,6 +73,62 @@ typedef m4(f32) m4f;
 		(f32)((((u32)(rgb_)) >> 16) & 0xff) / 255.0f, \
 		(f32)((((u32)(rgb_)) >> 8)  & 0xff) / 255.0f, \
 		(f32)(((u32)(rgb_))         & 0xff) / 255.0f, (f32)a_ / 255.0f)
+
+/* From https://github.com/Immediate-Mode-UI/Nuklear/blob/master/src/nuklear_color.c */
+force_inline v4f rgba_to_hsva(v4f rgba) {
+	f32 chroma;
+	f32 K = 0.0f;
+	if (rgba.g < rgba.b) {
+		const float t = rgba.g; rgba.g = rgba.b; rgba.b = t;
+		K = -1.f;
+	}
+	if (rgba.r < rgba.g) {
+		const float t = rgba.r; rgba.r = rgba.g; rgba.g = t;
+		K = -2.f/6.0f - K;
+	}
+	chroma = rgba.r - ((rgba.g < rgba.b) ? rgba.g : rgba.b);
+	
+	v4f r;
+	
+	r.x = fabsf(K + (rgba.g - rgba.b)/(6.0f * chroma + 1e-20f));
+	r.y = chroma / (rgba.r + 1e-20f);
+	r.z = rgba.r;
+	r.w = rgba.a;
+	
+	return r;
+}
+
+force_inline v4f hsva_to_rgba(v4f hsva) {
+	int i;
+	float p, q, t, f;
+
+	v4f out;
+
+	if (hsva.s <= 0.0f) {
+		out.r = hsva.v; out.g = hsva.v; out.b = hsva.v; out.a = hsva.a;
+		return out;
+	}
+
+	hsva.h = hsva.h / (60.0f/360.0f);
+	i = (i32)hsva.h;
+	f = hsva.h - (f32)i;
+	p = hsva.v * (1.0f - hsva.s);
+	q = hsva.v * (1.0f - (hsva.s * f));
+	t = hsva.v * (1.0f - hsva.s * (1.0f - f));
+	
+	switch (i) {
+		case 0: default: out.r = hsva.v; out.g = t; out.b = p; break;
+		case 1: out.r = q; out.g = hsva.v; out.b = p; break;
+		case 2: out.r = p; out.g = hsva.v; out.b = t; break;
+		case 3: out.r = p; out.g = q; out.b = hsva.v; break;
+		case 4: out.r = t; out.g = p; out.b = hsva.v; break;
+		case 5: out.r = hsva.v; out.g = p; out.b = q; break;
+	}
+
+	out.a = hsva.a;
+
+	return out;
+}
 
 /* v_add */
 #define _v2_add(t_, a_, b_) ((t_) { (a_).x + (b_).x, (a_).y + (b_).y })
