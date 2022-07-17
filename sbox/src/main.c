@@ -185,12 +185,12 @@ void cr_update(f64 ts) {
 	ui_columns(app.ui, 2, (f32[]) { 0.5f, 0.5f });
 
 	ui_knob(app.ui, &test, 0.0f, 100.0f);
-	ui_knob_ex(app.ui, "align_right red_knob", &test2, 0.0f, 100.0f);
+	ui_knob_ex(app.ui, "red_knob", &test2, 0.0f, 100.0f);
 
 	sprintf(text, "%.2f", test);
 	ui_label_ex(app.ui, "knob_label", text);
 	sprintf(text, "%.2f", test2);
-	ui_label_ex(app.ui, "knob_label align_right", text);
+	ui_label_ex(app.ui, "knob_label", text);
 
 	ui_columns(app.ui, 2, (f32[]) { 0.25f, 0.70f });
 	ui_label(app.ui, "Colour Picker:");
