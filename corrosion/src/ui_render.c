@@ -157,10 +157,10 @@ void ui_renderer_push(struct ui_renderer* renderer, const struct ui_renderer_qua
 		return;
 	}
 
-	f32 x1 = quad->position.x;
-	f32 y1 = quad->position.y;
-	f32 x2 = quad->position.x + quad->dimensions.x;
-	f32 y2 = quad->position.y + quad->dimensions.y;
+	f32 x1 = roundf(quad->position.x);
+	f32 y1 = roundf(quad->position.y);
+	f32 x2 = roundf(quad->position.x + quad->dimensions.x);
+	f32 y2 = roundf(quad->position.y + quad->dimensions.y);
 
 	if (!overlap_clip(renderer, make_v4f(x1, y1, x2, y2))) {
 		return;
@@ -201,6 +201,65 @@ void ui_renderer_push(struct ui_renderer* renderer, const struct ui_renderer_qua
 		{ .position = { x2, y2 }, .uv = { tx + tw, ty + th }, .colour = quad->colour, .use_texture = use_texture, .radius = quad->radius, .rect = { x1, y1, quad->dimensions.x, quad->dimensions.y } },
 		{ .position = { x2, y1 }, .uv = { tx + tw, ty      }, .colour = quad->colour, .use_texture = use_texture, .radius = quad->radius, .rect = { x1, y1, quad->dimensions.x, quad->dimensions.y } },
 		{ .position = { x1, y1 }, .uv = { tx,      ty      }, .colour = quad->colour, .use_texture = use_texture, .radius = quad->radius, .rect = { x1, y1, quad->dimensions.x, quad->dimensions.y } }
+	};
+
+	video.update_vertex_buffer(renderer->vb, verts, sizeof(verts),
+		(renderer->offset + renderer->count) * sizeof(verts));
+
+	renderer->count++;
+}
+
+void ui_renderer_push_gradient(struct ui_renderer* renderer, const struct ui_renderer_gradient_quad* quad) {
+	if (renderer->count >= ui_renderer_batch_size) {
+		/* TODO: Use multiple vertex buffers to mitgate this. */
+		warning("Too many quads.");
+		return;
+	}
+
+	f32 x1 = roundf(quad->position.x);
+	f32 y1 = roundf(quad->position.y);
+	f32 x2 = roundf(quad->position.x + quad->dimensions.x);
+	f32 y2 = roundf(quad->position.y + quad->dimensions.y);
+
+	if (!overlap_clip(renderer, make_v4f(x1, y1, x2, y2))) {
+		return;
+	}
+
+	v4f rect = quad->rect;
+	f32 tx = 0.0f, ty = 0.0f, tw = 0.0f, th = 0.0f;
+
+	if (quad->texture) {
+		v2i texture_size = video.get_texture_size(quad->texture);
+
+		v4i* atlas_rect = table_get(renderer->atlas->rects, quad->texture);
+		if (!atlas_rect) {
+			if (atlas_add_texture(renderer->atlas, quad->texture)) {
+				video.free_pipeline(renderer->pipeline);
+				create_pipeline(renderer);
+				return;
+			}
+
+			atlas_rect = table_get(renderer->atlas->rects, quad->texture);
+		}
+
+		rect.x += (f32)atlas_rect->x;
+		rect.y += (f32)atlas_rect->y;
+		rect.z = min((f32)atlas_rect->z, rect.z);
+		rect.w = min((f32)atlas_rect->w, rect.w);
+
+		tx = rect.x / (f32)renderer->atlas->size.x;
+		ty = rect.y / (f32)renderer->atlas->size.y;
+		tw = rect.z / (f32)renderer->atlas->size.x;
+		th = rect.w / (f32)renderer->atlas->size.y;
+	}
+
+	f32 use_texture = quad->texture != null ? 1.0f : 0.0f;
+ 
+ 	struct ui_renderer_vertex verts[] = {
+ 		{ .position = { x1, y2 }, .uv = { tx,      ty + th }, .colour = quad->colours.bot_left,  .use_texture = use_texture, .radius = quad->radius, .rect = { x1, y1, quad->dimensions.x, quad->dimensions.y } },
+		{ .position = { x2, y2 }, .uv = { tx + tw, ty + th }, .colour = quad->colours.bot_right, .use_texture = use_texture, .radius = quad->radius, .rect = { x1, y1, quad->dimensions.x, quad->dimensions.y } },
+		{ .position = { x2, y1 }, .uv = { tx + tw, ty      }, .colour = quad->colours.top_right, .use_texture = use_texture, .radius = quad->radius, .rect = { x1, y1, quad->dimensions.x, quad->dimensions.y } },
+		{ .position = { x1, y1 }, .uv = { tx,      ty      }, .colour = quad->colours.top_left,  .use_texture = use_texture, .radius = quad->radius, .rect = { x1, y1, quad->dimensions.x, quad->dimensions.y } }
 	};
 
 	video.update_vertex_buffer(renderer->vb, verts, sizeof(verts),

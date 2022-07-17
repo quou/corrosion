@@ -8,6 +8,7 @@
 
 enum {
 	ui_cmd_draw_rect,
+	ui_cmd_draw_gradient,
 	ui_cmd_draw_text,
 	ui_cmd_draw_texture,
 	ui_cmd_draw_circle,
@@ -24,6 +25,17 @@ struct ui_cmd_draw_rect {
 	v2f position;
 	v2f dimensions;
 	v4f colour;
+	f32 radius;
+};
+
+struct ui_cmd_draw_gradient {
+	struct ui_cmd cmd;
+	v2f position;
+	v2f dimensions;
+	v4f top_left;
+	v4f top_right;
+	v4f bot_left;
+	v4f bot_right;
 	f32 radius;
 };
 
@@ -203,6 +215,19 @@ void ui_draw_rect(struct ui* ui, v2f position, v2f dimensions, v4f colour, f32 r
 	cmd->position = position;
 	cmd->dimensions = dimensions;
 	cmd->colour = colour;
+	cmd->radius = radius;
+}
+
+void ui_draw_gradient(struct ui* ui, v2f position, v2f dimensions, v4f top_left, v4f top_right, v4f bot_left, v4f bot_right, f32 radius) {
+	struct ui_cmd_draw_gradient* cmd = ui_cmd_add(ui, sizeof(struct ui_cmd_draw_gradient));
+	cmd->cmd.type = ui_cmd_draw_gradient;
+	cmd->cmd.size = sizeof *cmd;
+	cmd->position = position;
+	cmd->dimensions = dimensions;
+	cmd->top_left = top_left;
+	cmd->top_right = top_right;
+	cmd->bot_left = bot_left;
+	cmd->bot_right = bot_right;
 	cmd->radius = radius;
 }
 
@@ -547,6 +572,14 @@ void ui_init() {
 		.padding           = { true, make_v2f(10.0f, 0.0f) },
 		.spacing           = { true, 5.0f },
 		.radius            = { true, 0.0f }
+	}));
+
+	table_set(default_stylesheet.normal, hash_string("picker"), ((struct ui_style) {
+		.text_colour       = { true, make_rgba(0xffffff, 255) },
+		.background_colour = { true, make_rgba(0x000000, 0) },
+		.max_size          = { true, make_v2f(150.0f, 150.0f) },
+		.min_size          = { true, make_v2f(150.0f, 150.0f) },
+		.padding           = { true, 3.0f }
 	}));
 
 	reg_res_type("stylesheet", &(struct res_config) {
@@ -1215,6 +1248,79 @@ void ui_tree_pop(struct ui* ui) {
 	ui_end_container(ui);
 }
 
+void ui_colour_picker_ex(struct ui* ui, const char* class, v4f* colour, u64 id) {
+	if (id == 0) {
+		id = elf_hash((const u8*)&colour, sizeof colour);
+	}
+
+	const struct ui_container* container = vector_end(ui->container_stack) - 1;
+
+	struct ui_style style = ui_get_style(ui, "picker", class, ui_style_variant_none);
+
+	const v2f box_dimensions = make_v2f(
+		lerp(style.min_size.value.x, style.max_size.value.x, 0.5f),
+		lerp(style.min_size.value.y, style.max_size.value.y, 0.5f));
+	
+	const v2f result_dimensions = make_v2f(25.0f, 25.0f);
+
+	const v2f slider_dimensions = make_v2f(15.0f, box_dimensions.y);
+
+	const v2f dimensions = make_v2f(box_dimensions.x + slider_dimensions.x + result_dimensions.x + style.padding.value.x * 2.0f, box_dimensions.y);
+	const v2f position = ui->cursor_pos;
+	const v2f slider_pos = make_v2f(position.x + box_dimensions.x + style.padding.value.x, position.y);
+	const v2f result_pos = make_v2f(slider_pos.x + slider_dimensions.x + style.padding.value.x, position.y);
+
+	const f32 slider_gradient_size = 0.166f;
+	
+	/* Slider. Made of multiple rectangles. */
+	ui_draw_gradient(ui, make_v2f(slider_pos.x, slider_pos.y + slider_dimensions.y * slider_gradient_size * 0),
+		make_v2f(slider_dimensions.x, slider_dimensions.y * slider_gradient_size),
+		make_rgba(0xff0000, 255), make_rgba(0xff0000, 255),
+		make_rgba(0xff00ff, 255), make_rgba(0xff00ff, 255), 0.0f);
+	ui_draw_gradient(ui, make_v2f(slider_pos.x, slider_pos.y + slider_dimensions.y * slider_gradient_size * 1),
+		make_v2f(slider_dimensions.x, slider_dimensions.y * slider_gradient_size),
+		make_rgba(0xff00ff, 255), make_rgba(0xff00ff, 255),
+		make_rgba(0x0000ff, 255), make_rgba(0x0000ff, 255), 0.0f);
+	ui_draw_gradient(ui, make_v2f(slider_pos.x, slider_pos.y + slider_dimensions.y * slider_gradient_size * 2),
+		make_v2f(slider_dimensions.x, slider_dimensions.y * slider_gradient_size),
+		make_rgba(0x0000ff, 255), make_rgba(0x0000ff, 255),
+		make_rgba(0x00ffff, 255), make_rgba(0x00ffff, 255), 0.0f);
+	ui_draw_gradient(ui, make_v2f(slider_pos.x, slider_pos.y + slider_dimensions.y * slider_gradient_size * 3),
+		make_v2f(slider_dimensions.x, slider_dimensions.y * slider_gradient_size),
+		make_rgba(0x00ffff, 255), make_rgba(0x00ffff, 255),
+		make_rgba(0x00ff00, 255), make_rgba(0x00ff00, 255), 0.0f);
+	ui_draw_gradient(ui, make_v2f(slider_pos.x, slider_pos.y + slider_dimensions.y * slider_gradient_size * 4),
+		make_v2f(slider_dimensions.x, slider_dimensions.y * slider_gradient_size),
+		make_rgba(0x00ff00, 255), make_rgba(0x00ff00, 255),
+		make_rgba(0xffff00, 255), make_rgba(0xffff00, 255), 0.0f);
+	ui_draw_gradient(ui, make_v2f(slider_pos.x, slider_pos.y + slider_dimensions.y * slider_gradient_size * 5),
+		make_v2f(slider_dimensions.x, slider_dimensions.y * slider_gradient_size),
+		make_rgba(0xffff00, 255), make_rgba(0xffff00, 255),
+		make_rgba(0xff0000, 255), make_rgba(0xff0000, 255), 0.0f);
+
+	/* Main box */
+	ui_draw_gradient(ui, position, box_dimensions,
+		make_rgba(0xffffff, 255), *colour,
+		make_rgba(0x000000, 255), make_rgba(0x000000, 255), style.radius.value);
+
+	/* Brightness handle */
+	v2f handle_pos = make_v2f(0.0f, 0.0f);
+
+	if (mouse_over_rect(position, box_dimensions)) {
+		v2i mouse_pos = get_mouse_pos();
+		handle_pos = make_v2f((f32)mouse_pos.x - position.x - 2.5f, (f32)mouse_pos.y - position.y - 2.5f);
+	}
+
+	v2f handle_off = v2f_sub(position, make_v2f(2.5f, 2.5f));
+	ui_draw_circle(ui, v2f_add(handle_off, handle_pos), 5.0f, make_rgba(0x000000, 255));
+	ui_draw_circle(ui, v2f_add(handle_off, v2f_add(handle_pos, make_v2f(1.0f, 1.0f))), 4.0f, style.text_colour.value);
+
+	/* Result */
+	ui_draw_rect(ui, result_pos, result_dimensions, *colour, style.radius.value);
+
+	ui_advance(ui, make_v2f(dimensions.x, dimensions.y + container->spacing));
+}
+
 void ui_draw(const struct ui* ui) {
 #define commit_clip(p_, d_) \
 	if (rect_outside_clip(p_, d_, current_clip)) { \
@@ -1241,6 +1347,23 @@ void ui_draw(const struct ui* ui) {
 					.dimensions = make_v2f(rect->dimensions.x, rect->dimensions.y),
 					.colour     = rect->colour,
 					.radius     = rect->radius
+				});
+			} break;
+			case ui_cmd_draw_gradient: {
+				struct ui_cmd_draw_gradient* grad = (struct ui_cmd_draw_gradient*)cmd;
+
+				commit_clip(grad->position, grad->dimensions);
+
+				ui_renderer_push_gradient(ui->renderer, &(struct ui_renderer_gradient_quad) {
+					.position = grad->position,
+					.dimensions = grad->dimensions,
+					.colours = {
+						.top_left = grad->top_left,
+						.top_right = grad->top_right,
+						.bot_left = grad->bot_left,
+						.bot_right = grad->bot_right
+					},
+					.radius = grad->radius
 				});
 			} break;
 			case ui_cmd_draw_circle: {

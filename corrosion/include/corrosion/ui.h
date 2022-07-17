@@ -17,6 +17,7 @@ void ui_begin(struct ui* ui);
 void ui_end(struct ui* ui);
 
 void ui_draw_rect(struct ui* ui, v2f position, v2f dimensions, v4f colour, f32 radius);
+void ui_draw_gradient(struct ui* ui, v2f position, v2f dimensions, v4f top_left, v4f top_right, v4f bot_left, v4f bot_right, f32 radius);
 void ui_draw_circle(struct ui* ui, v2f position, f32 radius, v4f colour);
 void ui_draw_text(struct ui* ui, v2f position, v2f dimensions, const char* text, v4f colour);
 void ui_draw_texture(struct ui* ui, v2f position, v2f dimensions, const struct texture* texture, v4i rect, v4f colour, f32 radius);
@@ -66,6 +67,9 @@ bool ui_selectable_tree_node_ex(struct ui* ui, const char* class, const char* te
 #define ui_tree_node_ex(ui_, c_, t_, l_, i_) ui_selectable_tree_node_ex(ui_, c_, t_, l_, null, i_)
 #define ui_tree_node(ui_, t_, l_) ui_selectable_tree_node_ex(ui_, "", t_, l_, null, 0)
 void ui_tree_pop(struct ui* ui);
+
+void ui_colour_picker_ex(struct ui* ui, const char* class, v4f* colour, u64 id);
+#define ui_colour_picker(ui_, c_) ui_colour_picker_ex(ui_, "", c_, 0)
 
 void ui_begin_window();
 void ui_end_window();

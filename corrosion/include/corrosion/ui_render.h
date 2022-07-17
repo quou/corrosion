@@ -50,6 +50,21 @@ struct ui_renderer_quad {
 	const struct texture* texture;
 };
 
+struct ui_renderer_gradient_quad {
+	struct {
+		v4f top_left;
+		v4f top_right;
+		v4f bot_left;
+		v4f bot_right;
+	} colours;
+
+	v2f position;
+	v2f dimensions;
+	f32 radius;
+	v4f rect;
+	const struct texture* texture;
+};
+
 struct ui_renderer_text {
 	v2f position;
 	const char* text;
@@ -60,6 +75,7 @@ struct ui_renderer_text {
 struct ui_renderer* new_ui_renderer(const struct framebuffer* framebuffer);
 void free_ui_renderer(struct ui_renderer* renderer);
 void ui_renderer_push(struct ui_renderer* renderer, const struct ui_renderer_quad* quad);
+void ui_renderer_push_gradient(struct ui_renderer* renderer, const struct ui_renderer_gradient_quad* quad);
 void ui_renderer_flush(struct ui_renderer* renderer);
 void ui_renderer_end_frame(struct ui_renderer* renderer);
 void ui_renderer_clip(struct ui_renderer* renderer, v4i clip);

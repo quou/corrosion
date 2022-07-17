@@ -192,6 +192,13 @@ void cr_update(f64 ts) {
 	sprintf(text, "%.2f", test2);
 	ui_label_ex(app.ui, "knob_label align_right", text);
 
+	ui_columns(app.ui, 1, (f32[]) { 1.0f });
+
+	static v4f colour = make_rgba(0x00ff00, 255);
+	ui_colour_picker(app.ui, &colour);
+
+	ui_columns(app.ui, 2, (f32[]) { 0.5f, 0.5f });
+
 	if (ui_tree_node(app.ui, "Tree Node", false)) {
 		ui_columns(app.ui, 2, (f32[]) { 0.5f, 0.5f });
 
