@@ -93,7 +93,7 @@ bool write_raw_text(const char* path, const char* buf) {
 	return true;
 }
 
-void init_image_from_raw(struct image* image, u8* raw, usize raw_size) {
+void init_image_from_raw(struct image* image, const u8* raw, usize raw_size) {
 	i32 c;
 
 	u8* data = stbi_load_from_memory(raw, (i32)raw_size, &image->size.x, &image->size.y, &c, 4);

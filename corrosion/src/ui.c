@@ -119,6 +119,8 @@ struct font* default_font;
 struct ui {
 	struct ui_renderer* renderer;
 
+	struct texture* alpha_texture;
+
 	struct font* default_font;
 	struct font* font;
 
@@ -610,6 +612,13 @@ struct ui* new_ui(const struct framebuffer* framebuffer) {
 	ui->stylesheet = &default_stylesheet;
 	ui->font = default_font;
 
+	struct image alpha_image;
+	init_image_from_raw(&alpha_image, alpha_texture_png, sizeof alpha_texture_png);
+
+	ui->alpha_texture = video.new_texture(&alpha_image, texture_flags_none);
+
+	deinit_image(&alpha_image);
+
 	return ui;
 }
 
@@ -622,6 +631,7 @@ void free_ui(struct ui* ui) {
 	free_table(ui->number_input_trailing_fullstops);
 	free_table(ui->container_meta);
 	free_ui_renderer(ui->renderer);
+	video.free_texture(ui->alpha_texture);
 	core_free(ui->cmd_buffer);
 	core_free(ui);
 }
@@ -1267,50 +1277,86 @@ void ui_colour_picker_ex(struct ui* ui, const char* class, v4f* colour, u64 id) 
 
 	const v2f dimensions = make_v2f(box_dimensions.x + slider_dimensions.x + result_dimensions.x + style.padding.value.x * 2.0f, box_dimensions.y);
 	const v2f position = ui->cursor_pos;
-	const v2f slider_pos = make_v2f(position.x + box_dimensions.x + style.padding.value.x, position.y);
-	const v2f result_pos = make_v2f(slider_pos.x + slider_dimensions.x + style.padding.value.x, position.y);
+	const v2f slider_pos   = make_v2f(position.x + box_dimensions.x + style.padding.value.x, position.y);
+	const v2f a_slider_pos = make_v2f(slider_pos.x + slider_dimensions.x + style.padding.value.x, position.y);
+	const v2f result_pos = make_v2f(a_slider_pos.x + slider_dimensions.x + style.padding.value.x, position.y);
 
 	v4f hsva = rgba_to_hsva(*colour);
 
 	const f32 slider_gradient_size = 0.166f;
 	
 	/* Hue slider. Made of multiple rectangles. */
-	ui_draw_gradient(ui, make_v2f(slider_pos.x, slider_pos.y + slider_dimensions.y * slider_gradient_size * 0),
-		make_v2f(slider_dimensions.x, slider_dimensions.y * slider_gradient_size),
-		make_rgba(0xff0000, 255), make_rgba(0xff0000, 255),
-		make_rgba(0xff00ff, 255), make_rgba(0xff00ff, 255), 0.0f);
-	ui_draw_gradient(ui, make_v2f(slider_pos.x, slider_pos.y + slider_dimensions.y * slider_gradient_size * 1),
-		make_v2f(slider_dimensions.x, slider_dimensions.y * slider_gradient_size),
-		make_rgba(0xff00ff, 255), make_rgba(0xff00ff, 255),
-		make_rgba(0x0000ff, 255), make_rgba(0x0000ff, 255), 0.0f);
-	ui_draw_gradient(ui, make_v2f(slider_pos.x, slider_pos.y + slider_dimensions.y * slider_gradient_size * 2),
-		make_v2f(slider_dimensions.x, slider_dimensions.y * slider_gradient_size),
-		make_rgba(0x0000ff, 255), make_rgba(0x0000ff, 255),
-		make_rgba(0x00ffff, 255), make_rgba(0x00ffff, 255), 0.0f);
-	ui_draw_gradient(ui, make_v2f(slider_pos.x, slider_pos.y + slider_dimensions.y * slider_gradient_size * 3),
-		make_v2f(slider_dimensions.x, slider_dimensions.y * slider_gradient_size),
-		make_rgba(0x00ffff, 255), make_rgba(0x00ffff, 255),
-		make_rgba(0x00ff00, 255), make_rgba(0x00ff00, 255), 0.0f);
-	ui_draw_gradient(ui, make_v2f(slider_pos.x, slider_pos.y + slider_dimensions.y * slider_gradient_size * 4),
-		make_v2f(slider_dimensions.x, slider_dimensions.y * slider_gradient_size),
-		make_rgba(0x00ff00, 255), make_rgba(0x00ff00, 255),
-		make_rgba(0xffff00, 255), make_rgba(0xffff00, 255), 0.0f);
-	ui_draw_gradient(ui, make_v2f(slider_pos.x, slider_pos.y + slider_dimensions.y * slider_gradient_size * 5),
-		make_v2f(slider_dimensions.x, slider_dimensions.y * slider_gradient_size),
-		make_rgba(0xffff00, 255), make_rgba(0xffff00, 255),
-		make_rgba(0xff0000, 255), make_rgba(0xff0000, 255), 0.0f);
+	v4f hues[] = {
+		make_rgba(0xff0000, 255),
+		make_rgba(0xffff00, 255),
+		make_rgba(0x00ff00, 255),
+		make_rgba(0x00ffff, 255),
+		make_rgba(0x0000ff, 255),
+		make_rgba(0xff00ff, 255),
+		make_rgba(0xff0000, 255)
+	};
 
-	/* Brightness box */
-	v4f top_colour = hsva_to_rgba((v4f) { hsva.h, 1.0f, 1.0f, 1.0f });
-	ui_draw_gradient(ui, position, box_dimensions,
-		make_rgba(0xffffff, 255), top_colour,
+	for (i32 i = 0; i < 6; i++) {
+		ui_draw_gradient(ui, make_v2f(slider_pos.x, slider_pos.y + slider_dimensions.y * slider_gradient_size * (f32)i),
+			make_v2f(slider_dimensions.x, slider_dimensions.y * slider_gradient_size),
+			hues[i], hues[i],
+			hues[i + 1], hues[i + 1], 0.0f);
+	}
+
+	/* Hue handle */
+	if (mouse_over_rect(slider_pos, slider_dimensions) && mouse_btn_just_pressed(mouse_btn_left)) {
+		ui->active = id + 2;
+	}
+
+	if (ui->active == id + 2) {
+		v2i mouse_pos = get_mouse_pos();
+		hsva.h = saturate(((f32)mouse_pos.y - slider_pos.y) / slider_dimensions.y);
+	}
+
+	const f32 hue_handle_y_pos = hsva.h * slider_dimensions.y;
+	ui_draw_rect(ui,
+		make_v2f(slider_pos.x, slider_pos.y + hue_handle_y_pos),
+		make_v2f(slider_dimensions.x, 1.0f), make_rgba(0x000000, 255), 0.0f);
+	
+	/* Alpha slider. */
+	ui_draw_gradient(ui, a_slider_pos, slider_dimensions,
+		make_rgba(0xffffff, 255), make_rgba(0xffffff, 255),
 		make_rgba(0x000000, 255), make_rgba(0x000000, 255), style.radius.value);
 
-	/* Brightness handle */
-	if (mouse_over_rect(position, box_dimensions)) {
+	/* Alpha handle */
+	if (mouse_over_rect(a_slider_pos, slider_dimensions) && mouse_btn_just_pressed(mouse_btn_left)) {
+		ui->active = id + 3;
+	}
+
+	if (ui->active == id + 3) {
 		v2i mouse_pos = get_mouse_pos();
-		hsva.s =        saturate(((f32)mouse_pos.x - position.x) / (box_dimensions.x - 1.0f));
-		hsva.v = 1.0f - saturate(((f32)mouse_pos.y - position.y) / (box_dimensions.y - 1.0f));
+		hsva.a = 1.0f - saturate(((f32)mouse_pos.y - slider_pos.y) / slider_dimensions.y);
+	}
+
+	const f32 a_handle_y_pos = (1.0f - hsva.a) * slider_dimensions.y;
+	ui_draw_rect(ui,
+		make_v2f(a_slider_pos.x, a_slider_pos.y + a_handle_y_pos),
+		make_v2f(slider_dimensions.x, 1.0f), make_rgba(0x000000, 255), 0.0f);
+
+	/* Saturation and Value control. The second rectangle dictates the brightness,
+	 * the first dictates the hue. This is because the rasterizer's interpolation
+	 * isn't really good enough as it produces visible triangles. */
+	v4f hue_rgb = hsva_to_rgba((v4f) { hsva.h, 1.0f, 1.0f, 1.0f });
+	ui_draw_gradient(ui, position, box_dimensions,
+		make_rgba(0xffffff, 255), hue_rgb,
+		make_rgba(0xffffff, 255), hue_rgb, style.radius.value);
+	ui_draw_gradient(ui, position, box_dimensions,
+		make_rgba(0x000000, 0),   make_rgba(0x000000, 0),
+		make_rgba(0x000000, 255), make_rgba(0x000000, 255), style.radius.value);
+
+	if (mouse_over_rect(position, box_dimensions) && mouse_btn_just_pressed(mouse_btn_left)) {
+		ui->active = id + 1;
+	}
+
+	if (ui->active == id + 1) {
+		v2i mouse_pos = get_mouse_pos();
+		hsva.s =        saturate(((f32)mouse_pos.x - position.x - 2.5f) / (box_dimensions.x));
+		hsva.v = 1.0f - saturate(((f32)mouse_pos.y - position.y - 2.5f) / (box_dimensions.y));
 	}
 
 	v2f handle_pos = make_v2f(hsva.s * box_dimensions.x, (1.0f - hsva.v) * box_dimensions.y);
@@ -1321,7 +1367,8 @@ void ui_colour_picker_ex(struct ui* ui, const char* class, v4f* colour, u64 id) 
 
 	*colour = hsva_to_rgba(hsva);
 
-	/* Result */
+	/* Result. A checkerboard is drawn underneath to showcase transparency. */
+	ui_draw_texture(ui, result_pos, result_dimensions, ui->alpha_texture, make_v4i(0, 0, 64, 64), make_rgba(0xffffff, 255), style.radius.value);
 	ui_draw_rect(ui, result_pos, result_dimensions, *colour, style.radius.value);
 
 	ui_advance(ui, make_v2f(dimensions.x, dimensions.y + container->spacing));

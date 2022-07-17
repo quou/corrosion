@@ -70,5 +70,5 @@ struct image {
 	u8* colours;
 };
 
-void init_image_from_raw(struct image* image, u8* raw, usize raw_size);
+void init_image_from_raw(struct image* image, const u8* raw, usize raw_size);
 void deinit_image(struct image* image);
