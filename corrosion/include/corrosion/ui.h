@@ -33,7 +33,9 @@ void ui_font(struct ui* ui, struct font* font);
 void ui_stylesheet(struct ui* ui, struct ui_stylesheet* ss);
 
 void ui_begin_container_ex(struct ui* ui, const char* class, v4f rect, bool scrollable);
+void ui_begin_floating_container_ex(struct ui* ui, const char* class, v4f rect, bool scrollable);
 #define ui_begin_container(ui_, r_, s_) ui_begin_container_ex(ui_, "", r_, s_)
+#define ui_begin_floating_container(ui_, r_, s_) ui_begin_floating_container_ex(ui_, "", r_, s_)
 void ui_end_container(struct ui* ui);
 
 void ui_columns(struct ui* ui, usize count, f32* columns);

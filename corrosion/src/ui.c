@@ -73,6 +73,9 @@ struct ui_container {
 	v4f rect;
 	v4f padding;
 	f32 spacing;
+	
+	bool floating;
+	v2f old_cursor_pos;
 
 	u64 id;
 	bool scrollable;
@@ -581,7 +584,7 @@ void ui_init() {
 
 	table_set(default_stylesheet.normal, hash_string("picker"), ((struct ui_style) {
 		.text_colour       = { true, make_rgba(0xffffff, 255) },
-		.background_colour = { true, make_rgba(0x000000, 0) },
+		.background_colour = { true, make_rgba(0x262626, 255) },
 		.max_size          = { true, make_v2f(150.0f, 150.0f) },
 		.min_size          = { true, make_v2f(150.0f, 150.0f) },
 		.padding           = { true, 3.0f }
@@ -739,6 +742,36 @@ void ui_begin_container_ex(struct ui* ui, const char* class, v4f rect, bool scro
 	ui->cursor_pos = make_v2f(clip.x + padding.x + scroll.x, clip.y + padding.y + scroll.y);
 }
 
+void ui_begin_floating_container_ex(struct ui* ui, const char* class, v4f rect, bool scrollable) {
+	u64 id = ui->container_id++;
+	struct ui_container_meta* meta = get_container_meta(ui, id);
+
+	v2f scroll = make_v2f(0.0f, 0.0f);
+	if (scrollable) {
+		scroll = meta->scroll;
+	} else {
+		scroll = make_v2f(0.0f, 0.0f);
+	}
+
+	const struct ui_style style = ui_get_style(ui, "container", class, ui_style_variant_none);
+
+	ui_clip(ui, rect);
+	ui_draw_rect(ui, make_v2f(rect.x, rect.y), make_v2f(rect.z, rect.w), style.background_colour.value, style.radius.value);
+
+	vector_push(ui->container_stack, ((struct ui_container) {
+		.rect = rect,
+		.padding = style.padding.value,
+		.spacing = style.spacing.value,
+		.id = id,
+		.scrollable = scrollable,
+		.left_bound = rect.x + style.padding.value.x + scroll.x,
+		.content_size = make_v2f(0.0f, 0.0f),
+		.old_cursor_pos = ui->cursor_pos
+	}));
+
+	ui->cursor_pos = make_v2f(rect.x + style.padding.value.x, rect.y + style.padding.value.y);
+}
+
 void ui_end_container(struct ui* ui) {
 	struct ui_container* container = vector_pop(ui->container_stack);
 
@@ -770,9 +803,13 @@ void ui_end_container(struct ui* ui) {
 			meta->scroll.x = 0.0f;
 		}
 	}
-
-	ui->cursor_pos.x -= container->padding.x;
-	ui->cursor_pos.y += container->padding.y;
+	
+	if (container->floating) {
+		ui->cursor_pos = container->old_cursor_pos;
+	} else {
+		ui->cursor_pos.x -= container->padding.x;
+		ui->cursor_pos.y += container->padding.y;
+	}
 
 	if (vector_count(ui->container_stack) > 0) {
 		struct ui_container* parent = vector_end(ui->container_stack) - 1;
