@@ -192,10 +192,16 @@ void cr_update(f64 ts) {
 	sprintf(text, "%.2f", test2);
 	ui_label_ex(app.ui, "knob_label align_right", text);
 
-	ui_columns(app.ui, 1, (f32[]) { 1.0f });
+	ui_columns(app.ui, 2, (f32[]) { 0.25f, 0.70f });
+	ui_label(app.ui, "Colour Picker:");
 
-	static v4f colour = make_rgba(0x00ff00, 255);
+	static v4f colour = make_rgba(0xffffff, 255);
 	ui_colour_picker(app.ui, &colour);
+
+	ui_label(app.ui, "Colour Picker:");
+
+	static v4f colour2 = make_rgba(0x00ff00, 255);
+	ui_colour_picker(app.ui, &colour2);
 
 	ui_columns(app.ui, 2, (f32[]) { 0.5f, 0.5f });
 
