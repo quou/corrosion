@@ -587,7 +587,7 @@ void ui_init() {
 		.background_colour = { true, make_rgba(0x262626, 255) },
 		.max_size          = { true, make_v2f(150.0f, 150.0f) },
 		.min_size          = { true, make_v2f(150.0f, 150.0f) },
-		.padding           = { true, 3.0f }
+		.padding           = { true, 3.0f },
 	}));
 
 	reg_res_type("stylesheet", &(struct res_config) {
