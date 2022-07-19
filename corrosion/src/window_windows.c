@@ -22,11 +22,13 @@ static LRESULT CALLBACK win32_event_callback(HWND hwnd, UINT msg, WPARAM wparam,
 			i32 nw = lparam & 0xFFFF;
 			i32 nh = (lparam >> 16) & 0xFFFF;
 
-			if (window.api == video_api_vulkan) {
-				video_vk_want_recreate();
-			}
+			if (nw != 0 && nh != 0) {
+				if (window.api == video_api_vulkan) {
+					video_vk_want_recreate();
+				}
 
-			window.size = make_v2i(nw, nh);
+				window.size = make_v2i(nw, nh);
+			}
 
 			return 0;
 		case WM_MOUSEMOVE:
@@ -35,6 +37,48 @@ static LRESULT CALLBACK win32_event_callback(HWND hwnd, UINT msg, WPARAM wparam,
 
 			window.mouse_pos = make_v2i((i32)x, (i32)y);
 			return 0;
+		case WM_KEYDOWN: {
+			i32 sym = (i32)wparam;
+			i32* key_ptr = table_get(window.keymap, sym);
+			if (key_ptr) {
+				i32 key = *key_ptr;
+
+				window.held_keys[key] = true;
+				window.pressed_keys[key] = true;
+			}
+
+			/* Text input */
+			char state[256];
+			GetKeyboardState(state);
+
+			/* This is unsafe and could potentially write past the bonuds of window.input_string.
+			 * I doubt some madman will press more than 256 keys in one frame, though. */
+			u32 scan_code = (lparam >> 16) & 0xff;
+			i32 i = ToAscii((u32)wparam, scan_code, state, (LPWORD)window.input_string, 0);
+			window.input_string[i] = '\0';
+
+			if ((window.input_string_len = strlen(window.input_string)) > 0) {
+				for (usize i = 0; i < window.input_string_len; i++) {
+					if (window.input_string[i] < ' ' || window.input_string[i] > '~') {
+						window.input_string[i] = '\0';
+						window.input_string_len--;
+					}
+				}
+			}
+
+			return 0;
+		}
+		case WM_KEYUP: {
+			i32 sym = (i32)wparam;
+			i32* key_ptr = table_get(window.keymap, sym);
+			if (key_ptr) {
+				i32 key = *key_ptr;
+
+				window.held_keys[key] = false;
+				window.released_keys[key] = true;
+			}
+			return 0;
+		}
 		case WM_LBUTTONDOWN:
 			window.held_mouse_btns[mouse_btn_left] = true;
 			window.pressed_mouse_btns[mouse_btn_left] = true;
@@ -71,14 +115,15 @@ void init_window(const struct window_config* config, u32 api) {
 	memset(&window, 0, sizeof window);
 
 	WNDCLASSW wc = { 0 };
-	wc.hIcon = LoadIcon(NULL, IDI_APPLICATION);
+	wc.hIcon = LoadIcon(null, IDI_APPLICATION);
+	wc.hCursor = LoadCursor(null, IDC_ARROW);
 	wc.style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC;
-	wc.hInstance = GetModuleHandle(NULL);
+	wc.hInstance = GetModuleHandle(null);
 	wc.lpfnWndProc = win32_event_callback;
 	wc.cbClsExtra = 0;
 	wc.cbWndExtra = 0;
-	wc.lpszMenuName = NULL;
-	wc.hbrBackground = NULL;
+	wc.lpszMenuName = null;
+	wc.hbrBackground = null;
 	wc.lpszClassName = L"corrosion";
 	RegisterClassW(&wc);
 
@@ -98,8 +143,10 @@ void init_window(const struct window_config* config, u32 api) {
 	i32 create_width = win_rect.right - win_rect.left;
 	i32 create_height = win_rect.bottom - win_rect.top;
 
-	window.hwnd = CreateWindowExA(dw_ex_style, "corrosion", "", dw_style, 0, 0,
+	window.hwnd = CreateWindowExA(dw_ex_style, "corrosion", config->title, dw_style, 0, 0,
 			create_width, create_height, null, null, GetModuleHandle(null), null);
+
+	/* For some reason this only sets the first character. Investigate. */
 	SetWindowTextA(window.hwnd, config->title);
 
 	ShowWindow(window.hwnd, SW_SHOWNORMAL);

@@ -65,9 +65,6 @@ bool read_raw_text(const char* path, char** buf) {
 
 	*buf = core_alloc(file_size + 1);
 	const usize bytes_read = fread(*buf, sizeof(char), file_size, file);
-	if (bytes_read < file_size) {
-		warning("Failed to read all of file: `%s'\n", path);
-	}
 
 	(*buf)[bytes_read] = '\0';
 
