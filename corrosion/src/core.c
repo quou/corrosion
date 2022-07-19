@@ -21,7 +21,7 @@ u64 hash_string(const char* str) {
 	return elf_hash((const u8*)str, strlen(str));
 }
 
-void* _find_table_el(void* els_v, usize el_size, usize capacity, usize key_size, void* key_ptr,
+void* _find_table_el(void* els_v, usize el_size, usize capacity, usize key_size, const void* key_ptr,
 	usize key_off, usize val_off, usize state_off, usize* ind) {
 	u64 nk = table_null_key;
 
@@ -49,7 +49,7 @@ void* _find_table_el(void* els_v, usize el_size, usize capacity, usize key_size,
 	}
 }
 
-void* _table_get(void* els, usize el_size, usize capacity, usize count, usize key_size, void* key,
+void* _table_get(void* els, usize el_size, usize capacity, usize count, usize key_size, const void* key,
 	usize key_off, usize val_off, usize state_off) {
 	if (count == 0) { return null; }
 	
@@ -79,7 +79,7 @@ void* _table_first_key(void* els, usize el_size, usize capacity, usize count, us
 	return null;
 }
 
-void* _table_next_key(void* els, usize el_size, usize capacity, usize count, usize key_size, void* key,
+void* _table_next_key(void* els, usize el_size, usize capacity, usize count, usize key_size, const void* key,
 	usize key_off, usize val_off, usize state_off) {
 	if (count == 0) { return null; }
 

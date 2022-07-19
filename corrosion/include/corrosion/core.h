@@ -89,13 +89,13 @@ enum {
 	}
 
 /* Internal table functions, to be called upon by the table macros. */
-void* _find_table_el(void* els, usize el_size, usize capacity, usize key_size, void* key,
+void* _find_table_el(void* els, usize el_size, usize capacity, usize key_size, const void* key,
 	usize key_off, usize val_off, usize state_off, usize* ind);
-void* _table_get(void* els, usize el_size, usize capacity, usize count, usize key_size, void* key,
+void* _table_get(void* els, usize el_size, usize capacity, usize count, usize key_size, const void* key,
 	usize key_off, usize val_off, usize state_off);
 void* _table_first_key(void* els, usize el_size, usize capacity, usize count, usize key_size,
 	usize key_off, usize val_off, usize state_off);
-void* _table_next_key(void* els, usize el_size, usize capacity, usize count, usize key_size, void* key,
+void* _table_next_key(void* els, usize el_size, usize capacity, usize count, usize key_size, const void* key,
 	usize key_off, usize val_off, usize state_off);
 
 #define _table_resize(t_, cap_) \

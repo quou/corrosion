@@ -780,7 +780,7 @@ void ui_end_container(struct ui* ui) {
 	container->content_size.y = (ui->cursor_pos.y - container->rect.y);
 	container->content_size.x += container->padding.x;
 
-	if (container->scrollable) {
+	if (container->scrollable && mouse_over_rect(make_v2f(container->rect.x, container->rect.y), make_v2f(container->rect.z, container->rect.w))) {
 		meta->scroll.x += (f32)get_scroll().x * 10.0f;
 		meta->scroll.y += (f32)get_scroll().y * get_font_height(ui->font) * 3.0f;
 
