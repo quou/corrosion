@@ -22,3 +22,7 @@ bin
 obj
 shaderbin
 projects/gmake/shaders/compiler
+
+*.exe
+*.pdb
+.vs

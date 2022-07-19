@@ -42,7 +42,7 @@ struct swapchain_capabilities {
 };
 
 static struct swapchain_capabilities get_swapchain_capabilities(VkPhysicalDevice device) {
-	struct swapchain_capabilities r = {};
+	struct swapchain_capabilities r = { 0 };
 
 	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, get_window_surface(), &r.capabilities);
 
@@ -2190,7 +2190,7 @@ void video_vk_update_vertex_buffer(struct vertex_buffer* vb_, const void* data, 
 	}
 #endif
 
-	add_memcpy_cmd(vctx.update_queues + vctx.current_frame, vb->data + offset, data, size);
+	add_memcpy_cmd(vctx.update_queues + vctx.current_frame, ((u8*)vb->data) + offset, data, size);
 }
 
 struct index_buffer* video_vk_new_index_buffer(u16* indices, usize count, u32 flags) {

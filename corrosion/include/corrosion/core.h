@@ -35,7 +35,7 @@ void vwarning(const char* fmt, va_list args);
 
 #define abort_with(fmt_, ...) \
 	do { \
-		error(fmt_, #__VA_ARGS__); \
+		error(fmt_, ##__VA_ARGS__); \
 		abort(); \
 	} while (0)
 

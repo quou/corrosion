@@ -6,7 +6,7 @@
 
 struct window;
 
-void init_window(struct window_config* config, u32 api);
+void init_window(const struct window_config* config, u32 api);
 void deinit_window();
 bool window_open();
 void update_events();

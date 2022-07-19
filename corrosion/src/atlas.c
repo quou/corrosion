@@ -32,10 +32,10 @@ bool atlas_add_texture(struct atlas* atlas, const struct texture* new_texture) {
 	table_set(atlas->rects, new_texture, make_v4i(0, 0, 0, 0));
 
 	v2i final_size = make_v2i(0, 0);
-	for (struct texture** texture_ptr = table_first(atlas->rects);
+	for (const struct texture** texture_ptr = table_first(atlas->rects);
 		texture_ptr;
 		texture_ptr = table_next(atlas->rects, *texture_ptr)) {
-		struct texture* texture = *texture_ptr;
+		const struct texture* texture = *texture_ptr;
 
 		v2i size = video.get_texture_size(texture);
 

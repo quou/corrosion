@@ -21,7 +21,7 @@ Atom wm_delete_window_id, wm_protocols_id;
 
 struct window window;
 
-void init_window(struct window_config* config, u32 api) {
+void init_window(const struct window_config* config, u32 api) {
 	memset(&window, 0, sizeof window);
 
 	XInitThreads();

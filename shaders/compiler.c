@@ -68,6 +68,7 @@ i32 main(i32 argc, const char** argv) {
 	const char* out_path     = argv[3];
 
 	char* file_not_path = copy_string(file_path);
+	replace(file_not_path, '\\', '_');
 	replace(file_not_path, '/', '_');
 	replace(file_not_path, '.', '_');
 

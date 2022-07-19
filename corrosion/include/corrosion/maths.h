@@ -4,8 +4,13 @@
 
 #include "common.h"
 
+#ifndef min
 #define min(a_, b_) ((a_) < (b_) ? (a_) : (b_))
+#endif
+
+#ifndef max
 #define max(a_, b_) ((a_) > (b_) ? (a_) : (b_))
+#endif
 
 #define v2(t_) struct { t_ x; t_ y; }
 #define v3(t_) struct { t_ x; t_ y; t_ z; }
@@ -35,12 +40,16 @@ typedef m4(f32) m4f;
 
 #define to_rad(v_) _Generic((v_), \
 		f32: (v_ * (pi_f / 180.0f)), \
-		f64: (v_ * (pi_d / 180.0))  \
+		f64: (v_ * (pi_d / 180.0)),  \
+		const f32: (v_ * (pi_f / 180.0f)), \
+		const f64: (v_ * (pi_d / 180.0))  \
 	)
 
 #define to_deg(v_) _Generic((v_), \
 		f32: (v_ * (180.0f / pi_f)), \
-		f64: (v_ * (180.0  / pi_d))  \
+		f64: (v_ * (180.0  / pi_d)),  \
+		const f32: (v_ * (180.0f / pi_f)), \
+		const f64: (v_ * (180.0  / pi_d)) \
 	)
 
 #define lerp(a_, b_, t_) ((a_) + (t_) * ((b_) - (a_)))
