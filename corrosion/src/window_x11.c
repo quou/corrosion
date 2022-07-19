@@ -136,14 +136,6 @@ void init_window(const struct window_config* config, u32 api) {
 	table_set(window.keymap, XK_7, key_7);
 	table_set(window.keymap, XK_8, key_8);
 	table_set(window.keymap, XK_9, key_9);
-	table_set(window.keymap, XK_apostrophe, key_apostrophe);
-	table_set(window.keymap, XK_comma, key_comma);
-	table_set(window.keymap, XK_minus, key_minus);
-	table_set(window.keymap, XK_slash, key_slash);
-	table_set(window.keymap, XK_semicolon, key_semicolon);
-	table_set(window.keymap, XK_equal, key_equal);
-	table_set(window.keymap, XK_backslash, key_backslash);
-	table_set(window.keymap, XK_grave, key_grave_accent);
 }
 
 void window_create_vk_surface(VkInstance instance) {

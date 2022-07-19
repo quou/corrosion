@@ -153,8 +153,8 @@ void cr_update(f64 ts) {
 
 	gizmo_camera(&(struct camera) {
 		.fov = 70.0f,
-		.near = 0.1f,
-		.far = 100.0f
+		.near_plane = 0.1f,
+		.far_plane = 100.0f
 	});
 
 	gizmo_colour(make_rgba(0x00ffff, 255));

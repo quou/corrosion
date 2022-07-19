@@ -135,8 +135,8 @@ struct camera {
 	v3f rotation;
 
 	f32 fov;
-	f32 near;
-	f32 far;
+	f32 near_plane;
+	f32 far_plane;
 };
 
 m4f get_camera_view(const struct camera* camera);

@@ -18,6 +18,50 @@ static LRESULT CALLBACK win32_event_callback(HWND hwnd, UINT msg, WPARAM wparam,
 		case WM_DESTROY:
 			window.open = false;
 			return 0;
+		case WM_SIZE:
+			i32 nw = lparam & 0xFFFF;
+			i32 nh = (lparam >> 16) & 0xFFFF;
+
+			if (window.api == video_api_vulkan) {
+				video_vk_want_recreate();
+			}
+
+			window.size = make_v2i(nw, nh);
+
+			return 0;
+		case WM_MOUSEMOVE:
+			u32 x = lparam & 0xFFFF;
+			u32 y = (lparam >> 16) & 0xFFFF;
+
+			window.mouse_pos = make_v2i((i32)x, (i32)y);
+			return 0;
+		case WM_LBUTTONDOWN:
+			window.held_mouse_btns[mouse_btn_left] = true;
+			window.pressed_mouse_btns[mouse_btn_left] = true;
+			return 0;
+		case WM_LBUTTONUP:
+			window.held_mouse_btns[mouse_btn_left] = false;
+			window.released_mouse_btns[mouse_btn_left] = true;
+			return 0;
+		case WM_MBUTTONDOWN:
+			window.held_mouse_btns[mouse_btn_middle] = true;
+			window.pressed_mouse_btns[mouse_btn_middle] = true;
+			return 0;
+		case WM_MBUTTONUP:
+			window.held_mouse_btns[mouse_btn_middle] = false;
+			window.released_mouse_btns[mouse_btn_middle] = true;
+			return 0;
+		case WM_RBUTTONDOWN:
+			window.held_mouse_btns[mouse_btn_right] = true;
+			window.pressed_mouse_btns[mouse_btn_right] = true;
+			return 0;
+		case WM_RBUTTONUP:
+			window.held_mouse_btns[mouse_btn_right] = false;
+			window.released_mouse_btns[mouse_btn_right] = true;
+			return 0;
+		case WM_MOUSEWHEEL:
+			window.scroll.y += GET_WHEEL_DELTA_WPARAM(wparam) > 1 ? 1 : -1;
+			return 0;
 	}
 
 	return DefWindowProc(hwnd, msg, wparam, lparam);
@@ -47,10 +91,195 @@ void init_window(const struct window_config* config, u32 api) {
 		dw_style |= WS_THICKFRAME | WS_MAXIMIZEBOX;
 	}
 
-	window->size = config->size;
+	window.size = config->size;
 
 	RECT win_rect = { 0, 0, window.size.x, window.size.y };
 	AdjustWindowRectEx(&win_rect, dw_style, FALSE, dw_ex_style);
 	i32 create_width = win_rect.right - win_rect.left;
 	i32 create_height = win_rect.bottom - win_rect.top;
+
+	window.hwnd = CreateWindowExA(dw_ex_style, "corrosion", "", dw_style, 0, 0,
+			create_width, create_height, null, null, GetModuleHandle(null), null);
+	SetWindowTextA(window.hwnd, config->title);
+
+	ShowWindow(window.hwnd, SW_SHOWNORMAL);
+
+	memset(window.held_keys, 0, sizeof window.pressed_keys);
+	memset(window.held_mouse_btns, 0, sizeof window.held_mouse_btns);
+
+	memset(&window.keymap, 0, sizeof window.keymap);
+
+	table_set(window.keymap, 0x00, key_unknown);
+	table_set(window.keymap, 0x41, key_A);
+	table_set(window.keymap, 0x42, key_B);
+	table_set(window.keymap, 0x43, key_C);
+	table_set(window.keymap, 0x44, key_D);
+	table_set(window.keymap, 0x45, key_E);
+	table_set(window.keymap, 0x46, key_F);
+	table_set(window.keymap, 0x47, key_G);
+	table_set(window.keymap, 0x48, key_H);
+	table_set(window.keymap, 0x49, key_I);
+	table_set(window.keymap, 0x4a, key_J);
+	table_set(window.keymap, 0x4b, key_K);
+	table_set(window.keymap, 0x4c, key_L);
+	table_set(window.keymap, 0x4d, key_M);
+	table_set(window.keymap, 0x4e, key_N);
+	table_set(window.keymap, 0x4f, key_O);
+	table_set(window.keymap, 0x50, key_P);
+	table_set(window.keymap, 0x51, key_Q);
+	table_set(window.keymap, 0x52, key_R);
+	table_set(window.keymap, 0x53, key_S);
+	table_set(window.keymap, 0x54, key_T);
+	table_set(window.keymap, 0x55, key_U);
+	table_set(window.keymap, 0x56, key_V);
+	table_set(window.keymap, 0x57, key_W);
+	table_set(window.keymap, 0x58, key_X);
+	table_set(window.keymap, 0x59, key_Y);
+	table_set(window.keymap, 0x5a, key_Z);
+	table_set(window.keymap, VK_F1, key_f1);
+	table_set(window.keymap, VK_F2, key_f2);
+	table_set(window.keymap, VK_F3, key_f3);
+	table_set(window.keymap, VK_F4, key_f4);
+	table_set(window.keymap, VK_F5, key_f5);
+	table_set(window.keymap, VK_F6, key_f6);
+	table_set(window.keymap, VK_F7, key_f7);
+	table_set(window.keymap, VK_F8, key_f8);
+	table_set(window.keymap, VK_F9, key_f9);
+	table_set(window.keymap, VK_F10, key_f10);
+	table_set(window.keymap, VK_F11, key_f11);
+	table_set(window.keymap, VK_F12, key_f12);
+	table_set(window.keymap, VK_DOWN, key_down);
+	table_set(window.keymap, VK_LEFT, key_left);
+	table_set(window.keymap, VK_RIGHT, key_right);
+	table_set(window.keymap, VK_UP, key_up);
+	table_set(window.keymap, VK_ESCAPE, key_escape);
+	table_set(window.keymap, VK_RETURN, key_return);
+	table_set(window.keymap, VK_BACK, key_backspace);
+	table_set(window.keymap, VK_RETURN, key_return);
+	table_set(window.keymap, VK_TAB, key_tab);
+	table_set(window.keymap, VK_DELETE, key_delete);
+	table_set(window.keymap, VK_HOME, key_home);
+	table_set(window.keymap, VK_END, key_end);
+	table_set(window.keymap, VK_PRIOR, key_page_up);
+	table_set(window.keymap, VK_NEXT, key_page_down);
+	table_set(window.keymap, VK_INSERT, key_insert);
+	table_set(window.keymap, VK_LSHIFT, key_shift);
+	table_set(window.keymap, VK_RSHIFT, key_shift);
+	table_set(window.keymap, VK_LCONTROL, key_control);
+	table_set(window.keymap, VK_RCONTROL, key_control);
+	table_set(window.keymap, VK_LWIN, key_super);
+	table_set(window.keymap, VK_RWIN, key_super);
+	table_set(window.keymap, VK_LMENU, key_alt);
+	table_set(window.keymap, VK_RMENU, key_alt);
+	table_set(window.keymap, VK_SPACE, key_space);
+	table_set(window.keymap, 0x30, key_0);
+	table_set(window.keymap, 0x31, key_1);
+	table_set(window.keymap, 0x32, key_2);
+	table_set(window.keymap, 0x33, key_3);
+	table_set(window.keymap, 0x34, key_4);
+	table_set(window.keymap, 0x35, key_5);
+	table_set(window.keymap, 0x36, key_6);
+	table_set(window.keymap, 0x37, key_7);
+	table_set(window.keymap, 0x38, key_8);
+	table_set(window.keymap, 0x39, key_9);
+
+	window.open = true;
+}
+
+void window_create_vk_surface(VkInstance instance) {
+	if (vkCreateWin32SurfaceKHR(instance, &(VkWin32SurfaceCreateInfoKHR) {
+			.sType = VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR,
+			.hwnd = window.hwnd,
+			.hinstance = GetModuleHandle(null)
+		}, null, &window.surface) != VK_SUCCESS) {
+		abort_with("Failed to create Vulkan surface.");
+	}
+}
+
+void window_destroy_vk_surface(VkInstance instance) {
+	vkDestroySurfaceKHR(instance, window.surface, null);
+}
+
+void window_get_vk_extensions(vector(const char*)* extensions) {
+	vector_push(*extensions, "VK_KHR_surface");
+	vector_push(*extensions, "VK_KHR_win32_surface");
+}
+
+VkSurfaceKHR get_window_surface() {
+	return window.surface;
+}
+
+void deinit_window() {
+	PostQuitMessage(0);
+	DestroyWindow(window.hwnd);
+
+	free_table(window.keymap);
+}
+
+void update_events() {
+	memset(window.pressed_keys, 0, sizeof window.pressed_keys);
+	memset(window.released_keys, 0, sizeof window.released_keys);
+
+	memset(window.pressed_mouse_btns, 0, sizeof window.pressed_mouse_btns);
+	memset(window.released_mouse_btns, 0, sizeof window.released_mouse_btns);
+
+	window.input_string_len = 0;
+	window.scroll = make_v2i(0, 0);
+
+	MSG msg;
+
+	while (PeekMessage(&msg, null, 0, 0, PM_REMOVE)) {
+		TranslateMessage(&msg);
+		DispatchMessage(&msg);
+	}
+}
+
+bool window_open() {
+	return window.open;
+}
+
+v2i get_window_size() {
+	return window.size;
+}
+
+bool key_pressed(u32 code) {
+	return window.held_keys[code];
+}
+
+bool key_just_pressed(u32 code) {
+	return window.pressed_keys[code];
+}
+
+bool key_just_released(u32 code) {
+	return window.released_keys[code];
+}
+
+bool mouse_btn_pressed(u32 code) {
+	return window.held_mouse_btns[code];
+}
+
+bool mouse_btn_just_pressed(u32 code) {
+	return window.pressed_mouse_btns[code];
+}
+
+bool mouse_btn_just_released(u32 code) {
+	return window.released_mouse_btns[code];
+}
+
+v2i get_mouse_pos() {
+	return window.mouse_pos;
+}
+
+v2i get_scroll() {
+	return window.scroll;
+}
+
+bool get_input_string(const char** string, usize* len) {
+	if (window.input_string_len > 0) {
+		*string = window.input_string;
+		*len = window.input_string_len;
+		return true;
+	}
+
+	return false;
 }

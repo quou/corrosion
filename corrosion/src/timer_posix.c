@@ -6,7 +6,7 @@
 static clockid_t global_clock;
 static u64 global_freq;
 
-u64 init_timer() {
+void init_timer() {
 	global_clock = CLOCK_REALTIME;
 	global_freq = 1000000000;
 

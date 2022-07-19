@@ -171,13 +171,16 @@
     <ClCompile Include="..\..\..\corrosion\src\gizmo.c" />
     <ClCompile Include="..\..\..\corrosion\src\log.c" />
     <ClCompile Include="..\..\..\corrosion\src\res.c" />
+    <ClCompile Include="..\..\..\corrosion\src\res_windows.c" />
     <ClCompile Include="..\..\..\corrosion\src\simplerenderer.c" />
     <ClCompile Include="..\..\..\corrosion\src\stb.c" />
+    <ClCompile Include="..\..\..\corrosion\src\timer_windows.c" />
     <ClCompile Include="..\..\..\corrosion\src\ui.c" />
     <ClCompile Include="..\..\..\corrosion\src\ui_render.c" />
     <ClCompile Include="..\..\..\corrosion\src\video.c" />
     <ClCompile Include="..\..\..\corrosion\src\video_vk.c" />
     <ClCompile Include="..\..\..\corrosion\src\vma.cpp" />
+    <ClCompile Include="..\..\..\corrosion\src\window_windows.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\corrosion\include\corrosion\app.h" />

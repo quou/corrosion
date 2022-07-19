@@ -479,12 +479,16 @@ void video_vk_init(bool enable_validation, v4f clear_colour) {
 
 	if (enable_validation) {
 		if (!layer_supported("VK_LAYER_KHRONOS_validation")) {
-			abort_with("No support for Vulkan validation layers. Make sure the Vulkan SDK is installed properly.");
+			warning("No support for Vulkan validation layers. Make sure the Vulkan SDK is installed properly.");
+			enable_validation = false;
+			goto no_validation;
 		}
 
 		vector_push(extensions, VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 		vector_push(layers, "VK_LAYER_KHRONOS_validation");
 	}
+
+no_validation:
 
 	if (vkCreateInstance(&(VkInstanceCreateInfo) {
 			.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
@@ -1755,7 +1759,7 @@ static void init_pipeline(struct video_vk_pipeline* pipeline, u32 flags, const s
 
 			const struct pipeline_descriptor* desc = set->descriptors + ii;
 
-			usize uniform_idx;
+			usize uniform_idx = 0;
 
 			if (desc->resource.type == pipeline_resource_uniform_buffer) {
 				uniform_idx = ui++;
@@ -2550,13 +2554,13 @@ m4f video_vk_ortho(f32 l, f32 r, f32 b, f32 t, f32 n, f32 f) {
 	return res;
 }
 
-m4f video_vk_persp(f32 fov, f32 aspect, f32 near, f32 far) {
+m4f video_vk_persp(f32 fov, f32 aspect, f32 near_clip, f32 far_clip) {
 	m4f r = m4f_identity();
 
 	const f32 q = 1.0f / tanf(to_rad(fov) / 2.0f);
 	const f32 a = q / aspect;
-	const f32 b = (near + far) / (near - far);
-	const f32 c = (2.0f * near * far) / (near - far);
+	const f32 b = (near_clip + far_clip) / (near_clip - far_clip);
+	const f32 c = (2.0f * near_clip * far_clip) / (near_clip - far_clip);
 
 	r.m[0][0] = a;
 	r.m[1][1] = -q;

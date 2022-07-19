@@ -18,7 +18,7 @@ struct window {
 
 	v2i size;
 
-	HWND window;
+	HWND hwnd;
 
 	VkSurfaceKHR surface;
 
@@ -37,7 +37,7 @@ struct window {
 	char input_string[256];
 	usize input_string_len;
 
-	table(KeySym, u32) keymap;
+	table(i32, u32) keymap;
 };
 
 #else
