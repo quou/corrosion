@@ -52,11 +52,8 @@ struct res_config {
 void reg_res_type(const char* type, struct res_config* config);
 
 /* Returns the resource payload. */
-void* res_load_p(const char* type, const char* filename, void* udata);
+void* res_load(const char* type, const char* filename, void* udata);
 void res_unload(const char* filename);
-
-#define res_load(t_, f_, v_) \
-	res_load_p(t_, f_, lit_ptr(v_))
 
 struct texture* load_texture(const char* filename, u32 flags);
 struct font*    load_font(const char* filename, f32 size);

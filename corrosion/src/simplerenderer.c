@@ -107,7 +107,7 @@ struct simple_renderer* new_simple_renderer(const struct framebuffer* framebuffe
 	usize index_count = simple_renderer_batch_size * simple_renderer_indices_per_quad;
 	u16* indices = core_alloc(index_count * sizeof(u16));
 
-	usize offset = 0;
+	u16 offset = 0;
 	for (usize i = 0; i < index_count; i += simple_renderer_indices_per_quad) {
 		indices[i + 0] = offset + 3;
 		indices[i + 1] = offset + 2;
@@ -158,8 +158,6 @@ void simple_renderer_push(struct simple_renderer* renderer, const struct simple_
 	f32 tx = 0.0f, ty = 0.0f, tw = 0.0f, th = 0.0f;
 
 	if (quad->texture) {
-		v2i texture_size = video.get_texture_size(quad->texture);
-
 		v4i* atlas_rect = table_get(renderer->atlas->rects, quad->texture);
 		if (!atlas_rect) {
 			if (atlas_add_texture(renderer->atlas, quad->texture)) {
@@ -173,8 +171,8 @@ void simple_renderer_push(struct simple_renderer* renderer, const struct simple_
 
 		rect.x += (f32)atlas_rect->x;
 		rect.y += (f32)atlas_rect->y;
-		rect.z = min((f32)atlas_rect->z, rect.z);
-		rect.w = min((f32)atlas_rect->w, rect.w);
+		rect.z = cr_min((f32)atlas_rect->z, rect.z);
+		rect.w = cr_min((f32)atlas_rect->w, rect.w);
 
 		tx = rect.x / (f32)renderer->atlas->size.x;
 		ty = rect.y / (f32)renderer->atlas->size.y;

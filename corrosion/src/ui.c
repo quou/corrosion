@@ -851,13 +851,13 @@ static v2f get_ui_el_position(struct ui* ui, const struct ui_style* style, v2f d
 void ui_advance(struct ui* ui, v2f dimensions) {
 	struct ui_container* container = vector_end(ui->container_stack) - 1;
 
-	ui->current_item_height = max(ui->current_item_height, dimensions.y);
+	ui->current_item_height = cr_max(ui->current_item_height, dimensions.y);
 	v2f last = ui->cursor_pos;
 	if (dimensions.y > ui->current_item_height) {
 		ui->current_item_height = dimensions.y;
 	}
 
-	container->content_size.x = max(container->content_size.x, (ui->cursor_pos.x - container->rect.x) + dimensions.x);
+	container->content_size.x = cr_max(container->content_size.x, (ui->cursor_pos.x - container->rect.x) + dimensions.x);
 
 	ui->cursor_pos.x += ui->columns[ui->column] * container->rect.z;
 	ui->column++;
@@ -867,7 +867,7 @@ void ui_advance(struct ui* ui, v2f dimensions) {
 		ui->cursor_pos.x = container->left_bound;
 		ui->cursor_pos.y += ui->current_item_height;
 		container->content_size.y += ui->cursor_pos.y - last.y;
-		container->content_size.x = max(container->content_size.x, (ui->cursor_pos.x - container->rect.x) + dimensions.x);
+		container->content_size.x = cr_max(container->content_size.x, (ui->cursor_pos.x - container->rect.x) + dimensions.x);
 		ui->column = 0;
 		ui->current_item_height = 0.0f;
 	}
@@ -1025,13 +1025,13 @@ bool ui_picture_ex(struct ui* ui, const char* class, const struct texture* textu
 	v2f dimensions = make_v2f(texture_size.x, texture_size.y);
 
 	if (style.max_size.has_value) {
-		dimensions.x = min(dimensions.x, style.max_size.value.x);
-		dimensions.y = min(dimensions.y, style.max_size.value.y);
+		dimensions.x = cr_min(dimensions.x, style.max_size.value.x);
+		dimensions.y = cr_min(dimensions.y, style.max_size.value.y);
 	}
 
 	if (style.min_size.has_value) {
-		dimensions.x = max(dimensions.x, style.min_size.value.x);
-		dimensions.y = max(dimensions.y, style.min_size.value.y);
+		dimensions.x = cr_max(dimensions.x, style.min_size.value.x);
+		dimensions.y = cr_max(dimensions.y, style.min_size.value.y);
 	}
 
 	const v2f rect_dimensions = make_v2f(dimensions.x + style.padding.value.x + style.padding.value.z,
@@ -1106,7 +1106,7 @@ bool ui_input_ex2(struct ui* ui, const char* class, char* buf, usize buf_size, u
 
 		if (mouse_btn_just_released(mouse_btn_left)) {
 			ui->active = id;
-			ui->input_cursor = strlen(buf);
+			ui->input_cursor = (u32)strlen(buf);
 		}
 	}
 
@@ -1128,7 +1128,7 @@ bool ui_input_ex2(struct ui* ui, const char* class, char* buf, usize buf_size, u
 
 	f32 scroll = 0.0f;
 	if (active) {
-		scroll = min(dimensions.x - cursor_x_off - style.padding.value.x - get_font_height(ui->font), 0.0f);
+		scroll = cr_min(dimensions.x - cursor_x_off - style.padding.value.x - get_font_height(ui->font), 0.0f);
 
 		ui_draw_rect(ui, v2f_add(text_pos, make_v2f(cursor_x_off + scroll, 0.0f)), make_v2f(1.0f, get_font_height(ui->font)),
 			style.text_colour.value, 0.0f);

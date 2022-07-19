@@ -4,13 +4,8 @@
 
 #include "common.h"
 
-#ifndef min
-#define min(a_, b_) ((a_) < (b_) ? (a_) : (b_))
-#endif
-
-#ifndef max
-#define max(a_, b_) ((a_) > (b_) ? (a_) : (b_))
-#endif
+#define cr_min(a_, b_) ((a_) < (b_) ? (a_) : (b_))
+#define cr_max(a_, b_) ((a_) > (b_) ? (a_) : (b_))
 
 #define v2(t_) struct { t_ x; t_ y; }
 #define v3(t_) struct { t_ x; t_ y; t_ z; }
@@ -53,7 +48,7 @@ typedef m4(f32) m4f;
 	)
 
 #define lerp(a_, b_, t_) ((a_) + (t_) * ((b_) - (a_)))
-#define clamp(v_, min_, max_) (max(min_, min(max_, v_)))
+#define clamp(v_, min_, max_) (cr_max(min_, cr_min(max_, v_)))
 #define map(v_, min1_, max1_, min2_, max2_) ((min2_) + ((v_) - (min1_)) * ((max2_) - (min2_)) / ((max1_) - (min1_)))
 #define saturate(v_) (clamp(v_, 0.0f, 1.0f))
 

@@ -254,5 +254,5 @@ v2f get_text_n_dimensions(struct font* font, const char* text, usize n) {
 }
 
 f32 get_font_height(const struct font* font) {
-	return font->height;
+	return (f32)font->height;
 }

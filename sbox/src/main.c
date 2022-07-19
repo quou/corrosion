@@ -51,7 +51,7 @@ void cr_init() {
 
 	app.ui = new_ui(video.get_default_fb());
 
-	struct ui_stylesheet* stylesheet = res_load("stylesheet", "res/uistyle.dt", 0);
+	struct ui_stylesheet* stylesheet = res_load("stylesheet", "res/uistyle.dt", null);
 	ui_stylesheet(app.ui, stylesheet);
 
 	const struct shader* invert_shader = load_shader("shaderbin/invert.csh");

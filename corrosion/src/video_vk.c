@@ -256,6 +256,8 @@ static VKAPI_ATTR VkBool32 debug_callback(VkDebugUtilsMessageSeverityFlagBitsEXT
 				break;
 		}
 	}
+
+	return true;
 }
 
 static VkPhysicalDevice first_suitable_device() {
@@ -496,9 +498,9 @@ no_validation:
 				.apiVersion = VK_API_VERSION_1_0,
 				.pApplicationName = "Corrosion Application."
 			},
-			.enabledExtensionCount = vector_count(extensions),
+			.enabledExtensionCount = (u32)vector_count(extensions),
 			.ppEnabledExtensionNames = extensions,
-			.enabledLayerCount = vector_count(layers),
+			.enabledLayerCount = (u32)vector_count(layers),
 			.ppEnabledLayerNames = layers
 		}, null, &vctx.instance) != VK_SUCCESS) {
 		abort_with("Failed to create Vulkan instance.");
@@ -2256,12 +2258,12 @@ void video_vk_set_scissor(v4i rect) {
 	vkCmdSetScissor(vctx.command_buffers[vctx.current_frame], 0, 1,
 		&(VkRect2D) {
 			.offset = {
-				.x = max(rect.x, 0),
-				.y = max(rect.y, 0)
+				.x = cr_max(rect.x, 0),
+				.y = cr_max(rect.y, 0)
 			},
 			.extent = {
-				.width  = (u32)max(rect.z - d.x, 1), 
-				.height = (u32)max(rect.w - d.y, 1)
+				.width  = (u32)cr_max(rect.z - d.x, 1),
+				.height = (u32)cr_max(rect.w - d.y, 1)
 			}
 		});
 }

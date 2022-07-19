@@ -6,22 +6,6 @@
 
 #include "common.h"
 
-/* Take the pointer of a literal. */
-#define lit_ptr(l_) \
-	_Generic((l_), \
-		i8:  &(i8)  { l_ }, \
-		i16: &(i16) { l_ }, \
-		i32: &(i32) { l_ }, \
-		i64: &(i64) { l_ }, \
-		u8:  &(u8)  { l_ }, \
-		u16: &(u16) { l_ }, \
-		u32: &(u32) { l_ }, \
-		u64: &(u64) { l_ }, \
-		f32: &(f32) { l_ }, \
-		f64: &(f64) { l_ }, \
-		default: l_ \
-	)
-
 u64 elf_hash(const u8* data, usize size);
 u64 hash_string(const char* str);
 

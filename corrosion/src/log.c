@@ -31,7 +31,7 @@ void warning(const char* fmt, ...) {
 
 void vinfo(const char* fmt, va_list args) {
 #ifdef _WIN32
-		auto console = GetStdHandle(STD_OUTPUT_HANDLE);
+		HANDLE console = GetStdHandle(STD_OUTPUT_HANDLE);
 		SetConsoleTextAttribute(console, FOREGROUND_GREEN);
 		printf("info ");
 		SetConsoleTextAttribute(console, FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE);

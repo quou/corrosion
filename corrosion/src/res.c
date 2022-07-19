@@ -179,7 +179,7 @@ void reg_res_type(const char* type, struct res_config* config) {
 	table_set(res_registry, hash_string(type), *config);
 }
 
-void* res_load_p(const char* type, const char* filename, void* udata) {
+void* res_load(const char* type, const char* filename, void* udata) {
 	struct file_info info;
 	if (!get_file_info(filename, &info)) {
 		error("Failed to stat `%s'.", filename);
@@ -246,13 +246,13 @@ void res_unload(const char* filename) {
 }
 
 struct texture* load_texture(const char* filename, u32 flags) {
-	return res_load("texture", filename, flags);
+	return res_load("texture", filename, &flags);
 }
 
 struct font* load_font(const char* filename, f32 size) {
-	return res_load("true type font", filename, size);
+	return res_load("true type font", filename, &size);
 }
 
 struct shader* load_shader(const char* filename) {
-	return res_load("shader", filename, 0);
+	return res_load("shader", filename, null);
 }

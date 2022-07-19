@@ -8,7 +8,7 @@ struct dtable new_dtable(const char* name) {
 
 	r.key.len = strlen(name);
 	r.key.hash = elf_hash((const u8*)name, r.key.len);
-	memcpy(r.key.chars, name, min(r.key.len, sizeof r.key.chars));
+	memcpy(r.key.chars, name, cr_min(r.key.len, sizeof r.key.chars));
 
 	r.value.type = dtable_parent;
 

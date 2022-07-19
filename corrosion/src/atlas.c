@@ -11,7 +11,6 @@ struct atlas* new_atlas(u32 flags) {
 	atlas->flags = flags;
 
 	atlas->texture = video.new_texture(&image, flags);
-	v2i size = image.size;
 
 	return atlas;
 }
@@ -40,7 +39,7 @@ bool atlas_add_texture(struct atlas* atlas, const struct texture* new_texture) {
 		v2i size = video.get_texture_size(texture);
 
 		final_size.x += size.x;
-		final_size.y = max(final_size.y, size.y);
+		final_size.y = cr_max(final_size.y, size.y);
 	}
 
 	if (final_size.x > atlas->size.x || final_size.y > atlas->size.y) {
