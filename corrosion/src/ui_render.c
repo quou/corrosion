@@ -240,8 +240,8 @@ void ui_renderer_push_gradient(struct ui_renderer* renderer, const struct ui_ren
 
 		rect.x += (f32)atlas_rect->x;
 		rect.y += (f32)atlas_rect->y;
-		rect.z = min((f32)atlas_rect->z, rect.z);
-		rect.w = min((f32)atlas_rect->w, rect.w);
+		rect.z = cr_min((f32)atlas_rect->z, rect.z);
+		rect.w = cr_min((f32)atlas_rect->w, rect.w);
 
 		tx = rect.x / (f32)renderer->atlas->size.x;
 		ty = rect.y / (f32)renderer->atlas->size.y;
