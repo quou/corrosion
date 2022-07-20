@@ -45,6 +45,8 @@ bool ui_label_ex(struct ui* ui, const char* class, const char* text);
 #define ui_button(ui_, t_) ui_label_ex(ui_, "button", t_)
 #define ui_button_ex(ui_, c_, t_) ui_label_ex(ui_, "button " c_, t_)
 
+void ui_linebreak(struct ui* ui);
+
 bool ui_knob_ex(struct ui* ui, const char* class, f32* val, f32 min, f32 max);
 #define ui_knob(ui_, v_, mi, ma_) ui_knob_ex(ui_, "", v_, mi, ma_)
 

@@ -918,6 +918,14 @@ bool ui_label_ex(struct ui* ui, const char* class, const char* text) {
 	return false;
 }
 
+void ui_linebreak(struct ui* ui) {
+	const struct ui_container* container = vector_end(ui->container_stack) - 1;
+
+	ui->column = 0;
+	ui->cursor_pos.y += get_font_height(ui->font) + container->spacing;
+	ui->cursor_pos.x = container->left_bound;
+}
+
 bool ui_knob_ex(struct ui* ui, const char* class, f32* val, f32 min, f32 max) {
 	const struct ui_container* container = vector_end(ui->container_stack) - 1;
 
