@@ -87,6 +87,7 @@ struct ui_container {
 
 	u64 id;
 	bool scrollable;
+	bool interactable;
 
 	v2f content_size;
 	f32 left_bound;
@@ -101,7 +102,7 @@ struct ui_container_meta {
 
 	bool floating;
 
-	bool is_top;
+	bool interactable;
 
 	usize head;
 	usize tail;
@@ -730,7 +731,9 @@ void ui_end(struct ui* ui) {
 	vector_clear(ui->sorted_containers);
 
 	for (u64* i = table_first(ui->container_meta); i; i = table_next(ui->container_meta, *i)) {
-		vector_push(ui->sorted_containers, table_get(ui->container_meta, *i));
+		struct ui_container_meta* m = table_get(ui->container_meta, *i);
+		m->interactable = false;
+		vector_push(ui->sorted_containers, m);
 	}
 
 	/* Sort all of the containers. */
@@ -741,7 +744,7 @@ void ui_end(struct ui* ui) {
 	usize hovered_container_count = 0;
 	for (usize i = 0; i < vector_count(ui->sorted_containers); i++) {
 		struct ui_container_meta* meta = ui->sorted_containers[i];
-		if (meta->floating && mouse_over_rect(meta->position, meta->dimensions)) {
+		if (mouse_over_rect(meta->position, meta->dimensions)) {
 			hovered_containers[hovered_container_count++] = meta;
 		}
 	}
@@ -751,10 +754,7 @@ void ui_end(struct ui* ui) {
 
 		struct ui_container_meta* top_meta = hovered_containers[0];
 
-		if (mouse_btn_just_pressed(mouse_btn_left)) {
-			top_meta->z = 0;
-			push_back_other_containers(ui, top_meta);
-		}
+		top_meta->interactable = true;
 	}
 
 	/* Patch the jump commands in the command buffer to jump to different
@@ -785,7 +785,7 @@ static struct ui_container_meta* get_container_meta(struct ui* ui, u64 id) {
 	if (!meta) {
 		table_set(ui->container_meta, id, (struct ui_container_meta) { 0 });
 		meta = table_get(ui->container_meta, id);
-		meta->z = -1;
+		meta->z = 0;
 	}
 	return meta;
 }
@@ -800,7 +800,8 @@ void ui_begin_container_ex(struct ui* ui, const char* class, v4f rect, bool scro
 	struct ui_container_meta* meta = get_container_meta(ui, id);
 	meta->head = ui->cmd_buffer_idx;
 
-	meta->z = -1;
+	/* Divide by two to avoid wrap-around when the z value is decreased. */
+	meta->z = -(INT32_MAX / 2) + (i32)id;
 	meta->floating = false;
 
 	v2i window_size = get_window_size();
@@ -849,7 +850,8 @@ void ui_begin_container_ex(struct ui* ui, const char* class, v4f rect, bool scro
 		.id = id,
 		.scrollable = scrollable,
 		.left_bound = clip.x + padding.x + scroll.x,
-		.content_size = make_v2f(0.0f, 0.0f)
+		.content_size = make_v2f(0.0f, 0.0f),
+		.interactable = meta->interactable
 	}));
 
 	ui->cursor_pos = make_v2f(clip.x + padding.x + scroll.x, clip.y + padding.y + scroll.y);
@@ -884,7 +886,8 @@ void ui_begin_floating_container_ex(struct ui* ui, const char* class, v4f rect, 
 		.scrollable = scrollable,
 		.left_bound = rect.x + style.padding.value.x + scroll.x,
 		.content_size = make_v2f(0.0f, 0.0f),
-		.old_cursor_pos = ui->cursor_pos
+		.old_cursor_pos = ui->cursor_pos,
+		.interactable = meta->interactable
 	}));
 
 	ui->cursor_pos = make_v2f(rect.x + style.padding.value.x, rect.y + style.padding.value.y);
@@ -1024,7 +1027,7 @@ bool ui_label_ex(struct ui* ui, const char* class, const char* text) {
 		text_dimensions, text, style.text_colour.value);
 	struct ui_cmd_draw_text* text_cmd = ui_last_cmd(ui);
 
-	bool hovered = mouse_over_rect(rect_cmd->position, dimensions);
+	bool hovered = container->interactable && mouse_over_rect(rect_cmd->position, dimensions);
 	if (ui_get_style_variant(ui, &style, "label", class, hovered, false)) {
 		rect_cmd->position = get_ui_el_position(ui, &style, dimensions);
 		rect_cmd->radius   = style.radius.value;
@@ -1065,7 +1068,7 @@ bool ui_knob_ex(struct ui* ui, const char* class, f32* val, f32 min, f32 max) {
 	ui_draw_circle(ui, make_v2f(0.0f, 0.0f), handle_radius, style.text_colour.value);
 	struct ui_cmd_draw_circle* handle_cmd = ui_last_cmd(ui);
 
-	bool hovered = mouse_over_circle(position, knob_cmd->radius);
+	bool hovered = container->interactable && mouse_over_circle(position, knob_cmd->radius);
 
 	v2f knob_origin = make_v2f(
 		knob_cmd->position.x + style.radius.value - handle_radius,
@@ -1176,7 +1179,7 @@ bool ui_picture_ex(struct ui* ui, const char* class, const struct texture* textu
 		texture, rect, style.text_colour.value, style.radius.value);
 	struct ui_cmd_texture* text_cmd = ui_last_cmd(ui);
 
-	bool hovered = mouse_over_rect(rect_cmd->position, rect_dimensions);
+	bool hovered = container->interactable && mouse_over_rect(rect_cmd->position, rect_dimensions);
 	if (ui_get_style_variant(ui, &style, "picture", class, hovered, false)) {
 		rect_cmd->position = get_ui_el_position(ui, &style, dimensions);
 		rect_cmd->radius   = style.radius.value;
@@ -1230,7 +1233,7 @@ bool ui_input_ex2(struct ui* ui, const char* class, char* buf, usize buf_size, u
 
 	struct ui_cmd_draw_rect* cursor_cmd = null;
 
-	bool hovered = mouse_over_rect(rect_cmd->position, dimensions);
+	bool hovered = container->interactable && mouse_over_rect(rect_cmd->position, dimensions);
 
 	if (hovered) {
 		ui->hovered = id;
@@ -1362,7 +1365,7 @@ bool ui_selectable_tree_node_ex(struct ui* ui, const char* class, const char* te
 			button_style.background_colour.value, button_style.radius.value);
 		struct ui_cmd_draw_rect* rect_cmd = ui_last_cmd(ui);
 
-		button_hovered = mouse_over_rect(rect_cmd->position, button_dimensions);
+		button_hovered = container->interactable && mouse_over_rect(rect_cmd->position, button_dimensions);
 		if (ui_get_style_variant(ui, &button_style, "tree_button", class, button_hovered, false)) {
 			rect_cmd->radius   = button_style.radius.value;
 
@@ -1388,7 +1391,7 @@ bool ui_selectable_tree_node_ex(struct ui* ui, const char* class, const char* te
 	ui_draw_text(ui, v2f_add(header_pos, background_style.padding.value),
 		text_dimensions, text, background_style.text_colour.value);
 	struct ui_cmd_draw_text* text_cmd = ui_last_cmd(ui);
-	bool back_hovered = mouse_over_rect(back_cmd->position, back_cmd->dimensions);
+	bool back_hovered = container->interactable && mouse_over_rect(back_cmd->position, back_cmd->dimensions);
 
 	if (selected && back_hovered && mouse_btn_just_released(mouse_btn_left)) {
 		*selected = !*selected;
@@ -1479,7 +1482,7 @@ void ui_colour_picker_ex(struct ui* ui, const char* class, v4f* colour, u64 id) 
 	}
 
 	/* Hue handle */
-	if (mouse_over_rect(slider_pos, slider_dimensions) && mouse_btn_just_pressed(mouse_btn_left)) {
+	if (container->interactable && mouse_over_rect(slider_pos, slider_dimensions) && mouse_btn_just_pressed(mouse_btn_left)) {
 		ui->active = id + 2;
 	}
 
@@ -1499,7 +1502,7 @@ void ui_colour_picker_ex(struct ui* ui, const char* class, v4f* colour, u64 id) 
 		make_rgba(0x000000, 255), make_rgba(0x000000, 255), style.radius.value);
 
 	/* Alpha handle */
-	if (mouse_over_rect(a_slider_pos, slider_dimensions) && mouse_btn_just_pressed(mouse_btn_left)) {
+	if (container->interactable && mouse_over_rect(a_slider_pos, slider_dimensions) && mouse_btn_just_pressed(mouse_btn_left)) {
 		ui->active = id + 3;
 	}
 
@@ -1524,7 +1527,7 @@ void ui_colour_picker_ex(struct ui* ui, const char* class, v4f* colour, u64 id) 
 		make_rgba(0x000000, 0),   make_rgba(0x000000, 0),
 		make_rgba(0x000000, 255), make_rgba(0x000000, 255), style.radius.value);
 
-	if (mouse_over_rect(position, box_dimensions) && mouse_btn_just_pressed(mouse_btn_left)) {
+	if (container->interactable && mouse_over_rect(position, box_dimensions) && mouse_btn_just_pressed(mouse_btn_left)) {
 		ui->active = id + 1;
 	}
 

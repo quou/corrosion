@@ -140,7 +140,7 @@ void cr_update(f64 ts) {
 
 	ui_columns(app.ui, 2, (f32[]) { 0.5f, 0.5f });
 
-	ui_begin_container(app.ui, make_v4f(0.5f, 0.0f, 0.5f, 1.0f), true);
+	ui_begin_container(app.ui, make_v4f(0.0f, 0.0f, 0.5f, 1.0f), true);
 
 	ui_label(app.ui, "Hello, world.");
 	ui_label(app.ui, "Hello, world.");
@@ -241,12 +241,10 @@ void cr_update(f64 ts) {
 	ui_end_container(app.ui);
 
 
-	ui_begin_floating_container(app.ui, make_v4f(10.0f, 10.0f, 200.0f, 100.0f), true);
+	ui_begin_floating_container(app.ui, make_v4f(10.0f, 50.0f, 200.0f, 500.0f), true);
+	ui_columns(app.ui, 1, (f32[]) { 1.0f });
 	ui_label(app.ui, "Floating Container A.");
-	ui_end_container(app.ui);
-
-	ui_begin_floating_container(app.ui, make_v4f(20.0f, 40.0f, 200.0f, 100.0f), true);
-	ui_label(app.ui, "Floating Container B.");
+	ui_button(app.ui, "Button");
 	ui_end_container(app.ui);
 
 	ui_end(app.ui);
