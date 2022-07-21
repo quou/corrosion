@@ -139,10 +139,11 @@ void cr_update(f64 ts) {
 	ui_label(app.ui, fps_buf);
 
 	ui_columns(app.ui, 2, (f32[]) { 0.5f, 0.5f });
+
 	ui_begin_container(app.ui, make_v4f(0.5f, 0.0f, 0.5f, 1.0f), true);
+
 	ui_label(app.ui, "Hello, world.");
 	ui_label(app.ui, "Hello, world.");
-	ui_linebreak(app.ui);
 	ui_label(app.ui, "Hello, world.");
 	ui_label(app.ui, "Hello, world.");
 	if (ui_button(app.ui, "Button A")) {
@@ -162,10 +163,9 @@ void cr_update(f64 ts) {
 	gizmo_box(make_v3f(1.0f, -1.0f, 3.0f), make_v3f(1.0f, 1.0f, 1.0f), euler(make_v3f(0.0f, 25.0f, 0.0f)));
 	gizmo_sphere(make_v3f(0.0f, 0.0f, 0.0f), 1.0f);
 
-
 	static char test_buf[256] = "Hello, world!";
 
-	ui_columns(app.ui, 2, (f32[]) { 0.25f, 0.70f });
+	ui_columns(app.ui, 2, (f32[]) { 0.25f, 0.75f });
 	ui_label(app.ui, "Text input: ");
 	if (ui_input(app.ui, test_buf, sizeof test_buf)) {
 		info("%s", test_buf);
@@ -193,7 +193,7 @@ void cr_update(f64 ts) {
 	sprintf(text, "%.2f", test2);
 	ui_label_ex(app.ui, "knob_label", text);
 
-	ui_columns(app.ui, 2, (f32[]) { 0.25f, 0.70f });
+	ui_columns(app.ui, 2, (f32[]) { 0.25f, 0.75f });
 	ui_label(app.ui, "Colour Picker:");
 
 	static v4f colour = { 255, 255, 0, 255 };
@@ -239,6 +239,16 @@ void cr_update(f64 ts) {
 	}
 
 	ui_end_container(app.ui);
+
+
+	ui_begin_floating_container(app.ui, make_v4f(10.0f, 10.0f, 200.0f, 100.0f), true);
+	ui_label(app.ui, "Floating Container A.");
+	ui_end_container(app.ui);
+
+	ui_begin_floating_container(app.ui, make_v4f(20.0f, 40.0f, 200.0f, 100.0f), true);
+	ui_label(app.ui, "Floating Container B.");
+	ui_end_container(app.ui);
+
 	ui_end(app.ui);
 
 	video.begin_framebuffer(app.fb);
