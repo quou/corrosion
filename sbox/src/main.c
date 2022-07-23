@@ -145,19 +145,23 @@ void cr_update(f64 ts) {
 	ui_button(app.ui, "Button");
 	ui_end_container(app.ui);
 
-	ui_columns(app.ui, 2, (f32[]) { 0.5f, 0.5f });
-
 	ui_begin_container(app.ui, make_v4f(0.5f, 0.0f, 0.5f, 1.0f), true);
 
-	ui_label(app.ui, "Hello, world.");
-	ui_label(app.ui, "Hello, world.");
-	ui_label(app.ui, "Hello, world.");
-	ui_label(app.ui, "Hello, world.");
-	if (ui_button(app.ui, "Button A")) {
-		info("Button A pressed.");
-	}
-	if (ui_button(app.ui, "Button B")) {
-		info("Button B pressed.");
+	if (ui_tree_node(app.ui, "Layout", false)) {
+		ui_columns(app.ui, 2, (f32[]) { 0.5f, 0.5f });
+
+		ui_label(app.ui, "Hello, world.");
+		ui_label(app.ui, "Hello, world.");
+		ui_label(app.ui, "Hello, world.");
+		ui_label(app.ui, "Hello, world.");
+		if (ui_button(app.ui, "Button A")) {
+			info("Button A pressed.");
+		}
+		if (ui_button(app.ui, "Button B")) {
+			info("Button B pressed.");
+		}
+
+		ui_tree_pop(app.ui);
 	}
 
 	gizmo_camera(&(struct camera) {
@@ -170,77 +174,75 @@ void cr_update(f64 ts) {
 	gizmo_box(make_v3f(1.0f, -1.0f, 3.0f), make_v3f(1.0f, 1.0f, 1.0f), euler(make_v3f(0.0f, 25.0f, 0.0f)));
 	gizmo_sphere(make_v3f(0.0f, 0.0f, 0.0f), 1.0f);
 
-	static char test_buf[256] = "Hello, world!";
+	if (ui_tree_node(app.ui, "Inputs", false)) {
+		static char test_buf[256] = "Hello, world!";
 
-	ui_columns(app.ui, 2, (f32[]) { 0.25f, 0.75f });
-	ui_label(app.ui, "Text input: ");
-	if (ui_input(app.ui, test_buf, sizeof test_buf)) {
-		info("%s", test_buf);
-	}
-
-	static f64 test_num = 10.0;
-
-	ui_label(app.ui, "Number input: ");
-	if (ui_number_input(app.ui, &test_num)) {
-		info("%g", test_num);
-	}
-
-	static f32 test = 25.0f;
-	static f32 test2 = 50.0f;
-
-	char text[256];
-
-	ui_columns(app.ui, 2, (f32[]) { 0.5f, 0.5f });
-
-	ui_knob(app.ui, &test, 0.0f, 100.0f);
-	ui_knob_ex(app.ui, "red_knob", &test2, 0.0f, 100.0f);
-
-	sprintf(text, "%.2f", test);
-	ui_label_ex(app.ui, "knob_label", text);
-	sprintf(text, "%.2f", test2);
-	ui_label_ex(app.ui, "knob_label", text);
-
-	ui_columns(app.ui, 2, (f32[]) { 0.25f, 0.75f });
-	ui_label(app.ui, "Colour Picker:");
-
-	static v4f colour = { 255, 255, 0, 255 };
-	ui_colour_picker(app.ui, &colour);
-
-	ui_label(app.ui, "Colour Picker:");
-
-	static v4f colour2 = { 0, 90, 255, 255 };
-	ui_colour_picker(app.ui, &colour2);
-
-	ui_columns(app.ui, 2, (f32[]) { 0.5f, 0.5f });
-
-	if (ui_tree_node(app.ui, "Tree Node", false)) {
-		ui_columns(app.ui, 2, (f32[]) { 0.5f, 0.5f });
-
-		ui_picture(app.ui, app.texturea);
-		ui_picture(app.ui, app.texturea);
-		ui_picture(app.ui, app.texturea);
-		ui_picture(app.ui, app.texturea);
-
-		static bool selected = false;
-		if (ui_selectable_tree_node(app.ui, "Child Tree Node", false, &selected)) {
-			ui_label(app.ui, "I'm some text");
-			ui_button(app.ui, "I'm a button");
-
-			ui_tree_pop(app.ui);
+		ui_columns(app.ui, 2, (f32[]) { 0.25f, 0.75f });
+		ui_label(app.ui, "Text input: ");
+		if (ui_input(app.ui, test_buf, sizeof test_buf)) {
+			info("%s", test_buf);
 		}
 
-		if (ui_tree_node(app.ui, "Child Tree Node", false)) {
-			if (ui_tree_node(app.ui, "Child Tree Node", false)) {
-				for (u32 i = 0; i < 10; i++) {
-					ui_tree_node(app.ui, "Leaf", true);
+		static f64 test_num = 10.0;
+
+		ui_label(app.ui, "Number input: ");
+		if (ui_number_input(app.ui, &test_num)) {
+			info("%g", test_num);
+		}
+
+		ui_tree_pop(app.ui);
+	}
+
+	if (ui_tree_node(app.ui, "Knob", false)) {
+		static f32 test = 25.0f;
+		static f32 test2 = 50.0f;
+
+		char text[256];
+
+		ui_columns(app.ui, 2, (f32[]) { 0.5f, 0.5f });
+
+		ui_knob(app.ui, &test, 0.0f, 100.0f);
+		ui_knob_ex(app.ui, "red_knob", &test2, 0.0f, 100.0f);
+
+		sprintf(text, "%.2f", test);
+		ui_label_ex(app.ui, "knob_label", text);
+		sprintf(text, "%.2f", test2);
+		ui_label_ex(app.ui, "knob_label", text);
+
+		ui_tree_pop(app.ui);
+	}
+
+	if (ui_tree_node(app.ui, "Colour Picker", false)) {
+		ui_columns(app.ui, 2, (f32[]) { 0.25f, 0.75f });
+		ui_label(app.ui, "Colour Picker:");
+
+		static v4f colour = { 255, 255, 0, 255 };
+		ui_colour_picker(app.ui, &colour);
+
+		ui_label(app.ui, "Colour Picker:");
+
+		static v4f colour2 = { 0, 90, 255, 255 };
+		ui_colour_picker(app.ui, &colour2);
+
+		ui_tree_pop(app.ui);
+	}
+
+	if (ui_tree_node(app.ui, "Hierarchy", false)) {
+		for (usize i = 0; i < 10; i++) {
+			if (ui_tree_node(app.ui, "Node", false)) {
+				for (usize ii = 0; ii < 10; ii++) {
+					if (ui_tree_node(app.ui, "Child", false)) {
+						for (usize iii = 0; iii < 10; iii++) {
+							ui_tree_node(app.ui, "Leaf", true);
+						}
+
+						ui_tree_pop(app.ui);
+					}
 				}
 
 				ui_tree_pop(app.ui);
 			}
-
-			ui_tree_pop(app.ui);
 		}
-
 
 		ui_tree_pop(app.ui);
 	}

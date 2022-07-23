@@ -6,7 +6,7 @@
 #include "ui_atlas.h"
 #include "ui_render.h"
 
-#define ui_z_decrease 1.0f
+#define ui_z_decrease 0.01f
 #define z_layer_1 container->z - ui_z_decrease * 1.0f
 #define z_layer_2 container->z - ui_z_decrease * 2.0f
 #define z_layer_3 container->z - ui_z_decrease * 3.0f
@@ -624,6 +624,7 @@ void ui_init() {
 
 	table_set(default_stylesheet.normal, hash_string("tree_container"), ((struct ui_style) {
 		.padding           = { true, make_v4f(10.0f, 0.0f, 0.0f, 0.0f) },
+		.background_colour = { true, make_rgba(0xff0000, 90) },
 		.spacing           = { true, 5.0f },
 		.radius            = { true, 0.0f }
 	}));
@@ -1332,7 +1333,7 @@ bool ui_selectable_tree_node_ex(struct ui* ui, const char* class, const char* te
 
 	bool open = *open_ptr;
 
-	const struct ui_container* container = vector_end(ui->container_stack) - 1;
+	struct ui_container* container = vector_end(ui->container_stack) - 1;
 
 	struct ui_style button_style = ui_get_style(ui, "tree_button", class, ui_style_variant_none);
 
@@ -1403,13 +1404,9 @@ bool ui_selectable_tree_node_ex(struct ui* ui, const char* class, const char* te
 			text_dimensions, open ? " -" : "+", button_style.text_colour.value);
 	}
 
-	if (open) {
-		v2f pos = make_v2f(0.0f, (ui->cursor_pos.y - container->rect.y) / container->rect.w);
-		v2f dim = make_v2f(1.0f, 1.0f - pos.y);
-
-		if (!leaf) {
-			ui_begin_container_ex(ui, "tree_container", make_v4f(pos.x, pos.y, dim.x, dim.y), false);
-		}
+	if (open && !leaf) {
+		container->left_bound += 10.0f;
+		ui->cursor_pos.x += 10.0f;
 
 		ui_columns(ui, 1, (f32[]) { 1.0f });
 	}
@@ -1420,7 +1417,10 @@ bool ui_selectable_tree_node_ex(struct ui* ui, const char* class, const char* te
 }
 
 void ui_tree_pop(struct ui* ui) {
-	ui_end_container(ui);
+	struct ui_container* container = vector_end(ui->container_stack) - 1;
+
+	container->left_bound -= 10.0f;
+	ui->cursor_pos.x -= 10.0f;
 }
 
 void ui_colour_picker_ex(struct ui* ui, const char* class, v4f* colour, u64 id) {
@@ -1668,6 +1668,4 @@ void ui_draw(const struct ui* ui) {
 #ifdef ui_print_commands
 	info(" == End UI Command Dump == ");
 #endif
-
-#undef commit_clip
 }
