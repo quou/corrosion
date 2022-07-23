@@ -128,6 +128,7 @@ void cr_update(f64 ts) {
 	v2i window_size = get_window_size();
 
 	ui_begin(app.ui);
+
 	ui_columns(app.ui, 1, (f32[]) { 1.0f });
 
 	static char fps_buf[32];
@@ -137,6 +138,12 @@ void cr_update(f64 ts) {
 		sprintf(fps_buf, "FPS: %g", 1.0 / ts);
 	}
 	ui_label(app.ui, fps_buf);
+
+	ui_begin_floating_container(app.ui, make_v4f(300.0f, 50.0f, 200.0f, 500.0f), true);
+	ui_columns(app.ui, 1, (f32[]) { 1.0f });
+	ui_label(app.ui, "Floating Container A.");
+	ui_button(app.ui, "Button");
+	ui_end_container(app.ui);
 
 	ui_columns(app.ui, 2, (f32[]) { 0.5f, 0.5f });
 
@@ -238,13 +245,6 @@ void cr_update(f64 ts) {
 		ui_tree_pop(app.ui);
 	}
 
-	ui_end_container(app.ui);
-
-
-	ui_begin_floating_container(app.ui, make_v4f(10.0f, 50.0f, 200.0f, 500.0f), true);
-	ui_columns(app.ui, 1, (f32[]) { 1.0f });
-	ui_label(app.ui, "Floating Container A.");
-	ui_button(app.ui, "Button");
 	ui_end_container(app.ui);
 
 	ui_end(app.ui);
