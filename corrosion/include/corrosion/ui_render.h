@@ -17,6 +17,7 @@ struct ui_renderer_vertex {
 	f32 use_texture;
 	f32 radius;
 	v4f rect;
+	f32 z;
 };
 
 struct ui_renderer {
@@ -36,6 +37,8 @@ struct ui_renderer {
 	usize count;
 	usize offset;
 
+	f32 text_z;
+
 	struct {
 		m4f projection;
 	} vertex_ub;
@@ -47,6 +50,7 @@ struct ui_renderer_quad {
 	v4f colour;
 	v4f rect;
 	f32 radius;
+	f32 z;
 	const struct texture* texture;
 };
 
@@ -62,6 +66,7 @@ struct ui_renderer_gradient_quad {
 	v2f dimensions;
 	f32 radius;
 	v4f rect;
+	f32 z;
 	const struct texture* texture;
 };
 
@@ -70,6 +75,7 @@ struct ui_renderer_text {
 	const char* text;
 	v4f colour;
 	struct font* font;
+	f32 z;
 };
 
 struct ui_renderer* new_ui_renderer(const struct framebuffer* framebuffer);

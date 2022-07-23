@@ -21,8 +21,8 @@ void ui_draw_gradient(struct ui* ui, v2f position, v2f dimensions, v4f top_left,
 void ui_draw_circle(struct ui* ui, v2f position, f32 radius, v4f colour);
 void ui_draw_text(struct ui* ui, v2f position, v2f dimensions, const char* text, v4f colour);
 void ui_draw_texture(struct ui* ui, v2f position, v2f dimensions, const struct texture* texture, v4i rect, v4f colour, f32 radius);
-void ui_jump(struct ui* ui, usize idx);
 void ui_clip(struct ui* ui, v4f rect);
+void ui_set_z(struct ui* ui, f32 z);
 
 v2f ui_get_cursor_pos(const struct ui* ui);
 void ui_set_cursor_pos(struct ui* ui, v2f pos);

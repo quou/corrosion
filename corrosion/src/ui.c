@@ -6,8 +6,6 @@
 #include "ui_atlas.h"
 #include "ui_render.h"
 
-/* #define ui_print_commands */
-
 enum {
 	ui_cmd_draw_rect,
 	ui_cmd_draw_gradient,
@@ -15,7 +13,7 @@ enum {
 	ui_cmd_draw_texture,
 	ui_cmd_draw_circle,
 	ui_cmd_clip,
-	ui_cmd_jump,
+	ui_cmd_set_z
 };
 
 struct ui_cmd {
@@ -72,9 +70,9 @@ struct ui_cmd_texture {
 	f32 radius;
 };
 
-struct ui_cmd_jump {
+struct ui_cmd_set_z {
 	struct ui_cmd cmd;
-	usize idx;
+	f32 val;
 };
 
 struct ui_container {
@@ -311,11 +309,11 @@ void ui_draw_texture(struct ui* ui, v2f position, v2f dimensions, const struct t
 	cmd->radius = radius;
 }
 
-void ui_jump(struct ui* ui, usize idx) {
-	struct ui_cmd_jump* cmd = ui_cmd_add(ui, sizeof(struct ui_cmd_jump));
-	cmd->cmd.type = ui_cmd_jump;
+void ui_set_z(struct ui* ui, f32 z) {
+	struct ui_cmd_set_z* cmd = ui_cmd_add(ui, sizeof(struct ui_cmd_set_z));
+	cmd->cmd.type = ui_cmd_set_z;
 	cmd->cmd.size = sizeof *cmd;
-	cmd->idx = idx;
+	cmd->val = z;
 }
 
 v2f ui_get_cursor_pos(const struct ui* ui) {
@@ -696,8 +694,6 @@ void ui_begin(struct ui* ui) {
 	ui->treenode_id = 0;
 	ui->container_id = 0;
 
-	ui_jump(ui, 0);
-
 	ui_begin_container(ui, make_v4f(0.0f, 0.0f, 1.0f, 1.0f), false);
 
 	ui_columns(ui, 1, (f32[]) { 1.0f });
@@ -760,7 +756,7 @@ void ui_end(struct ui* ui) {
 	/* Patch the jump commands in the command buffer to jump to different
 	 * containers so that some draw on top of others, depending on sorted_containers.
 	 */
-	for (usize i = 0; i < vector_count(ui->sorted_containers); i++) {
+/*	for (usize i = 0; i < vector_count(ui->sorted_containers); i++) {
 		struct ui_container_meta* meta = ui->sorted_containers[i];
 
 		struct ui_cmd_jump* tail_cmd = (void*)(ui->cmd_buffer + meta->tail);
@@ -777,7 +773,7 @@ void ui_end(struct ui* ui) {
 		if (i == vector_count(ui->sorted_containers) - 1) {
 			tail_cmd->idx = ui->cmd_buffer_idx;
 		}
-	}
+	} */
 }
 
 static struct ui_container_meta* get_container_meta(struct ui* ui, u64 id) {
@@ -902,8 +898,6 @@ void ui_end_container(struct ui* ui) {
 
 	container->content_size.y = (ui->cursor_pos.y - container->rect.y);
 	container->content_size.x += container->padding.x;
-
-	ui_jump(ui, 0);
 
 	if (container->scrollable && mouse_over_rect(make_v2f(container->rect.x, container->rect.y), make_v2f(container->rect.z, container->rect.w))) {
 		meta->scroll.x += (f32)get_scroll().x * 10.0f;
@@ -1563,6 +1557,8 @@ void ui_draw(const struct ui* ui) {
 	info("End: %llu", ui->cmd_buffer_idx);
 #endif
 
+	f32 current_z = 1.0f;
+
 	while (cmd != end) {
 		switch (cmd->type) {
 			case ui_cmd_draw_rect: {
@@ -1572,7 +1568,8 @@ void ui_draw(const struct ui* ui) {
 					.position   = make_v2f(rect->position.x,   rect->position.y),
 					.dimensions = make_v2f(rect->dimensions.x, rect->dimensions.y),
 					.colour     = rect->colour,
-					.radius     = rect->radius
+					.radius     = rect->radius,
+					.z          = current_z
 				});
 
 #ifdef ui_print_commands
@@ -1591,7 +1588,8 @@ void ui_draw(const struct ui* ui) {
 						.bot_left = grad->bot_left,
 						.bot_right = grad->bot_right
 					},
-					.radius = grad->radius
+					.radius = grad->radius,
+					.z = current_z
 				});
 
 #ifdef ui_print_commands
@@ -1607,7 +1605,8 @@ void ui_draw(const struct ui* ui) {
 					.position   = make_v2f(circle->position.x, circle->position.y),
 					.dimensions = dimensions,
 					.colour     = circle->colour,
-					.radius     = circle->radius
+					.radius     = circle->radius,
+					.z = current_z
 				});
 
 #ifdef ui_print_commands
@@ -1621,7 +1620,8 @@ void ui_draw(const struct ui* ui) {
 					.position = text->position,
 					.text     = (char*)(text + 1),
 					.colour   = text->colour,
-					.font     = text->font
+					.font     = text->font,
+					.z        = current_z
 				});
 
 #ifdef ui_print_commands
@@ -1650,25 +1650,22 @@ void ui_draw(const struct ui* ui) {
 						(f32)texture->rect.z,
 						(f32)texture->rect.w),
 					.texture    = texture->texture,
-					.radius     = texture->radius
+					.radius     = texture->radius,
+					.z          = current_z
 				});
 
 #ifdef ui_print_commands
 				info("%llu\t\t%s", ((u8*)cmd) - ui->cmd_buffer, "texture");
 #endif
 			} break;
-			case ui_cmd_jump: {
-				struct ui_cmd_jump* jmp = (struct ui_cmd_jump*)cmd;
+			case ui_cmd_set_z: {
+				struct ui_cmd_set_z* set_z = (struct ui_cmd_set_z*)cmd;
 
-#ifdef ui_print_commands
-				info("%llu\t\t%s: %llu", ((u8*)cmd) - ui->cmd_buffer, "jump", jmp->idx);
-#endif
-
-				cmd = (void*)(ui->cmd_buffer + jmp->idx);
-				continue;
-			} break;
+				current_z = set_z->val;
+			};
 		}
 
+		current_z -= 0.01f;
 		cmd = (void*)(((u8*)cmd) + cmd->size);
 	}
 

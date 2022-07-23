@@ -8,6 +8,7 @@ layout (location = 2) in vec4 colour;
 layout (location = 3) in float use_texture;
 layout (location = 4) in float radius;
 layout (location = 5) in vec4 rect;
+layout (location = 6) in float z;
 
 layout (location = 0) out VSOut {
 	vec2 uv;
@@ -15,6 +16,7 @@ layout (location = 0) out VSOut {
 	float use_texture;
 	float radius;
 	vec4 rect;
+	float z;
 } vs_out;
 
 layout (std140, binding = 0) uniform VertexUniformData {
@@ -27,6 +29,7 @@ void main() {
 	vs_out.use_texture = use_texture;
 	vs_out.radius = radius;
 	vs_out.rect = rect;
+	vs_out.z = z;
 
 	gl_Position = projection * vec4(position, 0.0, 1.0);
 }
@@ -43,6 +46,7 @@ layout (location = 0) in VSOut {
 	float use_texture;
 	float radius;
 	vec4 rect;
+	float z;
 } fs_in;
 
 layout (binding = 1) uniform sampler2D atlas;
@@ -69,6 +73,8 @@ void main() {
 	}
 
 	colour = mix(vec4(0.0), texture_colour * fs_in.colour, a);
+
+	gl_FragDepth = fs_in.z;
 }
 
 #end FRAGMENT

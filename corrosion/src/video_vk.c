@@ -257,7 +257,7 @@ static VKAPI_ATTR VkBool32 debug_callback(VkDebugUtilsMessageSeverityFlagBitsEXT
 		}
 	}
 
-	return true;
+	return false;
 }
 
 static VkPhysicalDevice first_suitable_device() {
@@ -633,8 +633,13 @@ no_validation:
 				.type = framebuffer_attachment_colour,
 				.format = framebuffer_format_rgba8i,
 				.clear_colour = clear_colour
+			},
+			{
+				.type = framebuffer_attachment_depth,
+				.format = framebuffer_format_depth,
+				.clear_colour = clear_colour
 			}
-		}, 1);
+		}, 2);
 }
 
 void video_vk_deinit() {
@@ -1598,6 +1603,11 @@ static void init_pipeline(struct video_vk_pipeline* pipeline, u32 flags, const s
 		.stencilTestEnable = VK_FALSE
 	};
 
+	if (~flags & pipeline_flags_depth_test) {
+		depth_stencil.depthTestEnable = VK_FALSE;
+		depth_stencil.depthWriteEnable = VK_FALSE;
+	}
+
 	VkPipelineColorBlendAttachmentState* colour_blend_attachments =
 		core_alloc(sizeof(VkPipelineColorBlendAttachmentState) * framebuffer->colour_count);
 	
@@ -1882,6 +1892,7 @@ no_descriptors:
 			.pMultisampleState = &multisampling,
 			.pColorBlendState = &colour_blending,
 			.pDynamicState = &dynamic_state,
+			.pDepthStencilState = &depth_stencil,
 			.layout = pipeline->layout,
 			.renderPass = framebuffer->render_pass,
 			.subpass = 0
