@@ -15,20 +15,14 @@ struct window window;
 
 static LRESULT CALLBACK win32_event_callback(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
 	switch (msg) {
-		case WM_DESTROY:
+		case WM_CLOSE:
 			window.open = false;
 			return 0;
 		case WM_SIZE:
 			i32 nw = lparam & 0xFFFF;
 			i32 nh = (lparam >> 16) & 0xFFFF;
 
-			if (nw != 0 && nh != 0) {
-				if (window.api == video_api_vulkan) {
-					video_vk_want_recreate();
-				}
-
-				window.size = make_v2i(nw, nh);
-			}
+			window.new_size = make_v2i(nw, nh);
 
 			return 0;
 		case WM_MOUSEMOVE:
@@ -235,7 +229,7 @@ void init_window(const struct window_config* config, u32 api) {
 
 void window_create_vk_surface(VkInstance instance) {
 	if (vkCreateWin32SurfaceKHR(instance, &(VkWin32SurfaceCreateInfoKHR) {
-			.sType = VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR,
+			.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR,
 			.hwnd = window.hwnd,
 			.hinstance = GetModuleHandle(null)
 		}, null, &window.surface) != VK_SUCCESS) {
@@ -278,6 +272,21 @@ void update_events() {
 	while (PeekMessage(&msg, null, 0, 0, PM_REMOVE)) {
 		TranslateMessage(&msg);
 		DispatchMessage(&msg);
+	}
+
+	if (window.size.x != window.new_size.x || window.size.y != window.new_size.y) {
+		while (window.new_size.x == 0 || window.new_size.y == 0) {
+			while (PeekMessage(&msg, null, 0, 0, PM_REMOVE)) {
+				TranslateMessage(&msg);
+				DispatchMessage(&msg);
+			}
+		}
+
+		window.size = window.new_size;
+
+		if (window.api == video_api_vulkan) {
+			video_vk_want_recreate();
+		}
 	}
 }
 

@@ -17,6 +17,7 @@ struct window {
 	u32 api;
 
 	v2i size;
+	v2i new_size;
 
 	HWND hwnd;
 

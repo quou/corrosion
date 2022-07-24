@@ -889,7 +889,6 @@ static void deinit_swapchain() {
 
 static void recreate() {
 	vkDeviceWaitIdle(vctx.device);
-
 	deinit_swapchain();
 	init_swapchain();
 
