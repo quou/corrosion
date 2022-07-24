@@ -1,9 +1,9 @@
 #include <stdio.h>
 
+#include "bir.h"
 #include "core.h"
 #include "dtable.h"
 #include "ui.h"
-#include "ui_atlas.h"
 #include "ui_render.h"
 
 #define ui_z_decrease 0.01f
@@ -645,7 +645,7 @@ void ui_init() {
 		.on_unload = stylesheet_on_unload
 	});
 
-	default_font = new_font(default_font_atlas, sizeof default_font_atlas, 14.0f);
+	default_font = new_font(bir_DejaVuSans_ttf, sizeof bir_DejaVuSans_ttf, 14.0f);
 }
 
 void ui_deinit() {
@@ -666,7 +666,7 @@ struct ui* new_ui(const struct framebuffer* framebuffer) {
 	ui->font = default_font;
 
 	struct image alpha_image;
-	init_image_from_raw(&alpha_image, alpha_texture_png, sizeof alpha_texture_png);
+	init_image_from_raw(&alpha_image, bir_checkerboard_png, sizeof bir_checkerboard_png);
 
 	ui->alpha_texture = video.new_texture(&alpha_image, texture_flags_none);
 

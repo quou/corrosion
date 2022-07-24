@@ -26,3 +26,6 @@ projects/gmake/shaders/compiler
 *.exe
 *.pdb
 .vs
+
+corrosion/src/bir.h
+corrosion/buildbir

@@ -18,6 +18,9 @@ defines =
 cflags = -std=gnu11
 cppflags = -std=c++14
 
+bir_builder = $(target_dir)/bir
+bir_target = ../../../corrosion/src/bir.h
+
 ifeq ($(config),debug)
   target_dir = bin/debug
   target = $(target_dir)/lib$(target_name).a
@@ -62,7 +65,7 @@ sourcespp = $(srcdir)/vma.cpp
 objects   = $(sources:$(srcdir)%.c=$(objdir)%.o)
 objectspp = $(sourcespp:$(srcdir)%.cpp=$(objdir)%.o)
 
-$(objects):   | $(objdir)
+$(objects):   | $(objdir) $(bir_target)
 $(objectspp): | $(objdir)
 
 $(objects): $(objdir)%.o : $(srcdir)%.c
@@ -77,6 +80,15 @@ $(target): $(objects) $(objectspp) $(deps) | $(target_dir)
 	@echo Linking $(target)
 	$(silent) ar -rcs "$@" $(objects) $(objectspp)
 
+$(bir_builder): | $(target_dir)
+$(bir_builder): $(srcdir)/buildbir.c
+	@echo "Compiling BIR builder..."
+	$(silent) $(cc) -I../../../corrosion/include/corrosion -O2 $< -L/usr/lib64 -m64 -s -o "$@"
+
+$(bir_target): $(bir_builder) | $(bir_builder) 
+	@echo "Building BIR..."
+	$(silent) cd ../../../ && ./projects/gmake/corrosion/$(bir_builder)
+
 $(target_dir):
 	$(silent) mkdir -p $(target_dir)
 
@@ -86,5 +98,6 @@ $(objdir):
 clean:
 	$(silent) rm -rf obj
 	$(silent) rm -rf bin
+	$(silent) rm -f $(bir_target)
 
 -include $(objects:%.o=%.d) $(objectspp:%.o=%.d)
