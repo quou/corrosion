@@ -21,8 +21,7 @@ enum {
 	ui_cmd_draw_text,
 	ui_cmd_draw_texture,
 	ui_cmd_draw_circle,
-	ui_cmd_clip,
-	ui_cmd_set_z
+	ui_cmd_clip
 };
 
 struct ui_cmd {
@@ -110,6 +109,7 @@ struct ui_container_meta {
 	f32 z;
 
 	bool floating;
+	bool visible;
 
 	bool interactable;
 
@@ -624,7 +624,6 @@ void ui_init() {
 
 	table_set(default_stylesheet.normal, hash_string("tree_container"), ((struct ui_style) {
 		.padding           = { true, make_v4f(10.0f, 0.0f, 0.0f, 0.0f) },
-		.background_colour = { true, make_rgba(0xff0000, 90) },
 		.spacing           = { true, 5.0f },
 		.radius            = { true, 0.0f }
 	}));
@@ -635,6 +634,28 @@ void ui_init() {
 		.max_size          = { true, make_v2f(150.0f, 150.0f) },
 		.min_size          = { true, make_v2f(150.0f, 150.0f) },
 		.padding           = { true, 3.0f },
+	}));
+
+	table_set(default_stylesheet.normal, hash_string("combo"), ((struct ui_style) {
+		.text_colour       = { true, make_rgba(0xffffff, 255) },
+		.background_colour = { true, make_rgba(0x191b26, 255) },
+		.padding           = { true, make_v4f(3.0f, 3.0f, 3.0f, 3.0f) }
+	}));
+
+	table_set(default_stylesheet.hovered, hash_string("combo"), ((struct ui_style) {
+		.background_colour = { true, make_rgba(0x252839, 255) },
+	}));
+
+	table_set(default_stylesheet.active, hash_string("combo"), ((struct ui_style) {
+		.text_colour       = { true, make_rgba(0x000000, 255) },
+		.background_colour = { true, make_rgba(0x8c91ac, 255) },
+	}));
+
+	table_set(default_stylesheet.normal, hash_string("combo_container"), ((struct ui_style) {
+		.padding           = { true, make_v4f(5.0f, 10.0f, 5.0f, 5.0f) },
+		.background_colour = { true, make_rgba(0x0c0c0c, 255) },
+		.spacing           = { true, 5.0f },
+		.radius            = { true, 0.0f }
 	}));
 
 	reg_res_type("stylesheet", &(struct res_config) {
@@ -708,6 +729,12 @@ void ui_begin(struct ui* ui) {
 	ui->treenode_id = 0;
 	ui->container_id = 0;
 
+
+	for (u64* i = table_first(ui->container_meta); i; i = table_next(ui->container_meta, *i)) {
+		struct ui_container_meta* m = table_get(ui->container_meta, *i);
+		m->visible = false;
+	}
+
 	ui_begin_container(ui, make_v4f(0.0f, 0.0f, 1.0f, 1.0f), false);
 
 	ui_columns(ui, 1, (f32[]) { 1.0f });
@@ -743,7 +770,9 @@ void ui_end(struct ui* ui) {
 	for (u64* i = table_first(ui->container_meta); i; i = table_next(ui->container_meta, *i)) {
 		struct ui_container_meta* m = table_get(ui->container_meta, *i);
 		m->interactable = false;
-		vector_push(ui->sorted_containers, m);
+		if (m->visible) {
+			vector_push(ui->sorted_containers, m);
+		}
 	}
 
 	/* Sort all of the containers. */
@@ -790,6 +819,7 @@ void ui_begin_container_ex(struct ui* ui, const char* class, v4f rect, bool scro
 
 	meta->z = ui->current_z -= z_step;
 	meta->floating = false;
+	meta->visible = true;
 
 	v2i window_size = get_window_size();
 
@@ -845,8 +875,9 @@ void ui_begin_container_ex(struct ui* ui, const char* class, v4f rect, bool scro
 	ui->cursor_pos = make_v2f(clip.x + padding.x + scroll.x, clip.y + padding.y + scroll.y);
 }
 
-void ui_begin_floating_container_ex(struct ui* ui, const char* class, v4f rect, bool scrollable) {
+void ui_begin_floating_container_ex(struct ui* ui, const char* class, v4f rect, bool scrollable, f32 z) {
 	u64 id = ui->container_id++;
+
 	struct ui_container_meta* meta = get_container_meta(ui, id);
 
 	v2f scroll = make_v2f(0.0f, 0.0f);
@@ -862,7 +893,8 @@ void ui_begin_floating_container_ex(struct ui* ui, const char* class, v4f rect, 
 	meta->position = make_v2f(rect.x, rect.y);
 	meta->dimensions = make_v2f(rect.z, rect.w);
 	meta->floating = true;
-	meta->z = ui->current_z -= ui_z_decrease;
+	meta->visible = true;
+	meta->z = z;
 
 	ui_clip(ui, rect);
 	ui_draw_rect(ui, make_v2f(rect.x, rect.y), meta->z, make_v2f(rect.z, rect.w), style.background_colour.value, style.radius.value);
@@ -880,7 +912,7 @@ void ui_begin_floating_container_ex(struct ui* ui, const char* class, v4f rect, 
 		.z = meta->z
 	}));
 
-	ui->cursor_pos = make_v2f(rect.x + style.padding.value.x, rect.y + style.padding.value.y);
+	ui->cursor_pos = make_v2f(rect.x + style.padding.value.x + scroll.x, rect.y + style.padding.value.y + scroll.y);
 }
 
 void ui_end_container(struct ui* ui) {
@@ -893,7 +925,7 @@ void ui_end_container(struct ui* ui) {
 	container->content_size.y = (ui->cursor_pos.y - container->rect.y);
 	container->content_size.x += container->padding.x;
 
-	if (container->scrollable && mouse_over_rect(make_v2f(container->rect.x, container->rect.y), make_v2f(container->rect.z, container->rect.w))) {
+	if (container->scrollable && container->interactable && mouse_over_rect(make_v2f(container->rect.x, container->rect.y), make_v2f(container->rect.z, container->rect.w))) {
 		meta->scroll.x += (f32)get_scroll().x * 10.0f;
 		meta->scroll.y += (f32)get_scroll().y * get_font_height(ui->font) * 3.0f;
 
@@ -984,6 +1016,10 @@ void ui_advance(struct ui* ui, v2f dimensions) {
 		ui->column = 0;
 		ui->current_item_height = 0.0f;
 	}
+}
+
+f32 ui_advance_z(struct ui* ui) {
+	return ui->current_z -= ui_z_decrease;
 }
 
 void ui_columns(struct ui* ui, usize count, f32* columns) {
@@ -1209,7 +1245,7 @@ bool ui_input_ex2(struct ui* ui, const char* class, char* buf, usize buf_size, u
 	struct ui_style style = ui_get_style(ui, "input", class, ui_style_variant_none);
 
 	const v2f dimensions = v2f_add(make_v2f(ui->columns[ui->column] *
-		container->rect.z - (style.padding.value.x + style.padding.value.z) - container->padding.z, get_font_height(ui->font)),
+		container->rect.z - (style.padding.value.x * 2.0f + style.padding.value.z) - (container->padding.x + container->padding.z), get_font_height(ui->font)),
 		make_v2f(0.0f, style.padding.value.y + style.padding.value.w));
 	
 	const v2f text_dimensions = get_text_dimensions(ui->font, buf);
@@ -1421,6 +1457,75 @@ void ui_tree_pop(struct ui* ui) {
 
 	container->left_bound -= 10.0f;
 	ui->cursor_pos.x -= 10.0f;
+}
+
+
+bool ui_combo_ex(struct ui* ui, const char* class, i32* item, const char** items, usize item_count, u64 id) {
+	if (id == 0) {
+		id = elf_hash((const u8*)&item, sizeof item);
+	}
+
+	const struct ui_container* container = vector_end(ui->container_stack) - 1;
+
+	struct ui_style style = ui_get_style(ui, "combo", class, ui_style_variant_none);
+
+	const v2f dimensions = v2f_add(make_v2f(ui->columns[ui->column] *
+		container->rect.z - (style.padding.value.x * 2.0f + style.padding.value.z) - (container->padding.x + container->padding.z), get_font_height(ui->font)),
+		make_v2f(0.0f, style.padding.value.y + style.padding.value.w));
+
+	ui_draw_rect(ui, get_ui_el_position(ui, &style, dimensions), z_layer_1, dimensions,
+		style.background_colour.value, style.radius.value);
+	struct ui_cmd_draw_rect* rect_cmd = ui_last_cmd(ui);
+
+	bool hovered = container->interactable && mouse_over_rect(rect_cmd->position, dimensions);
+
+	if (hovered) {
+		ui->hovered = id;
+
+		if (mouse_btn_just_released(mouse_btn_left)) {
+			ui->active = id;
+		}
+	}
+
+	bool active = ui->active == id;
+
+	if (ui_get_style_variant(ui, &style, "combo", class, hovered, active)) {
+		rect_cmd->position = get_ui_el_position(ui, &style, dimensions);
+		rect_cmd->radius   = style.radius.value;
+
+		rect_cmd->colour = style.background_colour.value;
+	}
+
+	if (item && *item >= 0) {
+		const v2f text_pos = v2f_add(rect_cmd->position, style.padding.value);
+		const v2f text_dimensions = get_text_dimensions(ui->font, items[*item]);
+	
+		ui_draw_text(ui, text_pos, z_layer_2, text_dimensions, items[*item], style.text_colour.value);
+	}
+
+	if (active) {
+		v2f c = ui->cursor_pos;
+		ui_begin_floating_container_ex(ui, "combo_container", make_v4f(
+			rect_cmd->position.x,
+			rect_cmd->position.y + rect_cmd->dimensions.y,
+			rect_cmd->dimensions.x, 100.0f), true, z_layer_2);
+
+		for (usize i = 0; i < item_count; i++) {
+			bool selected = false;
+			ui_selectable_tree_node_ex(ui, "", items[i], true, &selected, id + i + 1);
+
+			if (selected) {
+				*item = (i32)i;
+			}
+		}
+
+		ui_end_container(ui);
+		ui->cursor_pos = c;
+	}
+
+	ui_advance(ui, make_v2f(dimensions.x, dimensions.y + container->spacing));
+
+	return false;
 }
 
 void ui_colour_picker_ex(struct ui* ui, const char* class, v4f* colour, u64 id) {

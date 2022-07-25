@@ -139,12 +139,6 @@ void cr_update(f64 ts) {
 	}
 	ui_label(app.ui, fps_buf);
 
-	ui_begin_floating_container(app.ui, make_v4f(300.0f, 50.0f, 200.0f, 500.0f), true);
-	ui_columns(app.ui, 1, (f32[]) { 1.0f });
-	ui_label(app.ui, "Floating Container A.");
-	ui_button(app.ui, "Button");
-	ui_end_container(app.ui);
-
 	ui_begin_container(app.ui, make_v4f(0.5f, 0.0f, 0.5f, 1.0f), true);
 
 	if (ui_tree_node(app.ui, "Layout", false)) {
@@ -160,6 +154,22 @@ void cr_update(f64 ts) {
 		if (ui_button(app.ui, "Button B")) {
 			info("Button B pressed.");
 		}
+
+		ui_tree_pop(app.ui);
+	}
+
+bool ui_combo_ex(struct ui* ui, const char* class, i32* item, const char** items, usize item_count, u64 id);
+
+	if (ui_tree_node(app.ui, "Combo Box", false)) {
+		static i32 item = 0;
+
+		ui_combo(app.ui, &item, ((const char*[]) {
+			"Item 1",
+			"Item 2",
+			"Item 3",
+			"Item 4",
+			"Item 5",
+			"Item 6"}), 6);
 
 		ui_tree_pop(app.ui);
 	}
