@@ -1503,6 +1503,8 @@ bool ui_combo_ex(struct ui* ui, const char* class, i32* item, const char** items
 		ui_draw_text(ui, text_pos, z_layer_2, text_dimensions, items[*item], style.text_colour.value);
 	}
 
+	bool changed = false;
+
 	if (active) {
 		v2f c = ui->cursor_pos;
 		ui_begin_floating_container_ex(ui, "combo_container", make_v4f(
@@ -1516,6 +1518,7 @@ bool ui_combo_ex(struct ui* ui, const char* class, i32* item, const char** items
 
 			if (selected) {
 				*item = (i32)i;
+				changed = true;
 			}
 		}
 
@@ -1525,10 +1528,10 @@ bool ui_combo_ex(struct ui* ui, const char* class, i32* item, const char** items
 
 	ui_advance(ui, make_v2f(dimensions.x, dimensions.y + container->spacing));
 
-	return false;
+	return changed;
 }
 
-void ui_colour_picker_ex(struct ui* ui, const char* class, v4f* colour, u64 id) {
+bool ui_colour_picker_ex(struct ui* ui, const char* class, v4f* colour, u64 id) {
 	if (id == 0) {
 		id = elf_hash((const u8*)&colour, sizeof colour);
 	}
@@ -1634,14 +1637,21 @@ void ui_colour_picker_ex(struct ui* ui, const char* class, v4f* colour, u64 id) 
 	v2f handle_off = v2f_sub(position, make_v2f(2.5f, 2.5f));
 	ui_draw_circle(ui, v2f_add(handle_off, handle_pos), z_layer_3, 5.0f, make_rgba(0x000000, 255));
 	ui_draw_circle(ui, v2f_add(handle_off, v2f_add(handle_pos, make_v2f(1.0f, 1.0f))), z_layer_4, 4.0f, style.text_colour.value);
-
-	*colour = hsva_to_rgba(hsva);
+	
+	v4f rgb_col = hsva_to_rgba(hsva);
+	bool changed = false;
+	if (!v4f_eq(rgb_col, *colour)) {
+		*colour = rgb_col;
+		changed = true;
+	}
 
 	/* Result. A checkerboard is drawn underneath to showcase transparency. */
 	ui_draw_texture(ui, result_pos, z_layer_1, result_dimensions, ui->alpha_texture, make_v4i(0, 0, 64, 64), make_rgba(0xffffff, 255), style.radius.value);
 	ui_draw_rect(ui, result_pos, z_layer_2, result_dimensions, *colour, style.radius.value);
 
 	ui_advance(ui, make_v2f(dimensions.x, dimensions.y + container->spacing));
+
+	return changed;
 }
 
 void ui_draw(const struct ui* ui) {

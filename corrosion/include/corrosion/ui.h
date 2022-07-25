@@ -75,7 +75,7 @@ void ui_tree_pop(struct ui* ui);
 bool ui_combo_ex(struct ui* ui, const char* class, i32* item, const char** items, usize item_count, u64 id);
 #define ui_combo(ui_, i_, is_, ic_) ui_combo_ex(ui_, "", i_, is_, ic_, 0)
 
-void ui_colour_picker_ex(struct ui* ui, const char* class, v4f* colour, u64 id);
+bool ui_colour_picker_ex(struct ui* ui, const char* class, v4f* colour, u64 id);
 #define ui_colour_picker(ui_, c_) ui_colour_picker_ex(ui_, "", c_, 0)
 
 void ui_begin_window();

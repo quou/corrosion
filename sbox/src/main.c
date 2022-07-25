@@ -158,11 +158,11 @@ void cr_update(f64 ts) {
 		ui_tree_pop(app.ui);
 	}
 
-bool ui_combo_ex(struct ui* ui, const char* class, i32* item, const char** items, usize item_count, u64 id);
-
 	if (ui_tree_node(app.ui, "Combo Box", false)) {
 		static i32 item = 0;
 
+		ui_columns(app.ui, 2, (f32[]) { 0.25f, 0.75f });
+		ui_label(app.ui, "Combo Box:");
 		ui_combo(app.ui, &item, ((const char*[]) {
 			"Item 1",
 			"Item 2",
