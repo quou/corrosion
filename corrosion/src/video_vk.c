@@ -672,6 +672,10 @@ void video_vk_deinit() {
 		vkDestroySemaphore(vctx.device, vctx.image_avail_semaphores[i], null);
 		vkDestroySemaphore(vctx.device, vctx.render_finish_semaphores[i], null);
 		vkDestroyFence(vctx.device, vctx.in_flight_fences[i], null);
+		
+		if (vctx.update_queues[i].capacity > 0) {
+			core_free(vctx.update_queues[i].bytes);
+		}
 	}
 
 	vkDestroyCommandPool(vctx.device, vctx.command_pool, null);
@@ -689,6 +693,7 @@ void video_vk_deinit() {
 	vkDestroyInstance(vctx.instance, null);
 
 	free_table(vctx.framebuffers);
+	free_table(vctx.pipelines);
 }
 
 void video_vk_begin() {

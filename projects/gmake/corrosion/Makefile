@@ -42,6 +42,7 @@ endif
 all: $(target)
 
 sources =                            \
+          $(srcdir)/alloc.c          \
           $(srcdir)/atlas.c          \
           $(srcdir)/core.c           \
           $(srcdir)/dtable.c         \

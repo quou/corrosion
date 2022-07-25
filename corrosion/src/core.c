@@ -106,77 +106,15 @@ void* _table_next_key(void* els, usize el_size, usize capacity, usize count, usi
 	return null;
 }
 
-#ifdef debug
-usize memory_usage = 0;
+#ifndef debug
+void alloc_init() {
 
-void* core_alloc(usize size) {
-	u8* ptr = malloc(sizeof(usize) + size);
-
-	if (!ptr) {
-		abort_with("Out of memory.");
-	}
-
-	memcpy(ptr, &size, sizeof(usize));
-
-	memory_usage += size;
-
-	return ptr + sizeof(usize);
 }
 
-void* core_calloc(usize count, usize size) {
-	usize alloc_size = count * size;
+void alloc_deinit() {
 
-	u8* ptr = malloc(sizeof(usize) + alloc_size);
-
-	if (!ptr) {
-		abort_with("Out of memory.");
-	}
-
-	memset(ptr + sizeof(usize), 0, alloc_size);
-
-	memcpy(ptr, &alloc_size, sizeof(usize));
-
-	memory_usage += size;
-
-	return ptr + sizeof(usize);
 }
 
-void* core_realloc(void* p, usize size) {
-	u8* ptr = p;
-
-	if (ptr) {
-		usize* old_size = (usize*)(ptr - sizeof(usize));
-		memory_usage -= *old_size;
-	}
-
-	u8* new_ptr = realloc(ptr ? ptr - sizeof(usize) : null, sizeof(usize) + size);
-
-	if (!new_ptr) {
-		abort_with("Out of memory.");
-	}
-
-	memcpy(new_ptr, &size, sizeof(usize));
-
-	memory_usage += size;
-
-	return new_ptr + sizeof(usize);
-}
-
-void core_free(void* p) {
-	if (!p) { return; }
-	
-	u8* ptr = p;
-
-	usize* old_size = (usize*)(ptr - sizeof(usize));
-	memory_usage -= *old_size;
-
-	free(old_size);
-}
-
-usize core_get_memory_usage() {
-	return memory_usage;
-}
-#else
 void* core_alloc(usize size) {
 	void* ptr = malloc(size);
 
@@ -213,6 +151,10 @@ void core_free(void* p) {
 
 usize core_get_memory_usage() {
 	return 0;
+}
+
+void leak_check() {
+
 }
 #endif
 

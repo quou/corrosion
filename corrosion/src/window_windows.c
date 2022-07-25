@@ -251,7 +251,6 @@ VkSurfaceKHR get_window_surface() {
 }
 
 void deinit_window() {
-	PostQuitMessage(0);
 	DestroyWindow(window.hwnd);
 
 	free_table(window.keymap);

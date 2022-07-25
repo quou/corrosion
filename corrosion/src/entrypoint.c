@@ -12,6 +12,8 @@ extern void cr_update(f64 ts);
 extern void cr_deinit();
 
 i32 main(i32 argc, const char** argv) {
+	alloc_init();
+
 	struct app_config cfg = cr_config();
 
 	init_timer();
@@ -49,4 +51,8 @@ i32 main(i32 argc, const char** argv) {
 
 	deinit_video();
 	deinit_window();
+
+	leak_check();
+
+	alloc_deinit();
 }

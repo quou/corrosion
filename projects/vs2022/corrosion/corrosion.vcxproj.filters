@@ -69,6 +69,9 @@
     <ClCompile Include="..\..\..\corrosion\src\res_windows.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\corrosion\src\alloc.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\corrosion\include\corrosion\app.h">

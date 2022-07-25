@@ -78,7 +78,4 @@ bool ui_combo_ex(struct ui* ui, const char* class, i32* item, const char** items
 bool ui_colour_picker_ex(struct ui* ui, const char* class, v4f* colour, u64 id);
 #define ui_colour_picker(ui_, c_) ui_colour_picker_ex(ui_, "", c_, 0)
 
-void ui_begin_window();
-void ui_end_window();
-
 void ui_draw(const struct ui* ui);

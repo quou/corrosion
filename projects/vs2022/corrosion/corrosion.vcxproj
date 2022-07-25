@@ -175,6 +175,7 @@
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\..\corrosion\src\alloc.c" />
     <ClCompile Include="..\..\..\corrosion\src\atlas.c" />
     <ClCompile Include="..\..\..\corrosion\src\core.c" />
     <ClCompile Include="..\..\..\corrosion\src\dtable.c" />

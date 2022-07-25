@@ -23,12 +23,37 @@ void vwarning(const char* fmt, va_list args);
 		abort(); \
 	} while (0)
 
+#ifdef debug
+
+struct alloc_code_info {
+	const char* file;
+	u32 line;
+};
+
+void* _core_alloc(usize size, struct alloc_code_info info);
+void* _core_calloc(usize count, usize size, struct alloc_code_info info);
+void* _core_realloc(void* ptr, usize size, struct alloc_code_info info);
+void _core_free(void* ptr, struct alloc_code_info info);
+
+#define core_alloc(s_) _core_alloc(s_, (struct alloc_code_info) { __FILE__, __LINE__ })
+#define core_calloc(s_, c_) _core_calloc(s_, c_, (struct alloc_code_info) { __FILE__, __LINE__ })
+#define core_realloc(p_, s_) _core_realloc(p_, s_, (struct alloc_code_info) { __FILE__, __LINE__ })
+#define core_free(p_) _core_free(p_, (struct alloc_code_info) { __FILE__, __LINE__ })
+
+#else
+
 void* core_alloc(usize size);
 void* core_calloc(usize count, usize size);
 void* core_realloc(void* ptr, usize size);
 void core_free(void* ptr);
 
+#endif
+
 usize core_get_memory_usage();
+
+void alloc_init();
+void alloc_deinit();
+void leak_check();
 
 struct type_info {
 	u64 id;
@@ -71,6 +96,14 @@ struct type_info {
 #define table_null_key UINT64_MAX
 #define table_load_factor 0.75
 
+#ifndef table_malloc
+#define table_malloc core_alloc
+#endif
+
+#ifndef table_free
+#define table_free core_free
+#endif
+
 /* Takes a struct value instead of a type and gets
  * the offset of a property. */
 #define voffsetof(v_, m_) \
@@ -101,7 +134,7 @@ void* _table_next_key(void* els, usize el_size, usize capacity, usize count, usi
 #define _table_resize(t_, cap_) \
 	do { \
 		u64 nk_ = table_null_key; \
-		u8* els_ = core_alloc((cap_) * sizeof (t_).e); \
+		u8* els_ = table_malloc((cap_) * sizeof (t_).e); \
 		for (usize i = 0; i < (cap_); i++) { \
 			memcpy(&els_[i * sizeof (t_).e + voffsetof((t_).e, key)], &nk_, sizeof (t_).k); \
 			els_[i * sizeof (t_).e + voffsetof((t_).e, state)] = table_el_state_active; \
@@ -117,7 +150,7 @@ void* _table_next_key(void* els, usize el_size, usize capacity, usize count, usi
 			memcpy(dst_ + voffsetof((t_).e, key),   el_ + voffsetof((t_).e, key),   sizeof (t_).k); \
 			memcpy(dst_ + voffsetof((t_).e, value), el_ + voffsetof((t_).e, value), sizeof (t_).v); \
 		} \
-		if ((t_).entries) { core_free((t_).entries); } \
+		if ((t_).entries) { table_free((t_).entries); } \
 		(t_).entries = (void*)els_; \
 		(t_).capacity = (cap_); \
 	} while (0)
@@ -138,7 +171,7 @@ void* _table_next_key(void* els, usize el_size, usize capacity, usize count, usi
 #define free_table(t_) \
 	do { \
 		if ((t_).entries) { \
-			core_free((t_).entries); \
+			table_free((t_).entries); \
 		} \
 	} while (0)
 
