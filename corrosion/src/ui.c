@@ -1648,8 +1648,6 @@ void ui_draw(const struct ui* ui) {
 	struct ui_cmd* cmd = (void*)ui->cmd_buffer;
 	struct ui_cmd* end = (void*)(((u8*)ui->cmd_buffer) + ui->cmd_buffer_idx);
 
-	vector(struct ui_renderer_quad) rects = null;
-
 #ifdef ui_print_commands
 	info(" == UI Command Dump == ");
 	info("End: %llu", ui->cmd_buffer_idx);
@@ -1765,8 +1763,6 @@ void ui_draw(const struct ui* ui) {
 	for (usize i = 0; i < vector_count(ui->cmd_free_queue); i++) {
 		core_free(ui->cmd_free_queue[i]);
 	}
-
-	free_vector(rects);
 
 	vector_clear(ui->cmd_free_queue);
 
