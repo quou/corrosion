@@ -403,7 +403,7 @@ void* res_load(const char* type, const char* filename, void* udata) {
 		core_free(raw);
 
 		if (config->alt_raw && config->alt_raw_size) {
-			raw = config->alt_raw;
+			raw = (u8*)config->alt_raw;
 			raw_size = config->alt_raw_size;
 		}
 	}

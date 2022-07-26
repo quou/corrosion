@@ -61,7 +61,7 @@ struct res_config {
 	usize payload_size;
 	bool free_raw_on_load;
 	bool terminate_raw;
-	void* alt_raw;
+	const void* alt_raw;
 	usize alt_raw_size;
 
 	void (*on_load)(const char* filename, u8* raw, usize raw_size, void* payload, usize payload_size, void* udata);
