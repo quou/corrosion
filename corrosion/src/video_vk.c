@@ -1,6 +1,7 @@
 #include <vulkan/vulkan.h>
 
 #include "core.h"
+#include "bir.h"
 #include "res.h"
 #include "video_internal.h"
 #include "video_vk.h"
@@ -2536,6 +2537,8 @@ void video_vk_register_resources() {
 		.payload_size = sizeof(struct video_vk_shader),
 		.free_raw_on_load = true,
 		.terminate_raw = false,
+		.alt_raw = bir_error_csh,
+		.alt_raw_size = bir_error_csh_size,
 		.on_load = shader_on_load,
 		.on_unload = shader_on_unload
 	});
@@ -2544,6 +2547,9 @@ void video_vk_register_resources() {
 		.payload_size = sizeof(struct video_vk_texture),
 		.free_raw_on_load = true,
 		.terminate_raw = false,
+		.alt_raw = bir_error_png,
+		.alt_raw_size = bir_error_png_size,
+		.on_load = shader_on_load,
 		.on_load = texture_on_load,
 		.on_unload = texture_on_unload
 	});

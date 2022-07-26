@@ -7,7 +7,9 @@ static const char* out_file = "corrosion/src/bir.h";
 static const char* dir = "corrosion/bir";
 static const char* files[] = {
 	"DejaVuSans.ttf",
-	"checkerboard.png"
+	"checkerboard.png",
+	"error.png",
+	"error.csh",
 };
 
 i32 main() {
@@ -20,6 +22,27 @@ i32 main() {
 	}
 
 	fprintf(out, "#pragma once\n\n");
+	fprintf(out, "#include \"core.h\"\n\n");
+
+	fprintf(out, "#ifndef bir_impl\n");
+
+	for (usize i = 0; i < sizeof files / sizeof * files; i++) {
+		char var_name[256];
+		strcpy(var_name, "bir_");
+		strcat(var_name, files[i]);
+
+		for (char* c = var_name; *c; c++) {
+			if (*c == '/' || *c == '.') {
+				*c = '_';
+			}
+		}
+
+		fprintf(out, "extern const char %s[];\n", var_name);
+		strcat(var_name, "_size");
+		fprintf(out, "extern const usize %s;\n", var_name);
+	}
+
+	fprintf(out, "#else\n");
 
 	for (usize i = 0; i < sizeof files / sizeof *files; i++) {
 		char var_name[256];
@@ -32,7 +55,7 @@ i32 main() {
 			}
 		}
 
-		fprintf(out, "static const char %s[] = {\n", var_name);
+		fprintf(out, "const char %s[] = {\n", var_name);
 
 		char file_name[256];
 		strcpy(file_name, dir);
@@ -61,8 +84,13 @@ i32 main() {
 		
 		fprintf(out, "\n};\n");
 
+		strcat(var_name, "_size");
+		fprintf(out, "const usize %s = %llu;\n", var_name, file_size);
+
 		fclose(infile);
 	}
+
+	fprintf(out, "#endif\n");
 
 	fclose(out);
 }

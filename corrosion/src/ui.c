@@ -662,11 +662,13 @@ void ui_init() {
 		.payload_size = sizeof(struct ui_stylesheet),
 		.free_raw_on_load = true,
 		.terminate_raw = true,
+		.alt_raw = "normal = { }",
+		.alt_raw_size = 13,
 		.on_load = stylesheet_on_load,
 		.on_unload = stylesheet_on_unload
 	});
 
-	default_font = new_font(bir_DejaVuSans_ttf, sizeof bir_DejaVuSans_ttf, 14.0f);
+	default_font = new_font(bir_DejaVuSans_ttf, bir_DejaVuSans_ttf_size, 14.0f);
 }
 
 void ui_deinit() {
@@ -687,7 +689,7 @@ struct ui* new_ui(const struct framebuffer* framebuffer) {
 	ui->font = default_font;
 
 	struct image alpha_image;
-	init_image_from_raw(&alpha_image, bir_checkerboard_png, sizeof bir_checkerboard_png);
+	init_image_from_raw(&alpha_image, bir_checkerboard_png, bir_checkerboard_png_size);
 
 	ui->alpha_texture = video.new_texture(&alpha_image, texture_flags_none);
 

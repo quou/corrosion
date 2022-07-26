@@ -44,6 +44,7 @@ all: $(target)
 sources =                            \
           $(srcdir)/alloc.c          \
           $(srcdir)/atlas.c          \
+          $(srcdir)/bir.c            \
           $(srcdir)/core.c           \
           $(srcdir)/dtable.c         \
           $(srcdir)/entrypoint.c     \

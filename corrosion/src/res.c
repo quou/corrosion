@@ -2,6 +2,7 @@
 #include <stdio.h>
 
 #include "core.h"
+#include "bir.h"
 #include "font.h"
 #include "maths.h"
 #include "res.h"
@@ -289,6 +290,7 @@ struct res {
 	u8* payload;
 	usize payload_size;
 	u64 config_id;
+	bool ok;
 };
 
 table(u64, struct res_config) res_registry = { 0 };
@@ -329,6 +331,8 @@ void res_init(const char* argv0) {
 		.payload_size = sizeof(struct image),
 		.free_raw_on_load = true,
 		.terminate_raw = false,
+		.alt_raw = bir_error_png,
+		.alt_raw_size = bir_error_png_size,
 		.on_load = image_on_load,
 		.on_unload = image_on_unload
 	});
@@ -337,6 +341,8 @@ void res_init(const char* argv0) {
 		.payload_size = font_struct_size(),
 		.free_raw_on_load = false,
 		.terminate_raw = false,
+		.alt_raw = bir_DejaVuSans_ttf,
+		.alt_raw_size = bir_DejaVuSans_ttf_size,
 		.on_load = ttf_on_load,
 		.on_unload = ttf_on_unload
 	});
@@ -383,16 +389,30 @@ void* res_load(const char* type, const char* filename, void* udata) {
 	u8* raw;
 	usize raw_size;
 
+	bool error;
+
 	if (config->terminate_raw) {
-		read_raw_text(filename, (char**)&raw);
-		raw_size = strlen((char*)raw) + 1;
+		error = !read_raw_text(filename, (char**)&raw);
+
+		if (!error) { raw_size = strlen((char*)raw) + 1; }
 	} else {
-		read_raw(filename, &raw, &raw_size);
+		error = !read_raw(filename, &raw, &raw_size);
 	}
+
+	if (error) {
+		core_free(raw);
+
+		if (config->alt_raw && config->alt_raw_size) {
+			raw = config->alt_raw;
+			raw_size = config->alt_raw_size;
+		}
+	}
+
+	new_res.ok = !error;
 
 	config->on_load(filename, raw, raw_size, new_res.payload, new_res.payload_size, udata);
 
-	if (config->free_raw_on_load) {
+	if (config->free_raw_on_load && !error) {
 		core_free(raw);
 	}
 
@@ -411,7 +431,9 @@ void res_unload(const char* filename) {
 
 	config->on_unload(res->payload, res->payload_size);
 
-	core_free(res->payload);
+	if (res->ok) {
+		core_free(res->payload);
+	}
 
 	table_delete(res_cache, hash_string(filename) + res->config_id);
 }
