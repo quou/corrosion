@@ -392,7 +392,6 @@ static bool parse(struct dtable* dt, struct parser* parser) {
 	do { \
 		if (tok.type != t_) { \
 			parse_error(parser, err_); \
-			info("Bad token: %d, %.*s", tok.type, tok.len, tok.start); \
 			return false; \
 		} \
 	} while (0)

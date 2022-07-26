@@ -3,6 +3,14 @@
 #include "common.h"
 #include "maths.h"
 
+/* Resource mananger. Maintains exactly one copy
+ * of each resource. res_use_pak causes read_raw and
+ * read_raw_text to read from the current package.
+ * Packages only support reading and batch writing.
+ * Packages are in the Quake PAK format.
+ *
+ * The resource manager is not thread safe. */
+
 enum {
 	file_normal = 0,
 	file_directory,
@@ -39,6 +47,15 @@ bool write_raw_text(const char* path, const char* buf);
 
 void res_init(const char* argv0);
 void res_deinit();
+
+struct res_pak;
+
+void res_use_pak(const struct res_pak* pak);
+
+struct res_pak* pak_open(const char* path);
+void pak_close(struct res_pak* pak);
+
+bool write_pak(const char* outname, const char** files, usize file_count);
 
 struct res_config {
 	usize payload_size;

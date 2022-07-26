@@ -178,7 +178,7 @@ void leak_check() {
 	if (core_get_memory_usage() != 0) {
 		struct alloc_info* node = alloc_head;
 		while (node) {
-			warning("Leaked block of %llu bytes allocated at: %s:%u", node->size, node->file, node->size);
+			warning("Leaked block of %llu bytes allocated at: %s:%u", node->size, node->file, node->line);
 
 			node = node->next;
 		}

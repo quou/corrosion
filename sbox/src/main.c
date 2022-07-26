@@ -122,6 +122,17 @@ void cr_init() {
 	);
 
 	app.renderer = new_simple_renderer(app.fb);
+
+	/*write_pak("test.pak", (const char* []) {
+		"res/uistyle.dt",
+		"res/chad.jpg",
+		"res/DejaVuSans.ttf",
+		"res/test.png",
+		"shaderbin/invert.csh",
+		"shaderbin/line.csh",
+		"shaderbin/simple.csh",
+		"shaderbin/ui.csh"
+	}, 8);*/
 }
 
 void cr_update(f64 ts) {
