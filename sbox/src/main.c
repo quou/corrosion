@@ -132,12 +132,16 @@ void cr_update(f64 ts) {
 	ui_columns(app.ui, 1, (f32[]) { 1.0f });
 
 	static char fps_buf[32];
+	static char mem_buf[128];
+	sprintf(mem_buf, "Memory Usage (KIB): %g", (f64)core_get_memory_usage() / 1024.0);
+
 	app.fps_timer += ts;
 	if (app.fps_timer >= 1.0) {
 		app.fps_timer = 0.0;
 		sprintf(fps_buf, "FPS: %g", 1.0 / ts);
 	}
 	ui_label(app.ui, fps_buf);
+	ui_label(app.ui, mem_buf);
 
 	ui_begin_container(app.ui, make_v4f(0.5f, 0.0f, 0.5f, 1.0f), true);
 

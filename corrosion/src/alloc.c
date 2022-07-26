@@ -184,6 +184,8 @@ void leak_check() {
 		}
 
 		info("Total leaked memory: %llu", memory_usage);
+	} else {
+		info("No leaks from tracked allocations.");
 	}
 }
 
