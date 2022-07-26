@@ -36,7 +36,7 @@ void* _core_realloc(void* ptr, usize size, struct alloc_code_info info);
 void _core_free(void* ptr, struct alloc_code_info info);
 
 #define core_alloc(s_) _core_alloc(s_, (struct alloc_code_info) { __FILE__, __LINE__ })
-#define core_calloc(s_, c_) _core_calloc(s_, c_, (struct alloc_code_info) { __FILE__, __LINE__ })
+#define core_calloc(c_, s_) _core_calloc(c_, s_, (struct alloc_code_info) { __FILE__, __LINE__ })
 #define core_realloc(p_, s_) _core_realloc(p_, s_, (struct alloc_code_info) { __FILE__, __LINE__ })
 #define core_free(p_) _core_free(p_, (struct alloc_code_info) { __FILE__, __LINE__ })
 
@@ -149,6 +149,7 @@ void* _table_next_key(void* els, usize el_size, usize capacity, usize count, usi
 				null); \
 			memcpy(dst_ + voffsetof((t_).e, key),   el_ + voffsetof((t_).e, key),   sizeof (t_).k); \
 			memcpy(dst_ + voffsetof((t_).e, value), el_ + voffsetof((t_).e, value), sizeof (t_).v); \
+			memcpy(dst_ + voffsetof((t_).e, state), el_ + voffsetof((t_).e, state), sizeof(u8)); \
 		} \
 		if ((t_).entries) { table_free((t_).entries); } \
 		(t_).entries = (void*)els_; \
