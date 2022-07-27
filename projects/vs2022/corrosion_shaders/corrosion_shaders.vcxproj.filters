@@ -15,9 +15,11 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <CustomBuild Include="..\..\..\shaders\src\invert.glsl" />
-    <CustomBuild Include="..\..\..\shaders\src\line.glsl" />
-    <CustomBuild Include="..\..\..\shaders\src\simple.glsl" />
-    <CustomBuild Include="..\..\..\shaders\src\ui.glsl" />
+    <None Include="..\..\..\corrosion\src\error.glsl" />
+    <None Include="..\..\..\corrosion\src\line.glsl" />
+    <None Include="..\..\..\corrosion\src\simple.glsl" />
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="..\..\..\corrosion\src\ui.glsl" />
   </ItemGroup>
 </Project>

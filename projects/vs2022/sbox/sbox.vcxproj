@@ -169,9 +169,6 @@
     <ProjectReference Include="..\corrosion\corrosion.vcxproj">
       <Project>{c4aec280-1b24-4db7-9999-39ddc89a6077}</Project>
     </ProjectReference>
-    <ProjectReference Include="..\shaders\shaders.vcxproj">
-      <Project>{44acd91d-fca7-4ce8-b314-c1a9efb39b83}</Project>
-    </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

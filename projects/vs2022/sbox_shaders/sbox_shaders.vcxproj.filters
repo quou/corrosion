@@ -15,8 +15,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\..\shadercompiler\src\compiler.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
+    <CustomBuild Include="..\..\..\sbox\src\invert.glsl" />
   </ItemGroup>
 </Project>
