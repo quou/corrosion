@@ -21,6 +21,12 @@ cppflags = -std=c++14
 bir_builder = $(target_dir)/bir
 bir_target = ../../../corrosion/src/bir.h
 
+shader_targetdir = ../../../corrosion/bir/
+shader_targets = $(shaders:$(srcdir)%.glsl=$(shader_targetdir)%.csh)
+shader_compiler = ../shadercompiler/bin/$(config)/shadercompiler
+
+deps += ../shadercompiler
+
 ifeq ($(config),debug)
   target_dir = bin/debug
   target = $(target_dir)/lib$(target_name).a
@@ -68,10 +74,6 @@ shaders =                       \
           $(srcdir)/simple.glsl \
           $(srcdir)/error.glsl \
 
-shader_targetdir = ../../../corrosion/bir/
-shader_targets = $(shaders:$(srcdir)%.glsl=$(shader_targetdir)%.csh)
-shader_compiler = ../shadercompiler/bin/$(config)/shadercompiler
-
 sourcespp = $(srcdir)/vma.cpp
 
 objects   = $(sources:$(srcdir)%.c=$(objdir)%.o)
@@ -88,14 +90,14 @@ $(objectspp): $(objdir)%.o : $(srcdir)%.cpp
 	@echo $(notdir $<)
 	$(silent) $(cxx) $(cppflags) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
 
-$(shader_targets): $(shader_targetdir)%.csh : $(srcdir)%.glsl | $(shader_targetdir) $(objdir)
+$(shader_targets): $(shader_targetdir)%.csh : $(srcdir)%.glsl | $(shader_targetdir) $(objdir) $(deps)
 	@echo $(notdir $<)
 	$(silent) ./$(shader_compiler) $< $(objdir) $@
 
 $(shader_targetdir):
 	$(silent) mkdir -p $(shader_targetdir)
 
-$(target): $(objects) $(objectspp) $(deps) | $(target_dir)
+$(target): $(deps) $(objects) $(objectspp) | $(target_dir)
 	@echo Linking $(target)
 	$(silent) ar -rcs "$@" $(objects) $(objectspp)
 
@@ -113,6 +115,9 @@ $(target_dir):
 
 $(objdir):
 	$(silent) mkdir -p $(objdir)
+
+$(deps):
+	$(silent) make --no-print-directory -C "$@" -f Makefile config=$(config)
 
 clean:
 	$(silent) rm -rf obj

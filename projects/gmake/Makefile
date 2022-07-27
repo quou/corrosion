@@ -13,7 +13,7 @@ runnables = run_sbox debug_sbox memcheck_sbox
 
 all: $(projects)
 
-corrosion:
+corrosion: shadercompiler
 	@echo == Building $@ ==
 	$(silent) make --no-print-directory -C $@ config=$(config)
 
