@@ -66,6 +66,7 @@ shaders =                       \
           $(srcdir)/line.glsl   \
           $(srcdir)/ui.glsl     \
           $(srcdir)/simple.glsl \
+          $(srcdir)/error.glsl \
 
 shader_targetdir = ../../../corrosion/bir/
 shader_targets = $(shaders:$(srcdir)%.glsl=$(shader_targetdir)%.csh)
