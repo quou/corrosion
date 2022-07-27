@@ -201,6 +201,10 @@ struct video {
 	v2i  (*get_texture_size)(const struct texture* texture);
 	void (*texture_copy)(struct texture* dst, v2i dst_offset, const struct texture* src, v2i src_offset, v2i dimensions);
 
+	/* Shader. */
+	struct shader* (*new_shader)(const u8* data, usize data_size);
+	void (*free_shader)(struct shader* shader);
+
 	/* Maths. */
 	m4f (*ortho)(f32 l, f32 r, f32 b, f32 t, f32 n, f32 f);
 	m4f (*persp)(f32 fov, f32 aspect, f32 near, f32 far);

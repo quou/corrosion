@@ -1,3 +1,4 @@
+#include "bir.h"
 #include "core.h"
 #include "gizmo.h"
 
@@ -15,6 +16,8 @@ struct {
 
 	struct vertex_buffer* vb;
 	struct pipeline* pip;
+
+	struct shader* shader;
 
 	struct {
 		m4f camera;
@@ -39,11 +42,11 @@ void gizmos_init() {
 
 	gizmos.vb = video.new_vertex_buffer(null, max_lines * sizeof(struct line_vertex), vertex_buffer_flags_dynamic);
 
-	const struct shader* shader = load_shader("shaderbin/line.csh");
+	gizmos.shader = video.new_shader(bir_line_csh, bir_line_csh_size);
 
 	gizmos.pip = video.new_pipeline(
 		pipeline_flags_draw_lines,
-		shader,
+		gizmos.shader,
 		video.get_default_fb(),
 		(struct pipeline_attributes) {
 			.attributes = (struct pipeline_attribute[]) {
@@ -84,10 +87,10 @@ void gizmos_init() {
 			.count = 1
 		}
 	);
-
 }
 
 void gizmos_deinit() {
+	video.free_shader(gizmos.shader);
 	video.free_pipeline(gizmos.pip);
 	video.free_vertex_buffer(gizmos.vb);
 }

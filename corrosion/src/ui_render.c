@@ -1,3 +1,4 @@
+#include "bir.h"
 #include "ui_render.h"
 #include "window.h"
 
@@ -116,7 +117,7 @@ struct ui_renderer* new_ui_renderer(const struct framebuffer* framebuffer) {
 
 	renderer->atlas = new_atlas(texture_flags_filter_linear);
 
-	renderer->shader = load_shader("shaderbin/ui.csh");
+	renderer->shader = video.new_shader(bir_ui_csh, bir_ui_csh_size);
 	renderer->framebuffer = framebuffer;
 
 	renderer->vb = video.new_vertex_buffer(null,
@@ -153,6 +154,8 @@ void free_ui_renderer(struct ui_renderer* renderer) {
 	video.free_index_buffer(renderer->ib);
 
 	video.free_pipeline(renderer->pipeline);
+
+	video.free_shader(renderer->shader);
 
 	core_free(renderer);
 }

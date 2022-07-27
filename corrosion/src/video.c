@@ -54,6 +54,9 @@ void init_video(u32 api, bool enable_validation, v4f clear_colour) {
 		video.get_texture_size = video_vk_get_texture_size;
 		video.texture_copy     = video_vk_texture_copy;
 
+		video.new_shader  = video_vk_new_shader;
+		video.free_shader = video_vk_free_shader;
+
 		video.ortho = video_vk_ortho;
 		video.persp = video_vk_persp;
 

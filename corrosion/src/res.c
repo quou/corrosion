@@ -68,7 +68,7 @@ void pak_close(struct res_pak* pak) {
 	core_free(pak);
 }
 
-bool write_pak(const char* outname, const char** files, usize file_count) {
+bool write_pak(const char* outname, struct pak_write_file* files, usize file_count) {
 	u8 buffer[2048];
 
 	FILE* outfile = fopen(outname, "wb");
@@ -88,9 +88,9 @@ bool write_pak(const char* outname, const char** files, usize file_count) {
 	usize blob_size = 0;
 
 	for (usize i = 0; i < file_count; i++) {
-		FILE* infile = fopen(files[i], "rb");
+		FILE* infile = fopen(files[i].src, "rb");
 		if (!infile) {
-			error("Failed to open `%s'.", files[i]);
+			error("Failed to open `%s'.", files[i].src);
 			ok = false;
 			continue;
 		}
@@ -111,8 +111,8 @@ bool write_pak(const char* outname, const char** files, usize file_count) {
 			.size = (u32)file_size
 		};
 
-		usize name_len = strlen(files[i]);
-		memcpy(entry.name, files[i], cr_max(name_len, 55));
+		usize name_len = strlen(files[i].dst);
+		memcpy(entry.name, files[i].dst, cr_max(name_len, 55));
 		entry.name[name_len] = '\0';
 
 		vector_push(entries, entry);

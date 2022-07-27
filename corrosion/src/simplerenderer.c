@@ -1,3 +1,4 @@
+#include "bir.h"
 #include "simplerenderer.h"
 #include "window.h"
 
@@ -97,7 +98,7 @@ struct simple_renderer* new_simple_renderer(const struct framebuffer* framebuffe
 
 	renderer->atlas = new_atlas(texture_flags_filter_none);
 
-	renderer->shader = load_shader("shaderbin/simple.csh");
+	renderer->shader = video.new_shader(bir_simple_csh, bir_simple_csh_size);
 	renderer->framebuffer = framebuffer;
 
 	renderer->vb = video.new_vertex_buffer(null,
@@ -129,6 +130,8 @@ struct simple_renderer* new_simple_renderer(const struct framebuffer* framebuffe
 
 void free_simple_renderer(struct simple_renderer* renderer) {
 	free_atlas(renderer->atlas);
+
+	video.free_shader(renderer->shader);
 
 	video.free_vertex_buffer(renderer->vb);
 	video.free_index_buffer(renderer->ib);

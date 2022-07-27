@@ -18,7 +18,7 @@ struct simple_renderer_vertex {
 };
 
 struct simple_renderer {
-	const struct shader* shader;
+	struct shader* shader;
 	const struct framebuffer* framebuffer;
 
 	struct vertex_buffer* vb;

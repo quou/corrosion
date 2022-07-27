@@ -20,12 +20,12 @@ tags
 
 bin
 obj
-shaderbin
-projects/gmake/shaders/compiler
+sbox/shaders
 
 *.exe
 *.pdb
 .vs
+*.csh
 
 corrosion/src/bir.h
 corrosion/buildbir

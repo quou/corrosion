@@ -62,6 +62,15 @@ sources =                            \
           $(srcdir)/video_vk.c       \
           $(srcdir)/window_x11.c     \
 
+shaders =                       \
+          $(srcdir)/line.glsl   \
+          $(srcdir)/ui.glsl     \
+          $(srcdir)/simple.glsl \
+
+shader_targetdir = ../../../corrosion/bir/
+shader_targets = $(shaders:$(srcdir)%.glsl=$(shader_targetdir)%.csh)
+shader_compiler = ../shadercompiler/bin/$(config)/shadercompiler
+
 sourcespp = $(srcdir)/vma.cpp
 
 objects   = $(sources:$(srcdir)%.c=$(objdir)%.o)
@@ -78,6 +87,13 @@ $(objectspp): $(objdir)%.o : $(srcdir)%.cpp
 	@echo $(notdir $<)
 	$(silent) $(cxx) $(cppflags) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
 
+$(shader_targets): $(shader_targetdir)%.csh : $(srcdir)%.glsl | $(shader_targetdir) $(objdir)
+	@echo $(notdir $<)
+	$(silent) ./$(shader_compiler) $< $(objdir) $@
+
+$(shader_targetdir):
+	$(silent) mkdir -p $(shader_targetdir)
+
 $(target): $(objects) $(objectspp) $(deps) | $(target_dir)
 	@echo Linking $(target)
 	$(silent) ar -rcs "$@" $(objects) $(objectspp)
@@ -87,7 +103,7 @@ $(bir_builder): $(srcdir)/buildbir.c
 	@echo "Compiling BIR builder..."
 	$(silent) $(cc) -I../../../corrosion/include/corrosion -O2 $< -L/usr/lib64 -m64 -s -o "$@"
 
-$(bir_target): $(bir_builder) | $(bir_builder) 
+$(bir_target): | $(bir_builder) $(shader_targets)
 	@echo "Building BIR..."
 	$(silent) cd ../../../ && ./projects/gmake/corrosion/$(bir_builder)
 
@@ -101,5 +117,6 @@ clean:
 	$(silent) rm -rf obj
 	$(silent) rm -rf bin
 	$(silent) rm -f $(bir_target)
+	$(silent) rm -f $(shader_targets)
 
 -include $(objects:%.o=%.d) $(objectspp:%.o=%.d)

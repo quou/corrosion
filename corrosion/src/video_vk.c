@@ -2309,6 +2309,26 @@ static void deinit_shader(struct video_vk_shader* shader) {
 	vkDestroyShaderModule(vctx.device, shader->fragment, null);
 }
 
+struct shader* video_vk_new_shader(const u8* data, usize data_size) {
+	struct video_vk_shader* shader = core_calloc(1, sizeof *shader);
+
+	struct shader_header* header = (struct shader_header*)data;
+
+	if (memcmp("CS", header->header, 2) != 0) {
+		error("Invalid shader data.");
+		return null;
+	}
+
+	init_shader(shader, data + header->v_offset, (usize)header->v_size, data + header->f_offset, (usize)header->f_size);
+
+	return (struct shader*)shader;
+}
+
+void video_vk_free_shader(struct shader* shader) {
+	deinit_shader((struct video_vk_shader*)shader);
+	core_free(shader);
+}
+
 static void init_texture(struct video_vk_texture* texture, const struct image* image, u32 flags) {
 	texture->size = image->size;
 

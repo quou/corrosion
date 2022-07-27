@@ -6,8 +6,8 @@ ifndef verbose
   silent = @
 endif
 
-projects = corrosion shaders sbox
-runnables = run_sbox
+projects = shadercompiler corrosion sbox
+runnables = run_sbox debug_sbox memcheck_sbox
 
 .PHONY: all clean $(projects) $(runnables)
 
@@ -17,11 +17,11 @@ corrosion:
 	@echo == Building $@ ==
 	$(silent) make --no-print-directory -C $@ config=$(config)
 
-shaders:
+shadercompiler:
 	@echo == Building $@ ==
 	$(silent) make --no-print-directory -C $@
 
-sbox: corrosion shaders
+sbox: corrosion
 	@echo == Building $@ ==
 	$(silent) make --no-print-directory -C $@ config=$(config)
 
@@ -36,5 +36,5 @@ memcheck_sbox: sbox
 
 clean:
 	$(silent) make --no-print-directory -C corrosion clean
-	$(silent) make --no-print-directory -C shaders clean
+	$(silent) make --no-print-directory -C shadercompiler clean
 	$(silent) make --no-print-directory -C sbox clean

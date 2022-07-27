@@ -10,6 +10,9 @@ static const char* files[] = {
 	"checkerboard.png",
 	"error.png",
 	"error.csh",
+	"line.csh",
+	"simple.csh",
+	"ui.csh",
 };
 
 i32 main() {

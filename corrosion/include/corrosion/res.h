@@ -55,7 +55,12 @@ void res_use_pak(const struct res_pak* pak);
 struct res_pak* pak_open(const char* path);
 void pak_close(struct res_pak* pak);
 
-bool write_pak(const char* outname, const char** files, usize file_count);
+struct pak_write_file {
+	const char* src;
+	const char* dst;
+};
+
+bool write_pak(const char* outname, struct pak_write_file* files, usize file_count);
 
 struct res_config {
 	usize payload_size;
