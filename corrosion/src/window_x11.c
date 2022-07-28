@@ -310,6 +310,10 @@ bool mouse_btn_just_released(u32 code) {
 	return window.released_mouse_btns[code];
 }
 
+void window_lock_mouse(bool lock) {
+	window.mouse_locked = true;
+}
+
 v2i get_mouse_pos() {
 	return window.mouse_pos;
 }

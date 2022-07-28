@@ -102,6 +102,8 @@ bool mouse_btn_pressed(u32 code);
 bool mouse_btn_just_pressed(u32 code);
 bool mouse_btn_just_released(u32 code);
 
+void window_lock_mouse(bool lock);
+
 v2i get_mouse_pos();
 
 v2i get_scroll();
