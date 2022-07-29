@@ -48,7 +48,7 @@ static struct mesh process_mesh(ufbx_scene* scene, ufbx_mesh* mesh) {
 	}
 
 	rmesh.vb = video.new_vertex_buffer(vertices, vertex_count * sizeof *vertices, vertex_buffer_flags_none);
-	rmesh.ib = video.new_index_buffer(indices, vector_count(indices) * sizeof *indices, index_buffer_flags_u32);
+	rmesh.ib = video.new_index_buffer(indices, vector_count(indices), index_buffer_flags_u32);
 
 	rmesh.count = vector_count(indices);
 
