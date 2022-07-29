@@ -194,6 +194,8 @@ struct video_vk_vertex_buffer {
 struct video_vk_index_buffer {
 	u32 flags;
 
+	VkIndexType index_type;
+
 	VkBuffer buffer;
 	VmaAllocation memory;
 };

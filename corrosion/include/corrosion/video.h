@@ -128,6 +128,8 @@ enum {
 
 enum {
 	index_buffer_flags_none              = 1 << 0,
+	index_buffer_flags_u16               = 1 << 1,
+	index_buffer_flags_u32               = 1 << 2
 };
 
 struct camera {
@@ -187,7 +189,7 @@ struct video {
 	void (*update_vertex_buffer)(struct vertex_buffer* vb, const void* data, usize size, usize offset);
 
 	/* Index buffer. */
-	struct index_buffer* (*new_index_buffer)(u16* verts, usize count, u32 flags);
+	struct index_buffer* (*new_index_buffer)(void* elements, usize count, u32 flags);
 	void (*free_index_buffer)(struct index_buffer* ib);
 	void (*bind_index_buffer)(const struct index_buffer* ib);
 

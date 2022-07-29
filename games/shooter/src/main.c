@@ -28,17 +28,26 @@ struct app_config cr_config() {
 }
 
 void cr_init() {
-	app.renderer = new_renderer();
+	register_renderer_resources();
+
+	app.renderer = new_renderer(video.get_default_fb());
 
 	app.world = new_world(app.renderer);
 
-	app.monkey = new_entity(app.world, eb_mesh);
+	app.monkey = new_entity(app.world, eb_mesh | eb_spin);
+
+	app.monkey->model = load_model("meshes/monkey.fbx");
 }
 
 void cr_update(f64 ts) {
+	renderer_begin(app.renderer);
+
 	update_world(app.world, ts);
 
+	renderer_end(app.renderer);
+
 	video.begin_framebuffer(video.get_default_fb());
+		renderer_finalise(app.renderer, &app.world->camera);
 	video.end_framebuffer(video.get_default_fb());
 }
 

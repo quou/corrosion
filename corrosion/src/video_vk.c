@@ -2215,15 +2215,22 @@ void video_vk_update_vertex_buffer(struct vertex_buffer* vb_, const void* data, 
 	add_memcpy_cmd(vctx.update_queues + vctx.current_frame, ((u8*)vb->data) + offset, data, size);
 }
 
-struct index_buffer* video_vk_new_index_buffer(u16* indices, usize count, u32 flags) {
+struct index_buffer* video_vk_new_index_buffer(void* elements, usize count, u32 flags) {
 	struct video_vk_index_buffer* ib = core_calloc(1, sizeof(struct video_vk_index_buffer));
+
+	usize el_size = sizeof(u16);
+	ib->index_type = VK_INDEX_TYPE_UINT16;
+	if (flags & index_buffer_flags_u32) {
+		el_size = sizeof(u32);
+		ib->index_type = VK_INDEX_TYPE_UINT32;
+	}
 
 	ib->flags = flags;
 
 	VkBuffer stage;
 	VmaAllocation stage_memory;
 
-	VkDeviceSize size = count * sizeof(u16);
+	VkDeviceSize size = count * el_size;
 
 	new_buffer(size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
@@ -2232,7 +2239,7 @@ struct index_buffer* video_vk_new_index_buffer(u16* indices, usize count, u32 fl
 	
 	void* data;
 	vmaMapMemory(vctx.allocator, stage_memory, &data);
-	memcpy(data, indices, size);
+	memcpy(data, elements, size);
 	vmaUnmapMemory(vctx.allocator, stage_memory);
 
 	new_buffer(size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
@@ -2257,7 +2264,7 @@ void video_vk_free_index_buffer(struct index_buffer* ib_) {
 void video_vk_bind_index_buffer(const struct index_buffer* ib_) {
 	const struct video_vk_index_buffer* ib = (const struct video_vk_index_buffer*)ib_;
 
-	vkCmdBindIndexBuffer(vctx.command_buffers[vctx.current_frame], ib->buffer, 0, VK_INDEX_TYPE_UINT16);
+	vkCmdBindIndexBuffer(vctx.command_buffers[vctx.current_frame], ib->buffer, 0, ib->index_type);
 }
 
 void video_vk_draw(usize count, usize offset, usize instances) {

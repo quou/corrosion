@@ -139,7 +139,7 @@ struct ui_renderer* new_ui_renderer(const struct framebuffer* framebuffer) {
 		offset += 4;
 	}
 
-	renderer->ib = video.new_index_buffer(indices, index_count, index_buffer_flags_none);
+	renderer->ib = video.new_index_buffer(indices, index_count, index_buffer_flags_u16);
 	core_free(indices);
 
 	create_pipeline(renderer);

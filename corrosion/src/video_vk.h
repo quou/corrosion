@@ -38,7 +38,7 @@ void video_vk_free_vertex_buffer(struct vertex_buffer* vb);
 void video_vk_bind_vertex_buffer(const struct vertex_buffer* vb);
 void video_vk_update_vertex_buffer(struct vertex_buffer* vb, const void* data, usize size, usize offset);
 
-struct index_buffer* video_vk_new_index_buffer(u16* verts, usize count, u32 flags);
+struct index_buffer* video_vk_new_index_buffer(void* elements, usize count, u32 flags);
 void video_vk_free_index_buffer(struct index_buffer* ib);
 void video_vk_bind_index_buffer(const struct index_buffer* );
 
