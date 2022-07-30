@@ -21,7 +21,7 @@ void video_vk_end_framebuffer(struct framebuffer* fb);
 struct framebuffer* video_vk_get_default_fb();
 
 struct pipeline* video_vk_new_pipeline(u32 flags, const struct shader* shader, const struct framebuffer* framebuffer,
-	struct pipeline_attributes attributes, struct pipeline_descriptor_sets descriptor_sets);
+	struct pipeline_attribute_bindings attrib_bindings, struct pipeline_descriptor_sets descriptor_sets);
 void video_vk_free_pipeline(struct pipeline* pipeline);
 void video_vk_begin_pipeline(const struct pipeline* pipeline);
 void video_vk_end_pipeline(const struct pipeline* pipeline);
@@ -35,7 +35,7 @@ void video_vk_register_resources();
 
 struct vertex_buffer* video_vk_new_vertex_buffer(void* verts, usize size, u32 flags);
 void video_vk_free_vertex_buffer(struct vertex_buffer* vb);
-void video_vk_bind_vertex_buffer(const struct vertex_buffer* vb);
+void video_vk_bind_vertex_buffer(const struct vertex_buffer* vb, u32 point);
 void video_vk_update_vertex_buffer(struct vertex_buffer* vb, const void* data, usize size, usize offset);
 
 struct index_buffer* video_vk_new_index_buffer(void* elements, usize count, u32 flags);

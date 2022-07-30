@@ -1,6 +1,22 @@
 #include "renderer.h"
 #include "ufbx.h"
 
+static struct model_node process_node(ufbx_scene* scene, ufbx_node* node) {
+	struct model_node rnode = { 0 };
+
+	ufbx_matrix m = node->geometry_to_world;
+	ufbx_vec3 t = node->world_transform.translation;
+
+	rnode.transform = (m4f) {
+		(f32)m.m00, (f32)m.m01, (f32)m.m02, (f32)m.m03,
+		(f32)m.m10, (f32)m.m11, (f32)m.m12, (f32)m.m13,
+		(f32)m.m20, (f32)m.m21, (f32)m.m22, (f32)m.m23,
+		(f32)t.x,   (f32)t.y,   (f32)t.z,   1.0f,
+	};
+
+	return rnode;
+}
+
 static struct mesh process_mesh(ufbx_scene* scene, ufbx_mesh* mesh) {
 	struct mesh rmesh = { 0 };
 
@@ -47,6 +63,11 @@ static struct mesh process_mesh(ufbx_scene* scene, ufbx_mesh* mesh) {
 		abort_with("Failed to generate mesh indices.");
 	}
 
+	vector_allocate(rmesh.instances, mesh->instances.count);
+	for (usize i = 0; i < mesh->instances.count; i++) {
+		vector_push(rmesh.instances, (usize)mesh->instances.data[i]->typed_id);
+	}
+
 	rmesh.vb = video.new_vertex_buffer(vertices, vertex_count * sizeof *vertices, vertex_buffer_flags_none);
 	rmesh.ib = video.new_index_buffer(indices, vector_count(indices), index_buffer_flags_u32);
 
@@ -60,6 +81,8 @@ static struct mesh process_mesh(ufbx_scene* scene, ufbx_mesh* mesh) {
 }
 
 void init_model_from_fbx(struct model* model, const u8* raw, usize raw_size) {
+	memset(model, 0, sizeof *model);
+
 	ufbx_load_opts opts = {
 		.load_external_files = true,
 		.allow_null_material = true,
@@ -71,9 +94,15 @@ void init_model_from_fbx(struct model* model, const u8* raw, usize raw_size) {
 			.front = UFBX_COORDINATE_AXIS_POSITIVE_Z,
 		},
 		.target_unit_meters = 1.0f,
+		.strict = true
 	};
 
 	ufbx_scene* scene = ufbx_load_memory(raw, raw_size, null, null);
+
+	vector_allocate(model->nodes, scene->nodes.count);
+	for (usize i = 0; i < scene->nodes.count; i++) {
+		vector_push(model->nodes, process_node(scene, scene->nodes.data[i]));
+	}
 
 	vector_allocate(model->meshes, scene->meshes.count);
 	for (usize i = 0; i < scene->meshes.count; i++) {
@@ -87,7 +116,10 @@ void deinit_model(struct model* model) {
 	for (usize i = 0; i < vector_count(model->meshes); i++) {
 		if (model->meshes[i].vb) { video.free_vertex_buffer(model->meshes[i].vb); }
 		if (model->meshes[i].ib) { video.free_index_buffer(model->meshes[i].ib); }
+
+		free_vector(model->meshes[i].instances);
 	}
 
 	free_vector(model->meshes);
+	free_vector(model->nodes);
 }

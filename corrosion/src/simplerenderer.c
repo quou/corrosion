@@ -7,35 +7,44 @@ static void create_pipeline(struct simple_renderer* renderer) {
 		pipeline_flags_blend | pipeline_flags_dynamic_scissor | pipeline_flags_draw_tris,
 		renderer->shader,
 		renderer->framebuffer,
-		(struct pipeline_attributes) {
-			.attributes = (struct pipeline_attribute[]) {
+		(struct pipeline_attribute_bindings) {
+			.bindings = (struct pipeline_attribute_binding[]) {
 				{
-					.name     = "position",
-					.location = 0,
-					.offset   = offsetof(struct simple_renderer_vertex, position),
-					.type     = pipeline_attribute_vec2
-				},
-				{
-					.name     = "uv",
-					.location = 1,
-					.offset   = offsetof(struct simple_renderer_vertex, uv),
-					.type     = pipeline_attribute_vec2
-				},
-				{
-					.name     = "colour",
-					.location = 2,
-					.offset   = offsetof(struct simple_renderer_vertex, colour),
-					.type     = pipeline_attribute_vec4
-				},
-				{
-					.name     = "use_texture",
-					.location = 3,
-					.offset   = offsetof(struct simple_renderer_vertex, use_texture),
-					.type     = pipeline_attribute_float
+					.attributes = (struct pipeline_attributes) {
+						.attributes = (struct pipeline_attribute[]) {
+							{
+								.name     = "position",
+								.location = 0,
+								.offset   = offsetof(struct simple_renderer_vertex, position),
+								.type     = pipeline_attribute_vec2
+							},
+							{
+								.name     = "uv",
+								.location = 1,
+								.offset   = offsetof(struct simple_renderer_vertex, uv),
+								.type     = pipeline_attribute_vec2
+							},
+							{
+								.name     = "colour",
+								.location = 2,
+								.offset   = offsetof(struct simple_renderer_vertex, colour),
+								.type     = pipeline_attribute_vec4
+							},
+							{
+								.name     = "use_texture",
+								.location = 3,
+								.offset   = offsetof(struct simple_renderer_vertex, use_texture),
+								.type     = pipeline_attribute_float
+							}
+						},
+						.count = 4,
+					},
+					.stride = sizeof(struct simple_renderer_vertex),
+					.rate = pipeline_attribute_rate_per_vertex,
+					.binding = 0
 				}
 			},
-			.count = 4,
-			.stride = sizeof(struct simple_renderer_vertex)
+			.count = 1
 		},
 		(struct pipeline_descriptor_sets) {
 			.sets = (struct pipeline_descriptor_set[]) {
@@ -207,7 +216,7 @@ void simple_renderer_flush(struct simple_renderer* renderer) {
 	video.begin_pipeline(renderer->pipeline);
 		video.set_scissor(renderer->clip);
 
-		video.bind_vertex_buffer(renderer->vb);
+		video.bind_vertex_buffer(renderer->vb, 0);
 		video.bind_index_buffer(renderer->ib);
 		video.bind_pipeline_descriptor_set(renderer->pipeline, "primary", 0);
 		video.draw_indexed(renderer->count * simple_renderer_indices_per_quad, renderer->offset * simple_renderer_indices_per_quad, 1);

@@ -2,15 +2,20 @@
 
 #begin VERTEX
 
+/* Mesh data */
 layout (location = 0) in vec3 position;
 layout (location = 1) in vec3 normal;
 
+/* Instance data. Transformation matrix passed as
+ * individual rows, as vertex attributes cannot be
+ * sized higher than vec4. */
+layout (location = 2) in vec4 r0;
+layout (location = 3) in vec4 r1;
+layout (location = 4) in vec4 r2;
+layout (location = 5) in vec4 r3;
+
 layout (std140, set = 0, binding = 0) uniform VertexConfig {
 	mat4 view, projection;
-};
-
-layout (std140, set = 0, binding = 2) uniform Transforms {
-	mat4 transforms[1000];
 };
 
 layout (location = 0) out VSOut {
@@ -19,9 +24,13 @@ layout (location = 0) out VSOut {
 } vs_out;
 
 void main() {
-	mat4 transform = transforms[gl_InstanceIndex];
+	mat4 transform;
+	transform[0] = r0;
+	transform[1] = r1;
+	transform[2] = r2;
+	transform[3] = r3;
 
-	vs_out.normal = mat3(transpose(inverse(transform))) * normal;
+	vs_out.normal = normalize(vec3(transform * vec4(normal, 0.0)));
 	vs_out.world_pos = vec3(transform * vec4(position, 1.0));
 
 	gl_Position = projection * view * vec4(vs_out.world_pos, 1.0);

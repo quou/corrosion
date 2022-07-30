@@ -78,23 +78,32 @@ void cr_init() {
 		pipeline_flags_draw_tris,
 		invert_shader,
 		video.get_default_fb(),
-		(struct pipeline_attributes) {
-			.attributes = (struct pipeline_attribute[]) {
+		(struct pipeline_attribute_bindings) {
+			.bindings = (struct pipeline_attribute_binding[]) {
 				{
-					.name     = "position",
-					.location = 0,
-					.offset   = 0,
-					.type     = pipeline_attribute_vec2
-				},
-				{
-					.name     = "uv",
-					.location = 1,
-					.offset   = sizeof(v2f),
-					.type     = pipeline_attribute_vec2
-				},
+					.attributes = (struct pipeline_attributes) {
+						.attributes = (struct pipeline_attribute[]) {
+							{
+								.name     = "position",
+								.location = 0,
+								.offset   = 0,
+								.type     = pipeline_attribute_vec2
+							},
+							{
+								.name     = "uv",
+								.location = 1,
+								.offset   = sizeof(v2f),
+								.type     = pipeline_attribute_vec2
+							},
+						},
+						.count = 2
+					},
+					.stride = sizeof(v2f) * 2,
+					.rate = pipeline_attribute_rate_per_vertex,
+					.binding = 0
+				}
 			},
-			.count = 2,
-			.stride = sizeof(v2f) * 2
+			.count = 1
 		},
 		(struct pipeline_descriptor_sets) {
 			.sets = (struct pipeline_descriptor_set[]) {
@@ -311,7 +320,7 @@ void cr_update(f64 ts) {
 
 	video.begin_framebuffer(video.get_default_fb());
 		video.begin_pipeline(app.invert_pip);
-			video.bind_vertex_buffer(app.tri_vb);
+			video.bind_vertex_buffer(app.tri_vb, 0);
 			video.bind_pipeline_descriptor_set(app.invert_pip, "primary", 0);
 			video.draw(3, 0, 1);
 		video.end_pipeline(app.invert_pip);

@@ -71,7 +71,23 @@ struct pipeline_attribute {
 struct pipeline_attributes {
 	const struct pipeline_attribute* attributes;
 	usize count;
+};
+
+enum {
+	pipeline_attribute_rate_per_vertex,
+	pipeline_attribute_rate_per_instance
+};
+
+struct pipeline_attribute_binding {
+	u32 binding;
+	u32 rate;
 	usize stride;
+	struct pipeline_attributes attributes;
+};
+
+struct pipeline_attribute_bindings {
+	const struct pipeline_attribute_binding* bindings;
+	usize count;
 };
 
 enum {
@@ -86,7 +102,7 @@ struct pipeline_resource {
 	union {
 		struct {
 			usize size;
-		} uniform;
+		} uniform, dynamic_uniform;
 
 		const struct texture* texture;
 
@@ -172,7 +188,7 @@ struct video {
 
 	/* Pipeline. */
 	struct pipeline* (*new_pipeline)(u32 flags, const struct shader* shader, const struct framebuffer* framebuffer,
-		struct pipeline_attributes attributes, struct pipeline_descriptor_sets descriptor_sets);
+		struct pipeline_attribute_bindings attrib_bindings, struct pipeline_descriptor_sets descriptor_sets);
 	void (*free_pipeline)(struct pipeline* pipeline);
 	void (*begin_pipeline)(const struct pipeline* pipeline);
 	void (*end_pipeline)(const struct pipeline* pipeline);
@@ -185,7 +201,7 @@ struct video {
 	/* Vertex buffer. */
 	struct vertex_buffer* (*new_vertex_buffer)(void* verts, usize size, u32 flags);
 	void (*free_vertex_buffer)(struct vertex_buffer* vb);
-	void (*bind_vertex_buffer)(const struct vertex_buffer* vb);
+	void (*bind_vertex_buffer)(const struct vertex_buffer* vb, u32 point);
 	void (*update_vertex_buffer)(struct vertex_buffer* vb, const void* data, usize size, usize offset);
 
 	/* Index buffer. */

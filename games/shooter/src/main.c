@@ -35,6 +35,7 @@ void cr_init() {
 	app.world = new_world(app.renderer);
 
 	app.monkey = new_entity(app.world, eb_mesh | eb_spin);
+	app.monkey->transform = m4f_translation(make_v3f(0.0f, 0.0f, 0.0f));
 
 	app.monkey->model = load_model("meshes/monkey.fbx");
 }

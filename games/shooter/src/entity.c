@@ -19,8 +19,8 @@ struct world* new_world(struct renderer* renderer) {
 	world->camera = (struct camera) {
 		.fov = 70.0f,
 		.near_plane = 0.1f,
-		.far_plane = 100.0f,
-		.position.z = -5.0f
+		.far_plane = 1000.0f,
+		.position.z = -1000.0f
 	};
 
 	return world;
@@ -40,7 +40,10 @@ void update_world(struct world* world, f64 ts) {
 			for (usize j = 0; j < vector_count(e->model->meshes); j++) {
 				struct mesh* mesh = &e->model->meshes[j];
 
-				renderer_push(world->renderer, mesh, e->transform);
+				for (usize x = 0; x < vector_count(mesh->instances); x++) {
+					m4f t = m4f_mul(e->transform, e->model->nodes[mesh->instances[x]].transform);
+					renderer_push(world->renderer, mesh, t);
+				}
 			}
 		}
 

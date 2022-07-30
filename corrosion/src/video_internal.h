@@ -86,6 +86,8 @@ struct vk_video_context {
 	u32 current_frame;
 	u32 image_id;
 
+	usize min_uniform_buffer_offset_alignment;
+
 	struct update_queue update_queues[max_frames_in_flight];
 
 	/* TODO: Make these linked lists? */
@@ -178,7 +180,7 @@ struct video_vk_pipeline {
 	u32 flags;
 	const struct shader* shader;
 	const struct framebuffer* framebuffer;
-	struct pipeline_attributes attributes;
+	struct pipeline_attribute_bindings bindings;
 	vector(struct pipeline_descriptor_set) descriptor_sets;
 };
 

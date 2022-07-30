@@ -48,23 +48,32 @@ void gizmos_init() {
 		pipeline_flags_draw_lines,
 		gizmos.shader,
 		video.get_default_fb(),
-		(struct pipeline_attributes) {
-			.attributes = (struct pipeline_attribute[]) {
+		(struct pipeline_attribute_bindings) {
+			.bindings = (struct pipeline_attribute_binding[]) {
 				{
-					.name     = "position",
-					.location = 0,
-					.offset   = offsetof(struct line_vertex, position),
-					.type     = pipeline_attribute_vec3
-				},
-				{
-					.name     = "colour",
-					.location = 1,
-					.offset   = offsetof(struct line_vertex, colour),
-					.type     = pipeline_attribute_vec4
-				},
+					.attributes = (struct pipeline_attributes) {
+						.attributes = (struct pipeline_attribute[]) {
+							{
+								.name     = "position",
+								.location = 0,
+								.offset   = offsetof(struct line_vertex, position),
+								.type     = pipeline_attribute_vec3
+							},
+							{
+								.name     = "colour",
+								.location = 1,
+								.offset   = offsetof(struct line_vertex, colour),
+								.type     = pipeline_attribute_vec4
+							},
+						},
+						.count = 2,
+					},
+					.stride = sizeof (struct line_vertex),
+					.rate = pipeline_attribute_rate_per_vertex,
+					.binding = 0,
+				}
 			},
-			.count = 2,
-			.stride = sizeof(struct line_vertex)
+			.count = 1
 		},
 		(struct pipeline_descriptor_sets) {
 			.sets = (struct pipeline_descriptor_set[]) {
@@ -155,7 +164,7 @@ void gizmos_draw() {
 
 	if (gizmos.vertex_count > 0) {
 		video.begin_pipeline(gizmos.pip);
-			video.bind_vertex_buffer(gizmos.vb);
+			video.bind_vertex_buffer(gizmos.vb, 0);
 			video.bind_pipeline_descriptor_set(gizmos.pip, "primary", 0);
 			video.draw(gizmos.vertex_count, 0, 1);
 		video.end_pipeline(gizmos.pip);

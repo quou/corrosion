@@ -297,6 +297,7 @@ static VkPhysicalDevice first_suitable_device() {
 			 extensions_good && swapchain_good &&
 			 vctx.qfs.graphics >= 0 && vctx.qfs.graphics >= 0) {
 			info("Selected device: %s.", props.deviceName);
+			vctx.min_uniform_buffer_offset_alignment = props.limits.minUniformBufferOffsetAlignment;
 			core_free(devices);
 			return device;
 		}
@@ -305,6 +306,14 @@ static VkPhysicalDevice first_suitable_device() {
 	core_free(devices);
 
 	return VK_NULL_HANDLE;
+}
+
+static usize pad_ub_size(usize size) {
+	if (vctx.min_uniform_buffer_offset_alignment > 0) {
+		size = (size + vctx.min_uniform_buffer_offset_alignment - 1) & ~(vctx.min_uniform_buffer_offset_alignment - 1);
+	}
+
+	return size;
 }
 
 static VkCommandBuffer begin_temp_command_buffer() {
@@ -1421,39 +1430,51 @@ struct framebuffer* video_vk_get_default_fb() {
 	return vctx.default_fb;
 }
 
-static void attributes_to_vk_attributes(const struct pipeline_attributes* attribs,
-	VkVertexInputBindingDescription* vk_desc, VkVertexInputAttributeDescription* vk_attribs) {
+static void attributes_to_vk_attributes(const struct pipeline_attribute_bindings* bindings,
+	VkVertexInputBindingDescription* vk_descs, VkVertexInputAttributeDescription* vk_attribs) {
 
-	memset(vk_desc, 0, sizeof(VkVertexInputBindingDescription));
+	memset(vk_descs, 0, sizeof(VkVertexInputBindingDescription) * bindings->count);
 
-	vk_desc->binding = 0;
-	vk_desc->stride = (u32)attribs->stride;
-	vk_desc->inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+	usize attrib_offset = 0;
 
-	for (usize i = 0; i < attribs->count; i++) {
-		const struct pipeline_attribute* attrib = attribs->attributes + i;
-		VkVertexInputAttributeDescription* vk_attrib = vk_attribs + i;
+	for (usize i = 0; i < bindings->count; i++) {
+		const struct pipeline_attribute_binding* binding = bindings->bindings + i;
+		VkVertexInputBindingDescription* vk_binding = vk_descs + i;
 
-		memset(vk_attrib, 0, sizeof(VkVertexInputAttributeDescription));
+		vk_binding->binding = binding->binding;
+		vk_binding->stride = (u32)binding->stride;
+		vk_binding->inputRate = binding->rate == pipeline_attribute_rate_per_instance ?
+			VK_VERTEX_INPUT_RATE_INSTANCE :
+			VK_VERTEX_INPUT_RATE_VERTEX;
 
-		vk_attrib->binding = 0;
-		vk_attrib->location = attrib->location;
-		vk_attrib->offset = (u32)attrib->offset;
+		const struct pipeline_attributes* attribs = &binding->attributes;
+		for (usize j = 0; j < attribs->count; j++) {
+			const struct pipeline_attribute* attrib = attribs->attributes + j;
+			VkVertexInputAttributeDescription* vk_attrib = vk_attribs + j + attrib_offset;
 
-		switch (attrib->type) {
-			case pipeline_attribute_vec2:
-				vk_attrib->format = VK_FORMAT_R32G32_SFLOAT;
-				break;
-			case pipeline_attribute_vec3:
-				vk_attrib->format = VK_FORMAT_R32G32B32_SFLOAT;
-				break;
-			case pipeline_attribute_vec4:
-				vk_attrib->format = VK_FORMAT_R32G32B32A32_SFLOAT;
-				break;
-			default:
-				vk_attrib->format = VK_FORMAT_R32_SFLOAT;
-				break;
+			memset(vk_attrib, 0, sizeof(VkVertexInputAttributeDescription));
+
+			vk_attrib->binding = binding->binding;
+			vk_attrib->location = attrib->location;
+			vk_attrib->offset = (u32)attrib->offset;
+
+			switch (attrib->type) {
+				case pipeline_attribute_vec2:
+					vk_attrib->format = VK_FORMAT_R32G32_SFLOAT;
+					break;
+				case pipeline_attribute_vec3:
+					vk_attrib->format = VK_FORMAT_R32G32B32_SFLOAT;
+					break;
+				case pipeline_attribute_vec4:
+					vk_attrib->format = VK_FORMAT_R32G32B32A32_SFLOAT;
+					break;
+				default:
+					vk_attrib->format = VK_FORMAT_R32_SFLOAT;
+					break;
+			}
 		}
+
+		attrib_offset += attribs->count;
 	}
 }
 
@@ -1505,7 +1526,7 @@ static void copy_buffer_to_image(VkBuffer buffer, VkImage image, v2i size) {
 
 static void init_pipeline(struct video_vk_pipeline* pipeline, u32 flags, const struct video_vk_shader* shader,
 	const struct video_vk_framebuffer* framebuffer,
-	const struct pipeline_attributes* attributes, const struct pipeline_descriptor_sets* descriptor_sets) {
+	const struct pipeline_attribute_bindings* attrib_bindings, const struct pipeline_descriptor_sets* descriptor_sets) {
 	pipeline->desc_sets = null;
 	pipeline->uniforms  = null;
 
@@ -1530,15 +1551,20 @@ static void init_pipeline(struct video_vk_pipeline* pipeline, u32 flags, const s
 		}
 	};
 
-	VkVertexInputBindingDescription bind_desc;
-	VkVertexInputAttributeDescription* vk_attribs = core_alloc(sizeof(VkVertexInputAttributeDescription) * attributes->count);
-	attributes_to_vk_attributes(attributes, &bind_desc, vk_attribs);
+	usize attrib_count = 0;
+	for (usize i = 0; i < attrib_bindings->count; i++) {
+		attrib_count += attrib_bindings->bindings[i].attributes.count;
+	}
+
+	VkVertexInputBindingDescription* vk_bind_descs = core_alloc(sizeof(VkVertexInputBindingDescription) * attrib_bindings->count);
+	VkVertexInputAttributeDescription* vk_attribs = core_alloc(sizeof(VkVertexInputAttributeDescription) * attrib_count);
+	attributes_to_vk_attributes(attrib_bindings, vk_bind_descs, vk_attribs);
 
 	VkPipelineVertexInputStateCreateInfo vertex_input_info = {
 		.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
-		.vertexBindingDescriptionCount = 1,
-		.pVertexBindingDescriptions = &bind_desc,
-		.vertexAttributeDescriptionCount = (u32)attributes->count,
+		.vertexBindingDescriptionCount = (u32)attrib_bindings->count,
+		.pVertexBindingDescriptions = vk_bind_descs,
+		.vertexAttributeDescriptionCount = (u32)attrib_count,
 		.pVertexAttributeDescriptions = vk_attribs
 	};
 
@@ -1814,7 +1840,7 @@ static void init_pipeline(struct video_vk_pipeline* pipeline, u32 flags, const s
 						VkDescriptorBufferInfo* buffer_info = buffer_infos + (buffer_info_count++);
 						buffer_info->buffer = pipeline->uniforms[uniform_idx].buffers[j];
 						buffer_info->offset = 0;
-						buffer_info->range = pipeline->uniforms[uniform_idx].size;
+						buffer_info->range = pad_ub_size(pipeline->uniforms[uniform_idx].size);
 
 						write->descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 						write->pBufferInfo = buffer_info;
@@ -1907,6 +1933,7 @@ no_descriptors:
 
 	core_free(colour_blend_attachments);
 	core_free(vk_attribs);
+	core_free(vk_bind_descs);
 
 	if (descriptor_sets->count > 0) {
 		core_free(set_layouts);
@@ -1976,7 +2003,7 @@ static void copy_pipeline_descriptor_set(struct pipeline_descriptor_set* dst, co
 }
 
 struct pipeline* video_vk_new_pipeline(u32 flags, const struct shader* shader, const struct framebuffer* framebuffer,
-	struct pipeline_attributes attributes, struct pipeline_descriptor_sets descriptor_sets) {
+	struct pipeline_attribute_bindings attrib_bindings, struct pipeline_descriptor_sets descriptor_sets) {
 	struct video_vk_pipeline* pipeline = core_calloc(1, sizeof(struct video_vk_pipeline));
 
 	pipeline->flags = flags;
@@ -1996,24 +2023,34 @@ struct pipeline* video_vk_new_pipeline(u32 flags, const struct shader* shader, c
 		}
 	}
 
-	pipeline->attributes.count  = attributes.count;
-	pipeline->attributes.stride = attributes.stride;
-	pipeline->attributes.attributes = core_calloc(attributes.count, sizeof(struct pipeline_attribute));
+	pipeline->bindings.count = attrib_bindings.count;
+	pipeline->bindings.bindings = core_calloc(attrib_bindings.count, sizeof *pipeline->bindings.bindings);
 
-	for (usize i = 0; i < attributes.count; i++) {
-		struct pipeline_attribute* attrib = (void*)(pipeline->attributes.attributes + i);
-		const struct pipeline_attribute* other = attributes.attributes + i;
+	for (usize i = 0; i < pipeline->bindings.count; i++) {
+		struct pipeline_attribute_binding* dst = (void*)(pipeline->bindings.bindings + i);
+		const struct pipeline_attribute_binding* src = attrib_bindings.bindings + i;
 
-		attrib->name     = copy_string(other->name);
-		attrib->location = other->location;
-		attrib->offset   = other->offset;
-		attrib->type     = other->type;
+		dst->rate    = src->rate;
+		dst->stride  = src->stride;
+		dst->binding = src->binding;
+		dst->attributes.count = src->attributes.count;
+		dst->attributes.attributes = core_calloc(dst->attributes.count, sizeof(struct pipeline_attribute));
+
+		for (usize j = 0; j < dst->attributes.count; j++) {
+			struct pipeline_attribute* attrib = (void*)(dst->attributes.attributes + j);
+			const struct pipeline_attribute* other = src->attributes.attributes + j;
+
+			attrib->name     = null;
+			attrib->location = other->location;
+			attrib->offset   = other->offset;
+			attrib->type     = other->type;
+		}
 	}
 
 	table_set(vctx.pipelines, pipeline, pipeline);
 
 	init_pipeline(pipeline, flags, (const struct video_vk_shader*)shader,
-		(const struct video_vk_framebuffer*)framebuffer, &attributes, &descriptor_sets);
+		(const struct video_vk_framebuffer*)framebuffer, &attrib_bindings, &descriptor_sets);
 
 	return (struct pipeline*)pipeline;
 }
@@ -2047,11 +2084,13 @@ void video_vk_free_pipeline(struct pipeline* pipeline_) {
 
 	free_vector(pipeline->descriptor_sets);
 
-	for (usize i = 0; i < pipeline->attributes.count; i++) {
-		core_free((void*)pipeline->attributes.attributes[i].name);
+	for (usize i = 0; i < pipeline->bindings.count; i++) {
+		struct pipeline_attribute_binding* binding = (void*)(pipeline->bindings.bindings + i);
+
+		core_free((void*)binding->attributes.attributes);
 	}
 
-	core_free((void*)pipeline->attributes.attributes);
+	core_free((void*)pipeline->bindings.bindings);
 
 	core_free(pipeline);
 }
@@ -2071,7 +2110,7 @@ void video_vk_recreate_pipeline(struct pipeline* pipeline_) {
 	deinit_pipeline(pipeline);
 	init_pipeline(pipeline, pipeline->flags, (const struct video_vk_shader*)pipeline->shader,
 		(const struct video_vk_framebuffer*)pipeline->framebuffer,
-		&pipeline->attributes, &(struct pipeline_descriptor_sets) {
+		&pipeline->bindings, &(struct pipeline_descriptor_sets) {
 			.sets = pipeline->descriptor_sets,
 			.count = vector_count(pipeline->descriptor_sets)
 		});
@@ -2195,11 +2234,11 @@ void video_vk_free_vertex_buffer(struct vertex_buffer* vb_) {
 	core_free(vb);
 }
 
-void video_vk_bind_vertex_buffer(const struct vertex_buffer* vb_) {
+void video_vk_bind_vertex_buffer(const struct vertex_buffer* vb_, u32 point) {
 	const struct video_vk_vertex_buffer* vb = (const struct video_vk_vertex_buffer*)vb_;
 
 	VkDeviceSize offsets[] = { 0 };
-	vkCmdBindVertexBuffers(vctx.command_buffers[vctx.current_frame], 0, 1, &vb->buffer, offsets);
+	vkCmdBindVertexBuffers(vctx.command_buffers[vctx.current_frame], point, 1, &vb->buffer, offsets);
 }
 
 void video_vk_update_vertex_buffer(struct vertex_buffer* vb_, const void* data, usize size, usize offset) {
