@@ -35,7 +35,7 @@ struct mesh_vertex {
 
 struct mesh_instance {
 	usize count;
-	struct vertex_buffer* data;
+	struct vertex_vector data;
 };
 
 struct mesh_instance_data {

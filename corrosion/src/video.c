@@ -40,6 +40,7 @@ void init_video(u32 api, bool enable_validation, v4f clear_colour) {
 		video.free_vertex_buffer   = video_vk_free_vertex_buffer;
 		video.bind_vertex_buffer   = video_vk_bind_vertex_buffer;
 		video.update_vertex_buffer = video_vk_update_vertex_buffer;
+		video.copy_vertex_buffer   = video_vk_copy_vertex_buffer;
 
 		video.new_index_buffer  = video_vk_new_index_buffer;
 		video.free_index_buffer = video_vk_free_index_buffer;
@@ -87,4 +88,43 @@ m4f get_camera_projection(const struct camera* camera) {
 	v2i size = get_window_size();
 
 	return video.persp(camera->fov, (f32)size.x / (f32)size.y, camera->near_plane, camera->far_plane);
+}
+
+void init_vertex_vector(struct vertex_vector* v, usize element_size, usize initial_capacity) {
+	memset(v, 0, sizeof *v);
+
+	v->buffer = video.new_vertex_buffer(null, element_size * initial_capacity, vertex_buffer_flags_dynamic | vertex_buffer_flags_transferable);
+	v->capacity = initial_capacity;
+	v->element_size = element_size;
+}
+
+void deinit_vertex_vector(struct vertex_vector* v) {
+	video.free_vertex_buffer(v->buffer);
+
+	memset(v, 0, sizeof *v);
+}
+
+void vertex_vector_push(struct vertex_vector* v, void* elements, usize count) {
+	usize new_count = v->count + count;
+	if (new_count > v->capacity) {
+		while (v->capacity < new_count) {
+			v->capacity *= 2;
+		}
+
+		usize new_size = v->capacity * v->element_size;
+		usize old_size = v->count * v->element_size;
+		struct vertex_buffer* new_buffer = video.new_vertex_buffer(null, new_size, vertex_buffer_flags_dynamic | vertex_buffer_flags_transferable);
+		struct vertex_buffer* old_buffer = v->buffer;
+		video.copy_vertex_buffer(new_buffer, 0, old_buffer, 0, old_size);
+		video.free_vertex_buffer(old_buffer);
+
+		v->buffer = new_buffer;
+	}
+
+	usize size = count * v->element_size;
+	usize offset = v->count * v->element_size;
+
+	video.update_vertex_buffer(v->buffer, elements, size, offset);
+
+	v->count += count;
 }

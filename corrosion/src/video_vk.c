@@ -2186,8 +2186,16 @@ struct vertex_buffer* video_vk_new_vertex_buffer(void* verts, usize size, u32 fl
 
 	vb->flags = flags;
 
+	VkBufferUsageFlags usage = 0;
+	
+	if (flags & vertex_buffer_flags_transferable) {
+		usage |= VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+		usage |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+		flags |= vertex_buffer_flags_dynamic;
+	}
+
 	if (flags & vertex_buffer_flags_dynamic) {
-		new_buffer(size, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+		new_buffer(size, usage | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
 			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
 			VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT, &vb->buffer, &vb->memory);
 
@@ -2252,6 +2260,22 @@ void video_vk_update_vertex_buffer(struct vertex_buffer* vb_, const void* data, 
 #endif
 
 	add_memcpy_cmd(vctx.update_queues + vctx.current_frame, ((u8*)vb->data) + offset, data, size);
+}
+
+void video_vk_copy_vertex_buffer(struct vertex_buffer* dst_, usize dst_offset, const struct vertex_buffer* src_, usize src_offset, usize size) {
+	VkBuffer src = ((struct video_vk_vertex_buffer*)src_)->buffer;
+	VkBuffer dst = ((struct video_vk_vertex_buffer*)dst_)->buffer;
+
+	VkCommandBuffer cb = begin_temp_command_buffer();
+
+	VkBufferCopy copy = {
+		.srcOffset = (VkDeviceSize)src_offset,
+		.dstOffset = (VkDeviceSize)dst_offset,
+		.size      = (VkDeviceSize)size
+	};
+	vkCmdCopyBuffer(cb, src, dst, 1, &copy);
+
+	end_temp_command_buffer(cb);
 }
 
 struct index_buffer* video_vk_new_index_buffer(void* elements, usize count, u32 flags) {

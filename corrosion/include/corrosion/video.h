@@ -140,6 +140,7 @@ enum {
 enum {
 	vertex_buffer_flags_none              = 1 << 0,
 	vertex_buffer_flags_dynamic           = 1 << 1,
+	vertex_buffer_flags_transferable      = 1 << 2
 };
 
 enum {
@@ -203,6 +204,7 @@ struct video {
 	void (*free_vertex_buffer)(struct vertex_buffer* vb);
 	void (*bind_vertex_buffer)(const struct vertex_buffer* vb, u32 point);
 	void (*update_vertex_buffer)(struct vertex_buffer* vb, const void* data, usize size, usize offset);
+	void (*copy_vertex_buffer)(struct vertex_buffer* dst, usize dst_offset, const struct vertex_buffer* src, usize src_offset, usize size);
 
 	/* Index buffer. */
 	struct index_buffer* (*new_index_buffer)(void* elements, usize count, u32 flags);
@@ -232,3 +234,15 @@ extern struct video video;
 
 void init_video(u32 api, bool enable_validation, v4f clear_colour);
 void deinit_video();
+
+/* Like `vector', but for vertex data. */
+struct vertex_vector {
+	struct vertex_buffer* buffer;
+	usize count;
+	usize capacity;
+	usize element_size;
+};
+
+void init_vertex_vector(struct vertex_vector* v, usize element_size, usize initial_capacity);
+void deinit_vertex_vector(struct vertex_vector* v);
+void vertex_vector_push(struct vertex_vector* v, void* elements, usize count);

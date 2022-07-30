@@ -27,6 +27,10 @@ struct app_config cr_config() {
 	};
 }
 
+static f32 rand_flt() {
+	return (f32)rand() / (f32)RAND_MAX;
+}
+
 void cr_init() {
 	register_renderer_resources();
 
@@ -34,10 +38,12 @@ void cr_init() {
 
 	app.world = new_world(app.renderer);
 
-	app.monkey = new_entity(app.world, eb_mesh | eb_spin);
-	app.monkey->transform = m4f_translation(make_v3f(0.0f, 0.0f, 0.0f));
+	for (usize i = 0; i < 500; i++) {
+		app.monkey = new_entity(app.world, eb_mesh | eb_spin);
+		app.monkey->transform = m4f_mul(m4f_translation(make_v3f(rand_flt() * 500.0f, rand_flt() * 500.0f, rand_flt() * 500.0f)), m4f_rotation(euler(make_v3f(0.0f, rand_flt() * 360.0f, 0.0f))));
 
-	app.monkey->model = load_model("meshes/monkey.fbx");
+		app.monkey->model = load_model("meshes/monkey.fbx");
+	}
 }
 
 void cr_update(f64 ts) {

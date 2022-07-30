@@ -136,7 +136,7 @@ void free_renderer(struct renderer* renderer) {
 	for (struct mesh** i = table_first(renderer->drawlist); i; i = table_next(renderer->drawlist, *i)) {
 		struct mesh_instance* instance = table_get(renderer->drawlist, *i);
 
-		video.free_vertex_buffer(instance->data);
+		deinit_vertex_vector(&instance->data);
 	}
 	free_table(renderer->drawlist);
 
@@ -147,6 +147,8 @@ void renderer_begin(struct renderer* renderer) {
 	for (struct mesh** i = table_first(renderer->drawlist); i; i = table_next(renderer->drawlist, *i)) {
 		struct mesh_instance* instance = table_get(renderer->drawlist, *i);
 		instance->count = 0;
+
+		instance->data.count = 0;
 	}
 }
 
@@ -160,8 +162,7 @@ void renderer_push(struct renderer* renderer, struct mesh* mesh, m4f transform) 
 		table_set(renderer->drawlist, mesh, (struct mesh_instance) { 0 });
 		instance = table_get(renderer->drawlist, mesh);
 
-		/* TODO: Dynamically-sized vertex buffer? */
-		instance->data = video.new_vertex_buffer(null, sizeof(struct mesh_instance_data) * 1000llu, vertex_buffer_flags_dynamic);
+		init_vertex_vector(&instance->data, sizeof(struct mesh_instance_data), 8);
 	}
 
 	struct mesh_instance_data data = {
@@ -171,7 +172,7 @@ void renderer_push(struct renderer* renderer, struct mesh* mesh, m4f transform) 
 		.r3 = make_v4f(transform.m[3][0], transform.m[3][1], transform.m[3][2], transform.m[3][3])
 	};
 
-	video.update_vertex_buffer(instance->data, &data, sizeof data, instance->count * sizeof data);
+	vertex_vector_push(&instance->data, &data, 1);
 
 	instance->count++;
 }
@@ -190,8 +191,8 @@ void renderer_finalise(struct renderer* renderer, struct camera* camera) {
 			struct mesh_instance* instance = table_get(renderer->drawlist, *i);
 			struct mesh* mesh = *i;
 
-			video.bind_vertex_buffer(mesh->vb,       renderer_vert_buffer_bind_point);
-			video.bind_vertex_buffer(instance->data, renderer_inst_buffer_bind_point);
+			video.bind_vertex_buffer(mesh->vb,              renderer_vert_buffer_bind_point);
+			video.bind_vertex_buffer(instance->data.buffer, renderer_inst_buffer_bind_point);
 			video.bind_index_buffer(mesh->ib);
 			video.bind_pipeline_descriptor_set(renderer->pipeline, "primary", 0);
 			video.draw_indexed(mesh->count, 0, instance->count);
