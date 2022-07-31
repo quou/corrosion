@@ -83,6 +83,15 @@ void cr_init() {
 		monkey->material.diffuse = make_v3f(rand_flt() * 2.0f, rand_flt() * 2.0f, rand_flt() * 2.0f);
 	}
 
+	for (usize i = 0; i < renderer_max_lights; i++) {
+		struct entity* light = new_entity(app.world, eb_light);
+		light->light.range = 1000.0f;
+		light->light.diffuse = make_rgb(0xffffff);
+		light->light.specular = make_rgb(0xffffff);
+		light->light.intensity = 1.0f;
+		light->light.position = make_v3f(rand_flt() * 10000.0f, rand_flt() * 10000.0f, rand_flt() * 10000.0f);
+	}
+
 	app.camera_active = false;
 	app.first_move = true;
 }
@@ -158,7 +167,7 @@ void cr_update(f64 ts) {
 
 	update_world(app.world, ts);
 
-	renderer_end(app.renderer);
+	renderer_end(app.renderer, &app.world->camera);
 
 	ui_begin(app.ui);
 
@@ -193,7 +202,7 @@ void cr_update(f64 ts) {
 	ui_end(app.ui);
 
 	video.begin_framebuffer(video.get_default_fb());
-		renderer_finalise(app.renderer, &app.world->camera);
+		renderer_finalise(app.renderer);
 		ui_draw(app.ui);
 	video.end_framebuffer(video.get_default_fb());
 

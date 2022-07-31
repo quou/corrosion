@@ -4,6 +4,8 @@
 
 #include <corrosion/cr.h>
 
+#define renderer_max_lights 500
+
 struct mesh {
 	struct vertex_buffer* vb;
 	struct index_buffer* ib;
@@ -11,6 +13,22 @@ struct mesh {
 	vector(usize) instances;
 
 	usize count;
+};
+
+struct light {
+	f32 intensity;
+	f32 range;
+	v3f diffuse;
+	v3f specular;
+	v3f position;
+};
+
+struct light_std140 {
+	alignas(4)  float intensity;
+	alignas(4)  float range;
+	alignas(16) v3f diffuse;
+	alignas(16) v3f specular;
+	alignas(16) v3f position;
 };
 
 struct model_node {
@@ -66,9 +84,19 @@ struct renderer {
 		v3f camera_pos;
 	} fragment_config;
 
+	struct {
+		alignas(4)  u32 light_count;
+		alignas(16) v3f camera_pos;
+		struct light_std140 lights[renderer_max_lights];
+	} lighting_buffer;
+
+	struct vertex_buffer* tri_vb;
+
+	struct pipeline* lighting_pipeline;
 	struct pipeline* pipeline;
 
-	const struct framebuffer* framebuffer;
+	struct framebuffer* scene_fb;
+	const struct framebuffer* target_fb;
 };
 
 void register_renderer_resources();
@@ -78,8 +106,9 @@ struct renderer* new_renderer(const struct framebuffer* framebuffer);
 void free_renderer(struct renderer* renderer);
 
 void renderer_begin(struct renderer* renderer);
-void renderer_end(struct renderer* renderer);
+void renderer_end(struct renderer* renderer, struct camera* camera);
 
-void renderer_finalise(struct renderer* renderer, struct camera* camera);
+void renderer_finalise(struct renderer* renderer);
 
 void renderer_push(struct renderer* renderer, struct mesh* mesh, struct material* material, m4f transform);
+void renderer_push_light(struct renderer* renderer, const struct light* light);

@@ -54,6 +54,8 @@ void main() {
 #begin FRAGMENT
 
 layout (location = 0) out vec4 colour;
+layout (location = 1) out vec4 normal;
+layout (location = 2) out vec4 position;
 
 layout (location = 0) in VSOut {
 	vec3 normal;
@@ -69,11 +71,10 @@ layout (std140, set = 0, binding = 1) uniform FragmentConfig {
 layout (set = 0, binding = 2) uniform sampler2D diffuse_atlas;
 
 void main() {
-	colour.rgb =
-		texture(diffuse_atlas, fs_in.uv).rgb *
-		fs_in.diffuse *
-		dot(normalize(config.camera_pos - fs_in.world_pos), normalize(fs_in.normal));
+	colour.rgb = fs_in.diffuse * texture(diffuse_atlas, fs_in.uv).rgb;
 	colour.a = 1.0;
+	normal = vec4(normalize(fs_in.normal), 1.0);
+	position = vec4(fs_in.world_pos, 1.0);
 }
 
 #end FRAGMENT

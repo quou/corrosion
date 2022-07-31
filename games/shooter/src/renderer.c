@@ -31,7 +31,7 @@ static void create_pipeline(struct renderer* renderer) {
 	renderer->pipeline = video.new_pipeline(
 		pipeline_flags_depth_test | pipeline_flags_draw_tris | pipeline_flags_cull_back_face | pipeline_flags_wo_anti_clockwise,
 		shader,
-		renderer->framebuffer,
+		renderer->scene_fb,
 		(struct pipeline_attribute_bindings) {
 			.bindings = (struct pipeline_attribute_binding[]) {
 				{
@@ -150,12 +150,139 @@ static void create_pipeline(struct renderer* renderer) {
 			.count = 1
 		}
 	);
-
 }
 
 struct renderer* new_renderer(const struct framebuffer* framebuffer) {
 	struct renderer* renderer = core_calloc(1, sizeof *renderer);
-	renderer->framebuffer = framebuffer;
+	renderer->target_fb = framebuffer;
+
+	renderer->scene_fb = video.new_framebuffer(framebuffer_flags_fit | framebuffer_flags_headless, get_window_size(), (struct framebuffer_attachment_desc[]) {
+		{
+			.name = "colour",
+			.type = framebuffer_attachment_colour,
+			.format = framebuffer_format_rgba16f,
+			.clear_colour = make_rgba(0x000000, 255)
+		},
+		{
+			.name = "normals",
+			.type = framebuffer_attachment_colour,
+			.format = framebuffer_format_rgba16f,
+			.clear_colour = make_rgba(0x000000, 255)
+		},
+		{
+			.name = "positions",
+			.type = framebuffer_attachment_colour,
+			.format = framebuffer_format_rgba32f,
+			.clear_colour = make_rgba(0x000000, 255)
+		},
+		{
+			.name = "depth",
+			.type = framebuffer_attachment_depth,
+			.format = framebuffer_format_depth
+		}
+	}, 4);
+
+	v2f tri_verts[] = {
+		/* Position          UV */
+		{ -1.0, -1.0 },      { 0.0f, 0.0f },
+		{ -1.0,  3.0 },      { 0.0f, 2.0f },
+		{  3.0, -1.0 },      { 2.0f, 0.0f }
+	};
+
+	renderer->tri_vb = video.new_vertex_buffer(tri_verts, sizeof tri_verts, vertex_buffer_flags_none);
+
+	struct shader* lighting_shader = load_shader("shaders/lighting.csh");
+
+	renderer->lighting_pipeline = video.new_pipeline(
+		pipeline_flags_draw_tris,
+		lighting_shader,
+		video.get_default_fb(),
+		(struct pipeline_attribute_bindings) {
+			.bindings = (struct pipeline_attribute_binding[]) {
+				{
+					.attributes = (struct pipeline_attributes) {
+						.attributes = (struct pipeline_attribute[]) {
+							{
+								.name     = "position",
+								.location = 0,
+								.offset   = 0,
+								.type     = pipeline_attribute_vec2
+							},
+							{
+								.name     = "uv",
+								.location = 1,
+								.offset   = sizeof(v2f),
+								.type     = pipeline_attribute_vec2
+							},
+						},
+						.count = 2
+					},
+					.stride = sizeof(v2f) * 2,
+					.rate = pipeline_attribute_rate_per_vertex,
+					.binding = 0
+				}
+			},
+			.count = 1
+		},
+		(struct pipeline_descriptor_sets) {
+			.sets = (struct pipeline_descriptor_set[]) {
+				{
+					.name = "primary",
+					.descriptors = (struct pipeline_descriptor[]) {
+						{
+							.name     = "colours",
+							.binding  = 0,
+							.stage    = pipeline_stage_fragment,
+							.resource = {
+								.type        = pipeline_resource_framebuffer,
+								.framebuffer = {
+									.ptr        = renderer->scene_fb,
+									.attachment = 0
+								}
+							}
+						},
+						{
+							.name     = "normals",
+							.binding  = 1,
+							.stage    = pipeline_stage_fragment,
+							.resource = {
+								.type        = pipeline_resource_framebuffer,
+								.framebuffer = {
+									.ptr        = renderer->scene_fb,
+									.attachment = 1
+								}
+							}
+						},
+						{
+							.name     = "positions",
+							.binding  = 2,
+							.stage    = pipeline_stage_fragment,
+							.resource = {
+								.type        = pipeline_resource_framebuffer,
+								.framebuffer = {
+									.ptr        = renderer->scene_fb,
+									.attachment = 2
+								}
+							}
+						},
+						{
+							.name     = "LightingBuffer",
+							.binding  = 3,
+							.stage    = pipeline_stage_fragment,
+							.resource = {
+								.type        = pipeline_resource_uniform_buffer,
+								.uniform     = {
+									.size    = sizeof renderer->lighting_buffer
+								}
+							}
+						}
+					},
+					.count = 4,
+				}
+			},
+			.count = 1
+		}
+	);
 
 	renderer->diffuse_atlas = new_atlas(texture_flags_filter_linear);
 
@@ -166,6 +293,10 @@ struct renderer* new_renderer(const struct framebuffer* framebuffer) {
 
 void free_renderer(struct renderer* renderer) {
 	video.free_pipeline(renderer->pipeline);
+
+	video.free_framebuffer(renderer->scene_fb);
+	video.free_pipeline(renderer->lighting_pipeline);
+	video.free_vertex_buffer(renderer->tri_vb);
 
 	free_atlas(renderer->diffuse_atlas);
 
@@ -180,6 +311,8 @@ void free_renderer(struct renderer* renderer) {
 }
 
 void renderer_begin(struct renderer* renderer) {
+	renderer->lighting_buffer.light_count = 0;
+
 	for (struct mesh** i = table_first(renderer->drawlist); i; i = table_next(renderer->drawlist, *i)) {
 		struct mesh_instance* instance = table_get(renderer->drawlist, *i);
 		instance->count = 0;
@@ -188,8 +321,31 @@ void renderer_begin(struct renderer* renderer) {
 	}
 }
 
-void renderer_end(struct renderer* renderer) {
+void renderer_end(struct renderer* renderer, struct camera* camera) {
+	renderer->vertex_config.view = get_camera_view(camera);
+	renderer->vertex_config.projection = get_camera_projection(camera);
+	renderer->vertex_config.atlas_size = make_v2f(renderer->diffuse_atlas->size.x, renderer->diffuse_atlas->size.y);
 
+	renderer->fragment_config.camera_pos   = camera->position;
+	renderer->lighting_buffer.camera_pos = camera->position;
+
+	video.update_pipeline_uniform(renderer->pipeline, "primary", "VertexConfig",   &renderer->vertex_config);
+	video.update_pipeline_uniform(renderer->pipeline, "primary", "FragmentConfig", &renderer->fragment_config);
+
+	video.begin_framebuffer(renderer->scene_fb);
+		video.begin_pipeline(renderer->pipeline);
+			for (struct mesh** i = table_first(renderer->drawlist); i; i = table_next(renderer->drawlist, *i)) {
+				struct mesh_instance* instance = table_get(renderer->drawlist, *i);
+				struct mesh* mesh = *i;
+
+				video.bind_vertex_buffer(mesh->vb,              renderer_vert_buffer_bind_point);
+				video.bind_vertex_buffer(instance->data.buffer, renderer_inst_buffer_bind_point);
+				video.bind_index_buffer(mesh->ib);
+				video.bind_pipeline_descriptor_set(renderer->pipeline, "primary", 0);
+				video.draw_indexed(mesh->count, 0, instance->count);
+			}
+		video.end_pipeline(renderer->pipeline);
+	video.end_framebuffer(renderer->scene_fb);
 }
 
 void renderer_push(struct renderer* renderer, struct mesh* mesh, struct material* material, m4f transform) {
@@ -226,26 +382,22 @@ void renderer_push(struct renderer* renderer, struct mesh* mesh, struct material
 	instance->count++;
 }
 
-void renderer_finalise(struct renderer* renderer, struct camera* camera) {
-	renderer->vertex_config.view = get_camera_view(camera);
-	renderer->vertex_config.projection = get_camera_projection(camera);
-	renderer->vertex_config.atlas_size = make_v2f(renderer->diffuse_atlas->size.x, renderer->diffuse_atlas->size.y);
+void renderer_push_light(struct renderer* renderer, const struct light* light) {
+	renderer->lighting_buffer.lights[renderer->lighting_buffer.light_count++] = (struct light_std140) {
+		.intensity = light->intensity,
+		.range     = light->range,
+		.diffuse   = light->diffuse,
+		.specular  = light->specular,
+		.position  = light->position
+	};
+}
 
-	renderer->fragment_config.camera_pos = camera->position;
+void renderer_finalise(struct renderer* renderer) {
+	video.update_pipeline_uniform(renderer->lighting_pipeline, "primary", "LightingBuffer", &renderer->lighting_buffer);
 
-	video.update_pipeline_uniform(renderer->pipeline, "primary", "VertexConfig",   &renderer->vertex_config);
-	video.update_pipeline_uniform(renderer->pipeline, "primary", "FragmentConfig", &renderer->fragment_config);
-
-	video.begin_pipeline(renderer->pipeline);
-		for (struct mesh** i = table_first(renderer->drawlist); i; i = table_next(renderer->drawlist, *i)) {
-			struct mesh_instance* instance = table_get(renderer->drawlist, *i);
-			struct mesh* mesh = *i;
-
-			video.bind_vertex_buffer(mesh->vb,              renderer_vert_buffer_bind_point);
-			video.bind_vertex_buffer(instance->data.buffer, renderer_inst_buffer_bind_point);
-			video.bind_index_buffer(mesh->ib);
-			video.bind_pipeline_descriptor_set(renderer->pipeline, "primary", 0);
-			video.draw_indexed(mesh->count, 0, instance->count);
-		}
-	video.end_pipeline(renderer->pipeline);
+	video.begin_pipeline(renderer->lighting_pipeline);
+		video.bind_vertex_buffer(renderer->tri_vb, 0);
+		video.bind_pipeline_descriptor_set(renderer->lighting_pipeline, "primary", 0);
+		video.draw(3, 0, 1);
+	video.end_pipeline(renderer->lighting_pipeline);
 }

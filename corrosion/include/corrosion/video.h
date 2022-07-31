@@ -27,7 +27,8 @@ enum {
 	framebuffer_flags_headless = 1 << 2
 };
 
-struct framebuffer_attachment_desc {
+struct framebuffer_attachment_desc {	
+	const char* name;
 	u32 type;
 	u32 format;
 	v4f clear_colour;

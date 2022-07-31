@@ -933,7 +933,7 @@ static VkFormat fb_attachment_format(u32 format) {
 		format == framebuffer_format_depth   ? find_depth_format() :
 		format == framebuffer_format_rgba8i  ? VK_FORMAT_R8G8B8A8_UNORM :
 		format == framebuffer_format_rgba16f ? VK_FORMAT_R16G16B16A16_SFLOAT :
-		format == framebuffer_format_rgba32f ? VK_FORMAT_R32G32B32_SFLOAT :
+		format == framebuffer_format_rgba32f ? VK_FORMAT_R32G32B32A32_SFLOAT :
 		VK_FORMAT_R8G8B8A8_UNORM;
 }
 

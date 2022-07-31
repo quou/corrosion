@@ -50,6 +50,14 @@ void update_world(struct world* world, f64 ts) {
 				}
 			}
 		}
+
+		if (e->behaviour & eb_light) {
+			v4f lp4 = make_v4f(e->light.position.x, e->light.position.y, e->light.position.z, 1.0);
+			lp4 = m4f_transform(e->transform, lp4);
+			struct light l = e->light;
+			l.position = make_v3f(lp4.x, lp4.y, lp4.z);
+			renderer_push_light(world->renderer, &l);
+		}
 	}
 
 	world->time += ts;

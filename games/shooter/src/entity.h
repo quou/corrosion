@@ -7,7 +7,8 @@
 enum entity_behaviour {
 	eb_none         = 1 << 0,
 	eb_mesh         = 1 << 1,
-	eb_spin         = 1 << 2
+	eb_spin         = 1 << 2,
+	eb_light        = 1 << 3
 };
 
 struct entity {
@@ -17,6 +18,8 @@ struct entity {
 
 	struct model* model;
 	struct material material;
+
+	struct light light;
 
 	f32 spin_speed;
 
