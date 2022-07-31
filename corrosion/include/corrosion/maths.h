@@ -319,10 +319,29 @@ force_inline quat quat_mul(quat a, quat b) {
 	};
 }
 
-#define euler(a_) quat_mul(quat_mul( \
-	make_quat(make_v3f(1.0f, 0.0f, 0.0f), to_rad((a_).x)),  \
-	make_quat(make_v3f(0.0f, 1.0f, 0.0f), to_rad((a_).y))), \
-	make_quat(make_v3f(0.0f, 0.0f, 1.0f), to_rad((a_).z)))
+force_inline quat quat_rotate(f32 angle, v3f axis) {
+	quat q;
+
+	angle = to_rad(angle);
+
+	f32 half_angle = 0.5f * angle;
+	f32 sin_ha = sinf(half_angle);
+
+	q.w = cosf(half_angle);
+	q.x = sin_ha * axis.x;
+	q.y = sin_ha * axis.y;
+	q.z = sin_ha * axis.z;
+
+	return q;
+}
+
+force_inline quat euler(v3f a) {
+	quat p = quat_rotate(a.x, make_v3f(1.0f, 0.0f, 0.0f));
+	quat y = quat_rotate(a.y, make_v3f(0.0f, 1.0f, 0.0f));
+	quat r = quat_rotate(a.z, make_v3f(0.0f, 0.0f, 1.0f));
+
+	return quat_normalised(quat_mul(quat_normalised(quat_mul(p, y)), r));
+}
 
 /* 4x4 float matrix. */
 #define make_m4f(d_) \
@@ -404,17 +423,38 @@ force_inline m4f m4f_rotation(quat q) {
 
 	quat n = quat_normalised(q);
 
-    r.m[0][0] = 1.0f - 2.0f * n.y * n.y - 2.0f * n.z * n.z;
-    r.m[0][1] = 2.0f * n.x * n.y - 2.0f * n.z * n.w;
-    r.m[0][2] = 2.0f * n.x * n.z + 2.0f * n.y * n.w;
+	f32 qx, qy, qz, qw, qx2, qy2, qz2, qxqx2, qyqy2, qzqz2, qxqy2, qyqz2, qzqw2, qxqz2, qyqw2, qxqw2;
+	qx = q.x;
+	qy = q.y;
+	qz = q.z;
+	qw = q.w;
+	qx2 = (qx + qx);
+	qy2 = (qy + qy);
+	qz2 = (qz + qz);
+	qxqx2 = (qx * qx2);
+	qxqy2 = (qx * qy2);
+	qxqz2 = (qx * qz2);
+	qxqw2 = (qw * qx2);
+	qyqy2 = (qy * qy2);
+	qyqz2 = (qy * qz2);
+	qyqw2 = (qw * qy2);
+	qzqz2 = (qz * qz2);
+	qzqw2 = (qw * qz2);
 
-    r.m[1][0] = 2.0f * n.x * n.y + 2.0f * n.z * n.w;
-    r.m[1][1] = 1.0f - 2.0f * n.x * n.x - 2.0f * n.z * n.z;
-    r.m[1][2] = 2.0f * n.y * n.z - 2.0f * n.x * n.w;
+	r.m[0][0] = ((1.0f - qyqy2) - qzqz2);
+	r.m[0][1] = qxqy2 - qzqw2;
+	r.m[0][2] = qxqz2 + qyqw2;
+	r.m[0][3] = 0.0f;
 
-    r.m[2][0] = 2.0f * n.x * n.z - 2.0f * n.y * n.w;
-    r.m[2][1] = 2.0f * n.y * n.z + 2.0f * n.x * n.w;
-    r.m[2][2] = 1.0f - 2.0f * n.x * n.x - 2.0f * n.y * n.y;
+	r.m[1][0] = qxqy2 + qzqw2;
+	r.m[1][1] = (1.0f - qxqx2) - qzqz2;
+	r.m[1][2] = qyqz2 - qxqw2;
+	r.m[1][3] = 0.0f;
+
+	r.m[2][0] = qxqz2 - qyqw2;
+	r.m[2][1] = qyqz2 + qxqw2;
+	r.m[2][2] = (1.0f - qxqx2) - qyqy2;
+	r.m[2][3] = 0.0f;
 
 	return r;
 }

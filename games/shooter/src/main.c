@@ -5,8 +5,6 @@
 #include "entity.h"
 #include "renderer.h"
 
-#define camera_speed 300.0f
-
 struct {
 	struct world* world;
 
@@ -52,13 +50,13 @@ void cr_init() {
 
 	app.world = new_world(app.renderer);
 
-	for (usize i = 0; i < 500; i++) {
+	for (usize i = 0; i < 45000; i++) {
 		app.monkey = new_entity(app.world, eb_mesh | eb_spin);
-		app.monkey->transform = m4f_mul(
-			m4f_translation(make_v3f(rand_flt() * 10000.0f, 0.0f, rand_flt() * 1000.0f)),
-			m4f_rotation(euler(make_v3f(0.0f, 0.0f, 0.0f))));
+		app.monkey->transform = m4f_translation(make_v3f(rand_flt() * 10000.0f, rand_flt() * 10000.0f, rand_flt() * 10000.0f));
+		app.monkey->transform = m4f_mul(app.monkey->transform, m4f_rotation(euler(make_v3f(0.0f, rand_flt() * 360.0f, 0.0f))));
 
 		app.monkey->model = load_model("meshes/monkey.fbx");
+		app.monkey->spin_speed = rand_flt() * 100.0f;
 	}
 
 	app.camera_active = false;
@@ -80,10 +78,15 @@ void cr_update(f64 ts) {
 	if (app.camera_active) {
 		struct camera* cam = &app.world->camera;
 
+		f32 camera_speed = 300.0f;
+		if (key_pressed(key_shift)) {
+			camera_speed = 2000.0f;
+		}
+
 		v2i mouse_pos = get_mouse_pos();
 
 		i32 change_x = app.old_mouse.x - mouse_pos.x;
-		i32 change_y = mouse_pos.y - app.old_mouse.y;
+		i32 change_y = app.old_mouse.y - mouse_pos.y;
 
 		if (app.first_move) {
 			app.old_mouse = mouse_pos;
@@ -92,7 +95,7 @@ void cr_update(f64 ts) {
 		}
 
 		cam->rotation.y -= (f32)change_x * 0.1f;
-		cam->rotation.x += (f32)change_y * 0.1f;
+		cam->rotation.x -= (f32)change_y * 0.1f;
 
 		if (cam->rotation.x >= 89.0f) {
 			cam->rotation.x = 89.0f;
@@ -137,6 +140,8 @@ void cr_update(f64 ts) {
 
 	static char fps_buf[256] = "";
 	static char ts_buf[256] = "";
+	static char mem_buf[128];
+	sprintf(mem_buf, "Memory Usage (MIB): %g", (f64)core_get_memory_usage() / 1024.0 / 1024.0);
 	static f64 fps_timer = 0.9;
 
 	fps_timer += ts;
@@ -148,6 +153,7 @@ void cr_update(f64 ts) {
 
 	ui_label(app.ui, fps_buf);
 	ui_label(app.ui, ts_buf);
+	ui_label(app.ui, mem_buf);
 
 	ui_end(app.ui);
 

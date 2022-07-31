@@ -18,10 +18,12 @@ struct entity {
 
 	struct model* model;
 
+	f32 spin_speed;
+
 	enum entity_behaviour behaviour;
 };
 
-#define max_entities 500
+#define max_entities 45000
 
 struct world {
 	struct entity entities[max_entities];
@@ -29,7 +31,7 @@ struct world {
 	usize avail_entity_count;
 
 	f64 time;
-	
+
 	struct renderer* renderer;
 
 	struct camera camera;

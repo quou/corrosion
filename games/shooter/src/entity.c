@@ -19,7 +19,7 @@ struct world* new_world(struct renderer* renderer) {
 	world->camera = (struct camera) {
 		.fov = 70.0f,
 		.near_plane = 0.1f,
-		.far_plane = 1000.0f,
+		.far_plane = 10000.0f,
 		.position.z = -500.0f
 	};
 
@@ -37,7 +37,7 @@ void update_world(struct world* world, f64 ts) {
 		if (!e->active) { continue; }
 
 		if (e->behaviour & eb_spin) {
-			e->transform = m4f_mul(e->transform, m4f_rotation(euler(make_v3f(0.0f, (f32)ts * 25.0f, 0.0f))));
+			e->transform = m4f_mul(e->transform, m4f_rotation(euler(make_v3f(0.0f, (f32)ts * e->spin_speed, 0.0f))));
 		}
 
 		if (e->behaviour & eb_mesh) {
