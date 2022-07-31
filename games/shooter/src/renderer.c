@@ -32,7 +32,7 @@ struct renderer* new_renderer(const struct framebuffer* framebuffer) {
 	const struct shader* shader = load_shader("shaders/lit.csh");
 
 	renderer->pipeline = video.new_pipeline(
-		pipeline_flags_depth_test | pipeline_flags_draw_tris,
+		pipeline_flags_depth_test | pipeline_flags_draw_tris | pipeline_flags_cull_back_face | pipeline_flags_wo_anti_clockwise,
 		shader,
 		renderer->framebuffer,
 		(struct pipeline_attribute_bindings) {

@@ -69,6 +69,7 @@ struct window {
 	bool released_mouse_btns[mouse_btn_count];
 
 	v2i mouse_pos;
+	v2i raw_pos;
 
 	v2i scroll;
 

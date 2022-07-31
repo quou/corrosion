@@ -63,32 +63,32 @@ void init_window(const struct window_config* config, u32 api) {
 
 	memset(&window.keymap, 0, sizeof window.keymap);
 	table_set(window.keymap, 0x00, key_unknown);
-	table_set(window.keymap, XK_A, key_A);
-	table_set(window.keymap, XK_B, key_B);
-	table_set(window.keymap, XK_C, key_C);
-	table_set(window.keymap, XK_D, key_D);
-	table_set(window.keymap, XK_E, key_E);
-	table_set(window.keymap, XK_F, key_F);
-	table_set(window.keymap, XK_G, key_G);
-	table_set(window.keymap, XK_H, key_H);
-	table_set(window.keymap, XK_I, key_I);
-	table_set(window.keymap, XK_J, key_J);
-	table_set(window.keymap, XK_K, key_K);
-	table_set(window.keymap, XK_L, key_L);
-	table_set(window.keymap, XK_M, key_M);
-	table_set(window.keymap, XK_N, key_N);
-	table_set(window.keymap, XK_O, key_O);
-	table_set(window.keymap, XK_P, key_P);
-	table_set(window.keymap, XK_Q, key_Q);
-	table_set(window.keymap, XK_R, key_R);
-	table_set(window.keymap, XK_S, key_S);
-	table_set(window.keymap, XK_T, key_T);
-	table_set(window.keymap, XK_U, key_U);
-	table_set(window.keymap, XK_V, key_V);
-	table_set(window.keymap, XK_W, key_W);
-	table_set(window.keymap, XK_X, key_X);
-	table_set(window.keymap, XK_Y, key_Y);
-	table_set(window.keymap, XK_Z, key_Z);
+	table_set(window.keymap, 0x61, key_A);
+	table_set(window.keymap, 0x62, key_B);
+	table_set(window.keymap, 0x63, key_C);
+	table_set(window.keymap, 0x64, key_D);
+	table_set(window.keymap, 0x65, key_E);
+	table_set(window.keymap, 0x66, key_F);
+	table_set(window.keymap, 0x67, key_G);
+	table_set(window.keymap, 0x68, key_H);
+	table_set(window.keymap, 0x69, key_I);
+	table_set(window.keymap, 0x6A, key_J);
+	table_set(window.keymap, 0x6B, key_K);
+	table_set(window.keymap, 0x6C, key_L);
+	table_set(window.keymap, 0x6D, key_M);
+	table_set(window.keymap, 0x6E, key_N);
+	table_set(window.keymap, 0x6F, key_O);
+	table_set(window.keymap, 0x70, key_P);
+	table_set(window.keymap, 0x71, key_Q);
+	table_set(window.keymap, 0x72, key_R);
+	table_set(window.keymap, 0x73, key_S);
+	table_set(window.keymap, 0x74, key_T);
+	table_set(window.keymap, 0x75, key_U);
+	table_set(window.keymap, 0x76, key_V);
+	table_set(window.keymap, 0x77, key_W);
+	table_set(window.keymap, 0x78, key_X);
+	table_set(window.keymap, 0x79, key_Y);
+	table_set(window.keymap, 0x7A, key_Z);
 	table_set(window.keymap, XK_F1, key_f1);
 	table_set(window.keymap, XK_F2, key_f2);
 	table_set(window.keymap, XK_F3, key_f3);
@@ -245,7 +245,13 @@ void update_events() {
 				window.released_keys[key] = true;
 			} break;
 			case MotionNotify: {
-				window.mouse_pos = make_v2i(e.xmotion.x, e.xmotion.y);
+				if (window.mouse_locked) {
+					v2i centre = make_v2i(window.size.x / 2, window.size.y / 2);
+					window.raw_pos = make_v2i(e.xmotion.x, e.xmotion.y);
+					window.mouse_pos = v2i_add(v2i_sub(centre, window.raw_pos), window.mouse_pos);
+				} else {
+					window.mouse_pos = make_v2i(e.xmotion.x, e.xmotion.y);
+				}
 			} break;
 			case ButtonPress: {
 				switch (e.xbutton.button) {
@@ -284,6 +290,11 @@ void update_events() {
 			default: break;
 		}
 	}
+
+	if (window.mouse_locked) {
+		XWarpPointer(display, None, window.window, 0, 0, 0, 0, window.size.x / 2, window.size.y / 2);
+		XSync(display, False);
+	}
 }
 
 bool key_pressed(u32 code) {
@@ -310,8 +321,23 @@ bool mouse_btn_just_released(u32 code) {
 	return window.released_mouse_btns[code];
 }
 
-void window_lock_mouse(bool lock) {
-	window.mouse_locked = true;
+void lock_mouse(bool lock) {
+	if (lock) {
+		XColor col;
+		char data[1] = {0X00};
+		Pixmap blank = XCreateBitmapFromData(display, window.window, data, 1, 1);
+		Cursor cursor = XCreatePixmapCursor(display, blank, blank, &col, &col, 0, 0);
+		XDefineCursor(display, window.window, cursor);
+		XFreePixmap(display, blank);
+	} else {
+		XUndefineCursor(display, window.window);
+	}
+
+	window.mouse_locked = lock;
+}
+
+bool mouse_locked() {
+	return window.mouse_locked;
 }
 
 v2i get_mouse_pos() {

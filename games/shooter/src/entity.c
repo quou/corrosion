@@ -36,6 +36,10 @@ void update_world(struct world* world, f64 ts) {
 
 		if (!e->active) { continue; }
 
+		if (e->behaviour & eb_spin) {
+			e->transform = m4f_mul(e->transform, m4f_rotation(euler(make_v3f(0.0f, (f32)ts * 25.0f, 0.0f))));
+		}
+
 		if (e->behaviour & eb_mesh) {
 			for (usize j = 0; j < vector_count(e->model->meshes); j++) {
 				struct mesh* mesh = &e->model->meshes[j];
@@ -45,10 +49,6 @@ void update_world(struct world* world, f64 ts) {
 					renderer_push(world->renderer, mesh, t);
 				}
 			}
-		}
-
-		if (e->behaviour & eb_spin) {
-			e->transform = m4f_mul(e->transform, m4f_rotation(euler(make_v3f(0.0f, (f32)ts * 25.0f, 0.0f))));
 		}
 	}
 
