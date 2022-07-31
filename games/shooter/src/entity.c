@@ -46,7 +46,7 @@ void update_world(struct world* world, f64 ts) {
 
 				for (usize x = 0; x < vector_count(mesh->instances); x++) {
 					m4f t = m4f_mul(e->transform, e->model->nodes[mesh->instances[x]].transform);
-					renderer_push(world->renderer, mesh, t);
+					renderer_push(world->renderer, mesh, &e->material, t);
 				}
 			}
 		}

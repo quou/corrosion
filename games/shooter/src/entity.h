@@ -2,8 +2,7 @@
 
 #include <corrosion/cr.h>
 
-struct renderer;
-struct model;
+#include "renderer.h"
 
 enum entity_behaviour {
 	eb_none         = 1 << 0,
@@ -17,6 +16,7 @@ struct entity {
 	m4f transform;
 
 	struct model* model;
+	struct material material;
 
 	f32 spin_speed;
 

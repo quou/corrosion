@@ -10,8 +10,15 @@
 static void add_memcpy_cmd(struct update_queue* buf, void* target, const void* data, usize size) {
 	usize cmd_size = sizeof(struct update_cmd_memcpy) + size;
 
-	if (cmd_size + buf->count > buf->capacity) {
-		buf->capacity += cmd_size;
+	usize new_size = cmd_size + buf->count;
+
+	if (new_size > buf->capacity) {
+		if (buf->capacity == 0) { buf->capacity = 8; }
+
+		while (buf->capacity < new_size) {
+			buf->capacity *= 2;
+		}
+
 		buf->bytes = core_realloc(buf->bytes, buf->capacity);
 	}
 
@@ -749,6 +756,7 @@ void video_vk_end() {
 	struct update_queue* update_queue = vctx.update_queues + vctx.current_frame;
 	struct update_cmd* cmd = (struct update_cmd*)(update_queue->bytes);
 	struct update_cmd* end = (struct update_cmd*)(update_queue->bytes + update_queue->count);
+
 	while (cmd != end) {
 		switch (cmd->type) {
 			case update_cmd_memcpy: {

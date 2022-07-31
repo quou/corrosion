@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <time.h>
 
 #include <corrosion/cr.h>
 
@@ -7,8 +8,6 @@
 
 struct {
 	struct world* world;
-
-	struct entity* monkey;
 
 	struct renderer* renderer;
 
@@ -50,13 +49,34 @@ void cr_init() {
 
 	app.world = new_world(app.renderer);
 
-	for (usize i = 0; i < 45000; i++) {
-		app.monkey = new_entity(app.world, eb_mesh | eb_spin);
-		app.monkey->transform = m4f_translation(make_v3f(rand_flt() * 10000.0f, rand_flt() * 10000.0f, rand_flt() * 10000.0f));
-		app.monkey->transform = m4f_mul(app.monkey->transform, m4f_rotation(euler(make_v3f(0.0f, rand_flt() * 360.0f, 0.0f))));
+	srand(time(null));
 
-		app.monkey->model = load_model("meshes/monkey.fbx");
-		app.monkey->spin_speed = rand_flt() * 100.0f;
+	for (usize i = 0; i < 30000; i++) {
+		struct entity* monkey = new_entity(app.world, eb_mesh | eb_spin);
+		monkey->transform = m4f_translation(make_v3f(rand_flt() * 10000.0f, rand_flt() * 10000.0f, rand_flt() * 10000.0f));
+		monkey->transform = m4f_mul(monkey->transform, m4f_rotation(euler(make_v3f(0.0f, rand_flt() * 360.0f, 0.0f))));
+
+		f32 v = rand_flt();
+
+		if (v > 0.6666f) {
+			monkey->model = load_model("meshes/monkey.fbx");
+		} else if (v > 0.3333f) {
+			monkey->model = load_model("meshes/sphere.fbx");
+		} else {
+			monkey->model = load_model("meshes/torus.fbx");
+		}
+
+		v = rand_flt();
+		if (v > 0.6666f) {
+			monkey->material.diffuse_map = load_texture("textures/bricks_diffuse.png", texture_flags_filter_linear);
+		} else if (v > 0.3333f) {
+			monkey->material.diffuse_map = load_texture("textures/cobble_diffuse.png", texture_flags_filter_linear);
+		} else {
+			monkey->material.diffuse_map = load_texture("textures/wood_diffuse.png", texture_flags_filter_linear);
+		}
+
+		monkey->spin_speed = rand_flt() * 100.0f;
+		monkey->material.diffuse = make_v3f(rand_flt() * 2.0f, rand_flt() * 2.0f, rand_flt() * 2.0f);
 	}
 
 	app.camera_active = false;
@@ -94,8 +114,8 @@ void cr_update(f64 ts) {
 			app.first_move = false;
 		}
 
-		cam->rotation.y -= (f32)change_x * 0.1f;
-		cam->rotation.x -= (f32)change_y * 0.1f;
+		cam->rotation.y -= (f32)change_x * 0.01f;
+		cam->rotation.x -= (f32)change_y * 0.01f;
 
 		if (cam->rotation.x >= 89.0f) {
 			cam->rotation.x = 89.0f;

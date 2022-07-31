@@ -41,7 +41,8 @@ static struct mesh process_mesh(ufbx_scene* scene, ufbx_mesh* mesh) {
 
 			struct mesh_vertex v = {
 				.position = make_v3f(pos.x,    pos.y,    pos.z),
-				.normal   = make_v3f(normal.x, normal.y, normal.z)
+				.normal   = make_v3f(normal.x, normal.y, normal.z),
+				.uv       = make_v2f(uv.x, uv.y)
 			};
 
 			vector_push(vertices, v);

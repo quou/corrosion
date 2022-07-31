@@ -4,8 +4,6 @@
 
 #include <corrosion/cr.h>
 
-#include "entity.h"
-
 struct mesh {
 	struct vertex_buffer* vb;
 	struct index_buffer* ib;
@@ -31,6 +29,7 @@ void deinit_model(struct model* model);
 struct mesh_vertex {
 	v3f position;
 	v3f normal;
+	v2f uv;
 };
 
 struct mesh_instance {
@@ -38,18 +37,29 @@ struct mesh_instance {
 	struct vertex_vector data;
 };
 
+struct material {
+	v3f diffuse;
+	struct texture* diffuse_map;
+};
+
 struct mesh_instance_data {
 	v4f r0;
 	v4f r1;
 	v4f r2;
 	v4f r3;
+	v3f diffuse;
+	v4f diffuse_rect;
 };
 
 struct renderer {
 	table(struct mesh*, struct mesh_instance) drawlist;
 
+	struct atlas* diffuse_atlas;
+
 	struct {
-		m4f view, projection;
+		alignas(16) m4f view;
+		alignas(16) m4f projection;
+		alignas(8)  v2f atlas_size;
 	} vertex_config;
 
 	struct {
@@ -72,4 +82,4 @@ void renderer_end(struct renderer* renderer);
 
 void renderer_finalise(struct renderer* renderer, struct camera* camera);
 
-void renderer_push(struct renderer* renderer, struct mesh* mesh, m4f transform);
+void renderer_push(struct renderer* renderer, struct mesh* mesh, struct material* material, m4f transform);
