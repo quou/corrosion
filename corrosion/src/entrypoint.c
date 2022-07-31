@@ -32,6 +32,9 @@ i32 main(i32 argc, const char** argv) {
 	f64 ts = 0.0;
 
 	while (window_open()) {
+		table_lookup_count = 0;
+		heap_allocation_count = 0;
+
 		update_events();
 		
 		video.begin();

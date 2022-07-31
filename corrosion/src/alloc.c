@@ -59,6 +59,7 @@ static void alloc_insert(struct alloc_info* node, struct alloc_info* new_node) {
 }
 
 static void alloc_add(struct alloc_info* info) {
+	heap_allocation_count++;
 	alloc_insert(alloc_tail, info);
 }
 

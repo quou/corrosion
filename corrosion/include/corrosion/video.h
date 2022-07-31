@@ -228,6 +228,9 @@ struct video {
 	/* Maths. */
 	m4f (*ortho)(f32 l, f32 r, f32 b, f32 t, f32 n, f32 f);
 	m4f (*persp)(f32 fov, f32 aspect, f32 near, f32 far);
+
+	/* Misc */
+	u32 (*get_draw_call_count)();
 };
 
 extern struct video video;

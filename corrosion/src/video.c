@@ -61,6 +61,8 @@ void init_video(u32 api, bool enable_validation, v4f clear_colour) {
 		video.ortho = video_vk_ortho;
 		video.persp = video_vk_persp;
 
+		video.get_draw_call_count = video_vk_get_draw_call_count;
+
 		video_vk_register_resources();
 		break;
 	default:

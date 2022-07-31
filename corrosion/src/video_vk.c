@@ -716,6 +716,8 @@ void video_vk_deinit() {
 void video_vk_begin() {
 frame_begin:
 
+	vctx.draw_call_count = 0;
+
 	vctx.in_frame = true;
 
 	vkWaitForFences(vctx.device, 1, &vctx.in_flight_fences[vctx.current_frame], VK_TRUE, UINT64_MAX);
@@ -2340,10 +2342,12 @@ void video_vk_bind_index_buffer(const struct index_buffer* ib_) {
 
 void video_vk_draw(usize count, usize offset, usize instances) {
 	vkCmdDraw(vctx.command_buffers[vctx.current_frame], (u32)count, (u32)instances, (u32)offset, 0);
+	vctx.draw_call_count++;
 }
 
 void video_vk_draw_indexed(usize count, usize offset, usize instances) {
 	vkCmdDrawIndexed(vctx.command_buffers[vctx.current_frame], (u32)count, (u32)instances, (u32)offset, 0, 0);
+	vctx.draw_call_count++;
 }
 
 void video_vk_set_scissor(v4i rect) {
@@ -2690,4 +2694,8 @@ m4f video_vk_persp(f32 fov, f32 aspect, f32 near_clip, f32 far_clip) {
 	r.m[3][2] = c;
 
 	return r;
+}
+
+u32 video_vk_get_draw_call_count() {
+	return vctx.draw_call_count;
 }

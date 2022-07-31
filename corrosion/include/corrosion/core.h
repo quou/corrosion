@@ -6,6 +6,9 @@
 
 #include "common.h"
 
+extern u32 table_lookup_count;
+extern u32 heap_allocation_count;
+
 u64 elf_hash(const u8* data, usize size);
 u64 hash_string(const char* str);
 

@@ -93,6 +93,8 @@ struct vk_video_context {
 	/* TODO: Make these linked lists? */
 	table(struct video_vk_framebuffer*, struct video_vk_framebuffer*) framebuffers;
 	table(struct video_vk_pipeline*,    struct video_vk_pipeline*)    pipelines;
+
+	u32 draw_call_count;
 };
 
 struct video_vk_framebuffer_attachment {

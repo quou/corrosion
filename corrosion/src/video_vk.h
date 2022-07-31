@@ -57,3 +57,5 @@ void video_vk_free_shader(struct shader* shader);
 
 m4f video_vk_ortho(f32 l, f32 r, f32 b, f32 t, f32 n, f32 f);
 m4f video_vk_persp(f32 fov, f32 aspect, f32 near, f32 far);
+
+u32 video_vk_get_draw_call_count();

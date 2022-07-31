@@ -16,6 +16,10 @@ struct {
 	v2i old_mouse;
 	bool camera_active;
 	bool first_move;
+
+	u32 draw_calls;
+	u32 table_lookups;
+	u32 heap_allocations;
 } app;
 
 struct app_config cr_config() {
@@ -161,7 +165,13 @@ void cr_update(f64 ts) {
 	static char fps_buf[256] = "";
 	static char ts_buf[256] = "";
 	static char mem_buf[128];
-	sprintf(mem_buf, "Memory Usage (MIB): %g", (f64)core_get_memory_usage() / 1024.0 / 1024.0);
+	sprintf(mem_buf, "Memory usage (MIB): %g", (f64)core_get_memory_usage() / 1024.0 / 1024.0);
+	static char draw_call_buf[64];
+	sprintf(draw_call_buf, "Draw calls: %u", app.draw_calls);
+	static char table_lookup_buf[64];
+	sprintf(table_lookup_buf, "Hash table lookups: %u", app.table_lookups);
+	static char heap_alloc_buf[64];
+	sprintf(heap_alloc_buf, "Heap allocations: %u", app.heap_allocations);
 	static f64 fps_timer = 0.9;
 
 	fps_timer += ts;
@@ -174,6 +184,11 @@ void cr_update(f64 ts) {
 	ui_label(app.ui, fps_buf);
 	ui_label(app.ui, ts_buf);
 	ui_label(app.ui, mem_buf);
+	ui_linebreak(app.ui);
+	ui_label(app.ui, "== Per-frame stats ==");
+	ui_label(app.ui, draw_call_buf);
+	ui_label(app.ui, table_lookup_buf);
+	ui_label(app.ui, heap_alloc_buf);
 
 	ui_end(app.ui);
 
@@ -181,6 +196,10 @@ void cr_update(f64 ts) {
 		renderer_finalise(app.renderer, &app.world->camera);
 		ui_draw(app.ui);
 	video.end_framebuffer(video.get_default_fb());
+
+	app.draw_calls = video.get_draw_call_count();
+	app.table_lookups = table_lookup_count;
+	app.heap_allocations = heap_allocation_count;
 }
 
 void cr_deinit() {

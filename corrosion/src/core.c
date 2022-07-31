@@ -3,6 +3,9 @@
 
 #include "core.h"
 
+u32 table_lookup_count;
+u32 heap_allocation_count;
+
 u64 elf_hash(const u8* data, usize size) {
 	usize hash = 0, x = 0;
 
@@ -30,6 +33,8 @@ void* _find_table_el(void* els_v, usize el_size, usize capacity, usize key_size,
 	u8* tombstone = null;
 
 	u8* els = els_v;
+
+	table_lookup_count++;
 
 	for (;;) {
 		u8* el = els + idx * el_size;
