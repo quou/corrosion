@@ -13,6 +13,7 @@
 struct window {
 	bool open;
 	bool resizable;
+	bool mouse_locked;
 
 	u32 api;
 

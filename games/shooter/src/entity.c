@@ -32,7 +32,7 @@ void free_world(struct world* world) {
 
 void update_world(struct world* world, f64 ts) {
 	for (usize i = 0; i < max_entities; i++) {
-		struct entity* e = world->entities + i;
+		struct entity* e = &world->entities[i];
 
 		if (!e->active) { continue; }
 
@@ -72,7 +72,7 @@ static usize pop_avail(struct world* world) {
 		abort_with("Too many entities.");
 	}
 
-	return world->avail_entities[world->avail_entity_count--];
+	return world->avail_entities[--world->avail_entity_count];
 }
 
 struct entity* new_entity(struct world* world, enum entity_behaviour behaviour) {

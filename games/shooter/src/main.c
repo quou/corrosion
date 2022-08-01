@@ -55,7 +55,7 @@ void cr_init() {
 
 	srand(time(null));
 
-	for (usize i = 0; i < 30000; i++) {
+	/*for (usize i = 0; i < 30000; i++) {
 		struct entity* monkey = new_entity(app.world, eb_mesh | eb_spin);
 		monkey->transform = m4f_translation(make_v3f(rand_flt() * 10000.0f, rand_flt() * 10000.0f, rand_flt() * 10000.0f));
 		monkey->transform = m4f_mul(monkey->transform, m4f_rotation(euler(make_v3f(0.0f, rand_flt() * 360.0f, 0.0f))));
@@ -90,7 +90,20 @@ void cr_init() {
 		light->light.specular = make_rgb(0xffffff);
 		light->light.intensity = 1.0f;
 		light->light.position = make_v3f(rand_flt() * 10000.0f, rand_flt() * 10000.0f, rand_flt() * 10000.0f);
-	}
+	}*/
+
+	struct entity* monkey = new_entity(app.world, eb_mesh | eb_spin);
+	monkey->model = load_model("meshes/monkey.fbx");
+	monkey->spin_speed = 25.0f;
+	monkey->material.diffuse = make_rgb(0xffffff);
+	monkey->material.diffuse_map = load_texture("textures/wood_diffuse.png", texture_flags_filter_linear);
+
+	struct entity* light = new_entity(app.world, eb_light);
+	light->light.range = 1000.0f;
+	light->light.intensity = 1.0f;
+	light->light.diffuse = make_rgb(0xffffff);
+	light->light.specular = make_rgb(0xffffff);
+	light->light.position = make_v3f(300.0f, 0.0f, 0.0f);
 
 	app.camera_active = false;
 	app.first_move = true;

@@ -15,3 +15,4 @@
 #include "timer.h"
 #include "ui.h"
 #include "ui_render.h"
+#include "video.h"

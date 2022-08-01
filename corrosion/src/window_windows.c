@@ -329,6 +329,15 @@ v2i get_scroll() {
 	return window.scroll;
 }
 
+
+void lock_mouse(bool lock) {
+	window.mouse_locked = lock;
+}
+
+bool mouse_locked() {
+	return window.mouse_locked;
+}
+
 bool get_input_string(const char** string, usize* len) {
 	if (window.input_string_len > 0) {
 		*string = window.input_string;
