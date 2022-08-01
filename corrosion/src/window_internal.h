@@ -40,6 +40,9 @@ struct window {
 	usize input_string_len;
 
 	table(i32, u32) keymap;
+
+	u8* raw_input_buffer;
+	usize raw_input_buffer_capacity;
 };
 
 #else

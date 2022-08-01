@@ -26,11 +26,47 @@ static LRESULT CALLBACK win32_event_callback(HWND hwnd, UINT msg, WPARAM wparam,
 
 			return 0;
 		case WM_MOUSEMOVE:
-			u32 x = lparam & 0xFFFF;
-			u32 y = (lparam >> 16) & 0xFFFF;
+			if (!window.mouse_locked) {
+				u32 x = lparam & 0xFFFF;
+				u32 y = (lparam >> 16) & 0xFFFF;
 
-			window.mouse_pos = make_v2i((i32)x, (i32)y);
-			return 0;
+				window.mouse_pos = make_v2i((i32)x, (i32)y);
+				return 0;
+			}
+			break;
+		case WM_INPUT: {
+			if (window.mouse_locked) {
+				UINT dw_size;
+
+				GetRawInputData((HRAWINPUT)lparam, RID_INPUT, NULL, &dw_size, sizeof(RAWINPUTHEADER));
+
+				if (dw_size > window.raw_input_buffer_capacity) {
+					if (!window.raw_input_buffer_capacity) {
+						window.raw_input_buffer_capacity = 8;
+					}
+
+					while (window.raw_input_buffer_capacity < dw_size) {
+						window.raw_input_buffer_capacity *= 2;
+					}
+
+					window.raw_input_buffer = core_realloc(window.raw_input_buffer, window.raw_input_buffer_capacity);
+				}
+
+				if (GetRawInputData((HRAWINPUT)lparam, RID_INPUT, window.raw_input_buffer, &dw_size, sizeof(RAWINPUTHEADER)) != dw_size) {
+					error("GetRawInputData does not return correct size !");
+				}
+
+				RAWINPUT* raw = (RAWINPUT*)window.raw_input_buffer;
+
+				if (raw->header.dwType == RIM_TYPEMOUSE) {
+					if (raw->data.mouse.usFlags == MOUSE_MOVE_RELATIVE) {
+						window.mouse_pos = v2i_add(window.mouse_pos, make_v2i(raw->data.mouse.lLastX, raw->data.mouse.lLastY));
+					} else {
+						window.mouse_pos = make_v2i(raw->data.mouse.lLastX, raw->data.mouse.lLastY);
+					}
+				}
+			}
+		} break;
 		case WM_KEYDOWN: {
 			i32 sym = (i32)wparam;
 			i32* key_ptr = table_get(window.keymap, sym);
@@ -251,6 +287,8 @@ VkSurfaceKHR get_window_surface() {
 }
 
 void deinit_window() {
+	core_free(window.raw_input_buffer);
+
 	DestroyWindow(window.hwnd);
 
 	free_table(window.keymap);
@@ -331,6 +369,30 @@ v2i get_scroll() {
 
 
 void lock_mouse(bool lock) {
+	if (lock) {
+		RAWINPUTDEVICE rid = {
+			.usUsagePage = 0x01,       /* HID_USAGE_PAGE_GENERIC */
+			.usUsage = 0x02,           /* HID_USAGE_GENERIC_MOUSE */
+			.dwFlags = 0,
+			.hwndTarget = 0
+		};
+
+		RegisterRawInputDevices(&rid, 1, sizeof rid);
+
+		ShowCursor(false);
+	} else {
+		RAWINPUTDEVICE rid = {
+			.usUsagePage = 0x01,       /* HID_USAGE_PAGE_GENERIC */
+			.usUsage = 0x02,           /* HID_USAGE_GENERIC_MOUSE */
+			.dwFlags = RIDEV_REMOVE,
+			.hwndTarget = 0
+		};
+
+		RegisterRawInputDevices(&rid, 1, sizeof rid);
+	
+		ShowCursor(true);
+	}
+
 	window.mouse_locked = lock;
 }
 
