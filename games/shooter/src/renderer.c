@@ -383,6 +383,11 @@ void renderer_push(struct renderer* renderer, struct mesh* mesh, struct material
 }
 
 void renderer_push_light(struct renderer* renderer, const struct light* light) {
+	if (renderer->lighting_buffer.light_count >= renderer_max_lights) {
+		error("Too many lights.");
+		return;
+	}
+
 	renderer->lighting_buffer.lights[renderer->lighting_buffer.light_count++] = (struct light_std140) {
 		.intensity = light->intensity,
 		.range     = light->range,

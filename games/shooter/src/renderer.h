@@ -1,7 +1,5 @@
 #pragma once
 
-#include <stdalign.h>
-
 #include <corrosion/cr.h>
 
 #define renderer_max_lights 500
@@ -24,11 +22,12 @@ struct light {
 };
 
 struct light_std140 {
-	alignas(4)  float intensity;
-	alignas(4)  float range;
-	alignas(16) v3f diffuse;
-	alignas(16) v3f specular;
-	alignas(16) v3f position;
+	f32 intensity;
+	f32 range;
+	pad(8); v3f diffuse;
+	pad(4); v3f specular;
+	pad(4); v3f position;
+	pad(4);
 };
 
 struct model_node {
@@ -75,9 +74,9 @@ struct renderer {
 	struct atlas* diffuse_atlas;
 
 	struct {
-		alignas(16) m4f view;
-		alignas(16) m4f projection;
-		alignas(8)  v2f atlas_size;
+		m4f view;
+		m4f projection;
+		v2f atlas_size;
 	} vertex_config;
 
 	struct {
@@ -85,8 +84,9 @@ struct renderer {
 	} fragment_config;
 
 	struct {
-		alignas(4)  u32 light_count;
-		alignas(16) v3f camera_pos;
+		u32 light_count;
+		pad(12); v3f camera_pos;
+		pad(4);
 		struct light_std140 lights[renderer_max_lights];
 	} lighting_buffer;
 

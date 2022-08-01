@@ -26,6 +26,12 @@ void vwarning(const char* fmt, va_list args);
 		abort(); \
 	} while (0)
 
+#define cat2(x, y) x ## y
+#define cat(x, y) cat2(x, y)
+
+#define pad(s_) \
+	u8 cat(padding_, __LINE__)[s_]
+
 #ifdef debug
 
 struct alloc_code_info {
