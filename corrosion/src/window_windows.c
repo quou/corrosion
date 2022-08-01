@@ -36,6 +36,14 @@ static LRESULT CALLBACK win32_event_callback(HWND hwnd, UINT msg, WPARAM wparam,
 			break;
 		case WM_INPUT: {
 			if (window.mouse_locked) {
+				RECT rect;
+				GetWindowRect(window.hwnd, &rect);
+				rect.left   += window.size.x / 2 - 10;
+				rect.right  -= window.size.x / 2 - 10;
+				rect.top    += window.size.y / 2 - 10;
+				rect.bottom -= window.size.y / 2 - 10;
+				ClipCursor(&rect);
+
 				UINT dw_size;
 
 				GetRawInputData((HRAWINPUT)lparam, RID_INPUT, NULL, &dw_size, sizeof(RAWINPUTHEADER));
@@ -369,6 +377,8 @@ v2i get_scroll() {
 
 
 void lock_mouse(bool lock) {
+	window.mouse_locked = lock;
+
 	if (lock) {
 		RAWINPUTDEVICE rid = {
 			.usUsagePage = 0x01,       /* HID_USAGE_PAGE_GENERIC */
@@ -379,7 +389,7 @@ void lock_mouse(bool lock) {
 
 		RegisterRawInputDevices(&rid, 1, sizeof rid);
 
-		ShowCursor(false);
+		//ShowCursor(false);
 	} else {
 		RAWINPUTDEVICE rid = {
 			.usUsagePage = 0x01,       /* HID_USAGE_PAGE_GENERIC */
@@ -390,10 +400,8 @@ void lock_mouse(bool lock) {
 
 		RegisterRawInputDevices(&rid, 1, sizeof rid);
 	
-		ShowCursor(true);
+		//ShowCursor(true);
 	}
-
-	window.mouse_locked = lock;
 }
 
 bool mouse_locked() {
