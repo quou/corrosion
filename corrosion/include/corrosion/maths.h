@@ -421,8 +421,6 @@ force_inline m4f m4f_scale(v3f v) {
 force_inline m4f m4f_rotation(quat q) {
 	m4f r = m4f_identity();
 
-	quat n = quat_normalised(q);
-
 	f32 qx, qy, qz, qw, qx2, qy2, qz2, qxqx2, qyqy2, qzqz2, qxqy2, qyqz2, qzqw2, qxqz2, qyqw2, qxqw2;
 	qx = q.x;
 	qy = q.y;

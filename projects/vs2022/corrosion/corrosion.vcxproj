@@ -106,8 +106,7 @@
       <AdditionalDependencies>vulkan-1.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PreBuildEvent>
-      <Command>
-      </Command>
+      <Command>cd $(SolutionDir)..\..\ &amp;&amp; $(SolutionDir)birbuilder\bin\$(Configuration)\birbuilder.exe</Command>
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -130,8 +129,7 @@
       <AdditionalDependencies>vulkan-1.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PreBuildEvent>
-      <Command>
-      </Command>
+      <Command>cd $(SolutionDir)..\..\ &amp;&amp; $(SolutionDir)birbuilder\bin\$(Configuration)\birbuilder.exe</Command>
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -150,8 +148,7 @@
       <AdditionalDependencies>vulkan-1.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PreBuildEvent>
-      <Command>
-      </Command>
+      <Command>cd $(SolutionDir)..\..\ &amp;&amp; $(SolutionDir)birbuilder\bin\$(Configuration)\birbuilder.exe</Command>
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -174,8 +171,7 @@
       <AdditionalDependencies>vulkan-1.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PreBuildEvent>
-      <Command>
-      </Command>
+      <Command>cd $(SolutionDir)..\..\ &amp;&amp; $(SolutionDir)birbuilder\bin\$(Configuration)\birbuilder.exe</Command>
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
