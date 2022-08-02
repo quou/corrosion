@@ -68,7 +68,7 @@ static LRESULT CALLBACK win32_event_callback(HWND hwnd, UINT msg, WPARAM wparam,
 
 				if (raw->header.dwType == RIM_TYPEMOUSE) {
 					if (raw->data.mouse.usFlags == MOUSE_MOVE_RELATIVE) {
-						window.mouse_pos = v2i_add(window.mouse_pos, make_v2i(raw->data.mouse.lLastX, raw->data.mouse.lLastY));
+						window.mouse_pos = v2i_sub(window.mouse_pos, make_v2i(raw->data.mouse.lLastX, raw->data.mouse.lLastY));
 					} else {
 						window.mouse_pos = make_v2i(raw->data.mouse.lLastX, raw->data.mouse.lLastY);
 					}
