@@ -77,6 +77,7 @@ static LRESULT CALLBACK win32_event_callback(HWND hwnd, UINT msg, WPARAM wparam,
 		} break;
 		case WM_KEYDOWN: {
 			i32 sym = (i32)wparam;
+
 			i32* key_ptr = table_get(window.keymap, sym);
 			if (key_ptr) {
 				i32 key = *key_ptr;
@@ -108,6 +109,7 @@ static LRESULT CALLBACK win32_event_callback(HWND hwnd, UINT msg, WPARAM wparam,
 		}
 		case WM_KEYUP: {
 			i32 sym = (i32)wparam;
+
 			i32* key_ptr = table_get(window.keymap, sym);
 			if (key_ptr) {
 				i32 key = *key_ptr;
@@ -248,12 +250,9 @@ void init_window(const struct window_config* config, u32 api) {
 	table_set(window.keymap, VK_PRIOR, key_page_up);
 	table_set(window.keymap, VK_NEXT, key_page_down);
 	table_set(window.keymap, VK_INSERT, key_insert);
-	table_set(window.keymap, VK_LSHIFT, key_shift);
-	table_set(window.keymap, VK_RSHIFT, key_shift);
-	table_set(window.keymap, VK_LCONTROL, key_control);
-	table_set(window.keymap, VK_RCONTROL, key_control);
-	table_set(window.keymap, VK_LWIN, key_super);
-	table_set(window.keymap, VK_RWIN, key_super);
+	table_set(window.keymap, 16, key_shift);
+	table_set(window.keymap, 17, key_control);
+	table_set(window.keymap, 91, key_super);
 	table_set(window.keymap, VK_LMENU, key_alt);
 	table_set(window.keymap, VK_RMENU, key_alt);
 	table_set(window.keymap, VK_SPACE, key_space);
@@ -311,6 +310,8 @@ void update_events() {
 
 	window.input_string_len = 0;
 	window.scroll = make_v2i(0, 0);
+
+	ClipCursor(&(RECT) { 0, 0, -1, -1 });
 
 	MSG msg;
 
@@ -389,7 +390,7 @@ void lock_mouse(bool lock) {
 
 		RegisterRawInputDevices(&rid, 1, sizeof rid);
 
-		//ShowCursor(false);
+		ShowCursor(false);
 	} else {
 		RAWINPUTDEVICE rid = {
 			.usUsagePage = 0x01,       /* HID_USAGE_PAGE_GENERIC */
@@ -400,7 +401,7 @@ void lock_mouse(bool lock) {
 
 		RegisterRawInputDevices(&rid, 1, sizeof rid);
 	
-		//ShowCursor(true);
+		ShowCursor(true);
 	}
 }
 

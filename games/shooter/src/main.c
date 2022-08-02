@@ -55,7 +55,7 @@ void cr_init() {
 
 	srand(time(null));
 
-	/*for (usize i = 0; i < 30000; i++) {
+	for (usize i = 0; i < 30000; i++) {
 		struct entity* monkey = new_entity(app.world, eb_mesh | eb_spin);
 		monkey->transform = m4f_translation(make_v3f(rand_flt() * 10000.0f, rand_flt() * 10000.0f, rand_flt() * 10000.0f));
 		monkey->transform = m4f_mul(monkey->transform, m4f_rotation(euler(make_v3f(0.0f, rand_flt() * 360.0f, 0.0f))));
@@ -90,9 +90,9 @@ void cr_init() {
 		light->light.specular = make_rgb(0xffffff);
 		light->light.intensity = 1.0f;
 		light->light.position = make_v3f(rand_flt() * 10000.0f, rand_flt() * 10000.0f, rand_flt() * 10000.0f);
-	}*/
+	}
 
-	struct entity* monkey = new_entity(app.world, eb_mesh | eb_spin);
+	/*/struct entity* monkey = new_entity(app.world, eb_mesh | eb_spin);
 	monkey->model = load_model("meshes/monkey.fbx");
 	monkey->spin_speed = 25.0f;
 	monkey->material.diffuse = make_rgb(0xffffff);
@@ -103,7 +103,7 @@ void cr_init() {
 	light->light.intensity = 1.0f;
 	light->light.diffuse = make_rgb(0xffffff);
 	light->light.specular = make_rgb(0xffffff);
-	light->light.position = make_v3f(300.0f, 0.0f, 0.0f);
+	light->light.position = make_v3f(300.0f, 0.0f, 0.0f);*/
 
 	app.camera_active = false;
 	app.first_move = true;
@@ -140,8 +140,8 @@ void cr_update(f64 ts) {
 			app.first_move = false;
 		}
 
-		cam->rotation.y -= (f32)change_x * 0.01f;
-		cam->rotation.x -= (f32)change_y * 0.01f;
+		cam->rotation.y += (f32)change_x * 0.1f;
+		cam->rotation.x += (f32)change_y * 0.1f;
 
 		if (cam->rotation.x >= 89.0f) {
 			cam->rotation.x = 89.0f;
