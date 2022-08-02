@@ -20,7 +20,7 @@ make config=debug run_sbox
 
 ### Windows
 The Windows platform layer is still work in progress, so some things don't work properly
-or aren't implemented at all, particularly the filesystem stuff.
+or aren't implemented at all.
 
 #### Visual Studio
 Open `corrosion.sln` in the `projects/vs2022` directory in Visual Studio 2022, right click

@@ -38,6 +38,15 @@ void free_dir_iter(struct dir_iter* it);
 struct dir_entry* dir_iter_cur(struct dir_iter* it);
 bool dir_iter_next(struct dir_iter* it);
 
+#define for_dir(n_, v_, c_) \
+	do { \
+		struct dir_iter* cat(v_, __LINE__) = new_dir_iter(n_); \
+		while (dir_iter_next(cat(v_, __LINE__))) { \
+			struct dir_entry* v_ = dir_iter_cur(cat(v_, __LINE__)); \
+			c_ \
+		} \
+	} while (0)
+
 bool get_file_info(const char* path, struct file_info* info);
 
 bool read_raw(const char* path, u8** buf, usize* size);
