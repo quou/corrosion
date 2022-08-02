@@ -1836,7 +1836,7 @@ static void init_pipeline(struct video_vk_pipeline* pipeline, u32 flags, const s
 
 				switch (desc->resource.type) {
 					case pipeline_resource_uniform_buffer: {
-						new_buffer(desc->resource.uniform.size,
+						new_buffer(pad_ub_size(desc->resource.uniform.size),
 							VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
 							VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
 							VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,

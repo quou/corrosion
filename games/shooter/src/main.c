@@ -116,8 +116,6 @@ void cr_update(f64 ts) {
 		app.first_move = true;
 	}
 
-	info("%d, %d", get_mouse_pos().x, get_mouse_pos().y);
-
 	if (mouse_btn_just_released(mouse_btn_right)) {
 		lock_mouse(false);
 		app.camera_active = false;
