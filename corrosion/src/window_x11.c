@@ -248,7 +248,7 @@ void update_events() {
 				if (window.mouse_locked) {
 					v2i centre = make_v2i(window.size.x / 2, window.size.y / 2);
 					window.raw_pos = make_v2i(e.xmotion.x, e.xmotion.y);
-					window.mouse_pos = v2i_add(v2i_sub(centre, window.raw_pos), window.mouse_pos);
+					window.mouse_pos = v2i_add(v2i_sub(window.raw_pos, centre), window.mouse_pos);
 				} else {
 					window.mouse_pos = make_v2i(e.xmotion.x, e.xmotion.y);
 				}
