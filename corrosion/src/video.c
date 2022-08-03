@@ -8,6 +8,7 @@ struct {
 	bool is_init;
 	bool is_deinit;
 	bool end_called;
+	bool has_default_fb;
 } validation_state;
 
 #define get_api_proc(n_) \
@@ -29,13 +30,11 @@ static void validated_init(bool enable_validation, v4f clear_colour) {
 	bool ok = true;
 
 	if (clear_colour.r > 1.0f || clear_colour.g > 1.0f || clear_colour.b > 1.0f || clear_colour.a > 1.0f) {
-		error("video.init: clear_color must not be an HDR colour, as the default framebuffer does not support HDR.");
-		ok = false;
+		warning("video.init: clear_color must not be an HDR colour, as the default framebuffer does not support HDR.");
 	}
 
 	if (clear_colour.r < 0.0f || clear_colour.g < 0.0f || clear_colour.b < 0.0f || clear_colour.a < 0.0f) {
-		error("video.init: Red, green, blue and alpha values of clear_color must not be negative.");
-		ok = false;
+		warning("video.init: Red, green, blue and alpha values of clear_color must not be negative.");
 	}
 
 	if (ok) {
@@ -100,30 +99,189 @@ static void validated_end() {
 
 static struct framebuffer* validated_get_default_fb() {
 	bool ok = true;
+	bool fatal = false;
 
 	check_is_init("get_default_fb");
 
 	if (ok) {
 		return get_api_proc(get_default_fb)();
 	}
+
+	abort();
+}
+
+static struct framebuffer* validated_new_framebuffer(
+	u32 flags, v2i size, const struct framebuffer_attachment_desc* attachments, usize attachment_count) {
+
+	bool ok = true;
+
+	check_is_init("new_framebuffer");
+
+	if (validation_state.has_default_fb && flags & framebuffer_flags_default) {
+		error("video.new_framebuffer: Cannot have more than one framebuffer created with framebuffer_flags_default.");
+		ok = false;
+	}
+
+	if (flags > (framebuffer_flags_fit | framebuffer_flags_default | framebuffer_flags_headless)) {
+		error("video.new_framebuffer: Invalid flags.");
+		ok = false;
+	}
+
+	if (flags & framebuffer_flags_default && flags & framebuffer_flags_headless) {
+		error("video.new_framebuffer: Flags cannot be framebuffer+flags_default and framebuffer_flags_headless simultaneously.");
+		ok = false;
+	}
+
+	if (flags & framebuffer_flags_default && ~flags & framebuffer_flags_fit) {
+		warning("video.new_framebuffer: Default framebuffers should be created with framebuffer_flags_fit.");
+	}
+
+	v2i window_size = get_window_size();
+
+	if (flags & framebuffer_flags_default && (size.x > window_size.x || size.y > window_size.y)) {
+		error("video.new_framebuffer: Default framebuffer mustn't be larger than the window.");
+		ok = false;
+	}
+
+	if (flags & framebuffer_flags_fit && (size.x > window_size.x || size.y > window_size.y)) {
+		warning("video.new_framebuffer: Fitted framebuffers shouldn't be larger than the window.");
+	}
+
+	if (size.x < 1 || size.y < 1) {
+		error("video.new_framebuffer: `size' mustn't be less than 1x1");
+		ok = false;
+	}
+
+	for (usize i = 0; i < attachment_count; i++) {
+		const struct framebuffer_attachment_desc* desc = attachments + i;
+
+		if (desc->type >= framebuffer_attachment_type_count) {
+			error("video.new_framebuffer: Attachment %u (%s): Attachment descriptor type must be"
+			" smaller than framebuffer_attachment_type_count.", i, desc->name);
+			ok = false;
+		}
+
+		if (desc->format >= framebuffer_format_count) {
+			error("video.new_framebuffer: Attachment %u (%s): Attachment descriptor format must be"
+			" smaller than framebuffer_format_count.", i, desc->name);
+			ok = false;
+		}
+
+		if (desc->format == framebuffer_format_depth && desc->type != framebuffer_attachment_depth) {
+			error("video.new_framebuffer: Attachment %u (%s): If the attachment format is"
+			" framebuffer_format_depth, then the type must be framebuffer_attachment_depth.", i, desc->name);
+			ok = false;
+		}
+
+		if (desc->type == framebuffer_attachment_depth && desc->format != framebuffer_format_depth) {
+			error("video.new_framebuffer: Attachment %u (%s): If the attachment type is"
+			" framebuffer_attachment_depth, then the format must be framebuffer_format_depth.", i, desc->name);
+			ok = false;
+		}
+
+		if (desc->type == framebuffer_attachment_colour && (desc->format != framebuffer_format_rgba8i &&
+			desc->format != framebuffer_format_rgba16f &&
+			desc->format != framebuffer_format_rgba32f)) {
+
+			error("video.new_framebuffer: Attachment %u (%s): If the attachment type is"
+			" framebuffer_attachment_colour, then the format must be any one of:"
+			" framebuffer_format_rgba8i, framebuffer_format_rgba16f or framebuffer_format_rgba32f.",
+			i, desc->name);
+			ok = false;
+		}
+
+		if ((desc->format == framebuffer_format_rgba8i ||
+			desc->format == framebuffer_format_rgba16f ||
+			desc->format == framebuffer_format_rgba32f) &&
+			desc->type != framebuffer_attachment_colour) {
+
+			error("video.new_framebuffer: Attachment %u (%s): If the attachment format is"
+			" any one of: framebuffer_format_rgba8i, framebuffer_format_rgba16f or framebuffer_format_rgba32f,"
+			" then the attachment type must framebuffer_attachment_colour.", i, desc->name);
+			ok = false;
+		}
+	}
+
+	if (ok) {
+		validation_state.has_default_fb = true;
+		return get_api_proc(new_framebuffer)(flags, size, attachments, attachment_count);
+	}
+
+	abort();
+}
+
+static void validated_free_framebuffer(struct framebuffer* fb) {
+	bool ok = true;
+
+	check_is_init("free_framebuffer");
+
+	if (!fb) {
+		error("video.free_framebuffer: `fb' must be a valid pointer to a framebuffer.");
+		ok = false;
+	}
+
+	if (ok) {
+		return get_api_proc(free_framebuffer)(fb);
+	}
+
+	abort();
+}
+
+static v2i validated_get_framebuffer_size(const struct framebuffer* fb) {
+	bool ok = true;
+
+	check_is_init("get_framebuffer_size");
+
+	if (!fb) {
+		error("video.get_framebuffer_size: `fb' must be a valid pointer to a framebuffer.");
+		ok = false;
+	}
+
+	if (ok) {
+		return get_api_proc(get_framebuffer_size)(fb);
+	}
+
+	abort();
+}
+
+static void validated_resize_framebuffer(struct framebuffer* fb, v2i new_size) {
+	bool ok = true;
+
+	check_is_init("resize_framebuffer");
+
+	if (!fb) {
+		error("video.resize_framebuffer: `fb' must be a valid pointer to a framebuffer.");
+		ok = false;
+	}
+
+	if (new_size.x < 1 || new_size.y < 1) {
+		error("video.resize_framebuffer: `new_size' mustn't be less than 1x1");
+		ok = false;
+	}
+
+	if (ok) {
+		return get_api_proc(resize_framebuffer)(fb, new_size);
+	}
+
+	abort();
 }
 
 static void find_procs(u32 api, bool enable_validation) {
-#define get_v_proc(n_, v_) \
-	enable_validation ? v_ : get_api_proc(n_)
+#define get_v_proc(n_) \
+	enable_validation ? cat(validated_, n_) : get_api_proc(n_)
 
-	video.init   = get_v_proc(init,   validated_init);
-	video.deinit = get_v_proc(deinit, validated_deinit);
+	video.init   = get_v_proc(init);
+	video.deinit = get_v_proc(deinit);
 
-	video.begin = get_v_proc(begin, validated_begin);
-	video.end   = get_v_proc(end,   validated_end);
+	video.begin = get_v_proc(begin);
+	video.end   = get_v_proc(end);
 
-	video.get_default_fb = get_v_proc(get_default_fb, validated_get_default_fb);
+	video.get_default_fb = get_v_proc(get_default_fb);
 
-	video.new_framebuffer      = video_vk_new_framebuffer;
-	video.free_framebuffer     = video_vk_free_framebuffer;
-	video.get_framebuffer_size = video_vk_get_framebuffer_size;
-	video.resize_framebuffer   = video_vk_resize_framebuffer;
+	video.new_framebuffer      = get_v_proc(new_framebuffer);
+	video.free_framebuffer     = get_v_proc(free_framebuffer);
+	video.get_framebuffer_size = get_v_proc(get_framebuffer_size);
+	video.resize_framebuffer   = get_v_proc(resize_framebuffer);
 	video.begin_framebuffer    = video_vk_begin_framebuffer;
 	video.end_framebuffer      = video_vk_end_framebuffer;
 

@@ -10,15 +10,17 @@ enum {
 };
 
 enum {
-	framebuffer_attachment_colour,
-	framebuffer_attachment_depth
+	framebuffer_attachment_colour = 0,
+	framebuffer_attachment_depth,
+	framebuffer_attachment_type_count
 };
 
 enum {
-	framebuffer_format_depth,
+	framebuffer_format_depth = 0,
 	framebuffer_format_rgba8i,
 	framebuffer_format_rgba16f,
-	framebuffer_format_rgba32f
+	framebuffer_format_rgba32f,
+	framebuffer_format_count
 };
 
 enum {
