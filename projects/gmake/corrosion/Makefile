@@ -57,6 +57,7 @@ sources =                            \
           $(srcdir)/font.c           \
           $(srcdir)/gizmo.c          \
           $(srcdir)/log.c            \
+          $(srcdir)/render_util.c    \
           $(srcdir)/res.c            \
           $(srcdir)/res_posix.c      \
           $(srcdir)/simplerenderer.c \

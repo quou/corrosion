@@ -31,6 +31,16 @@ void free_world(struct world* world) {
 }
 
 void update_world(struct world* world, f64 ts) {
+	const v2i fb_size = video.get_framebuffer_size(world->renderer->scene_fb);
+	const f32 aspect = (f32)fb_size.x / (f32)fb_size.y;
+
+	m4f vp = m4f_mul(get_camera_projection(&world->camera, aspect), get_camera_view(&world->camera));
+
+	struct frustum_plane fplanes[6];
+	compute_frustum_planes(vp, fplanes);
+
+	world->culled = 0;
+
 	for (usize i = 0; i < max_entities; i++) {
 		struct entity* e = &world->entities[i];
 
@@ -46,7 +56,13 @@ void update_world(struct world* world, f64 ts) {
 
 				for (usize x = 0; x < vector_count(mesh->instances); x++) {
 					m4f t = m4f_mul(e->transform, e->model->nodes[mesh->instances[x]].transform);
-					renderer_push(world->renderer, mesh, &e->material, t);
+
+					struct aabb mesh_bound = transform_aabb(&mesh->bound, t);
+					if (in_frustum(&mesh_bound, fplanes)) {
+						renderer_push(world->renderer, mesh, &e->material, t);
+					} else {
+						world->culled++;
+					}
 				}
 			}
 		}

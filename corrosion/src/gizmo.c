@@ -105,7 +105,10 @@ void gizmos_deinit() {
 }
 
 void gizmo_camera(const struct camera* camera) {
-	gizmos.vertex_uniform_data.camera = m4f_mul(get_camera_projection(camera), get_camera_view(camera));
+	const v2i fb_size = video.get_framebuffer_size(video.get_default_fb());
+	const f32 aspect = (f32)fb_size.x / (f32)fb_size.y;
+
+	gizmos.vertex_uniform_data.camera = m4f_mul(get_camera_projection(camera, aspect), get_camera_view(camera));
 }
 
 void gizmo_colour(v4f colour) {

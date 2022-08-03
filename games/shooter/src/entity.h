@@ -33,6 +33,8 @@ struct world {
 	usize avail_entities[max_entities];
 	usize avail_entity_count;
 
+	usize culled;
+
 	f64 time;
 
 	struct renderer* renderer;

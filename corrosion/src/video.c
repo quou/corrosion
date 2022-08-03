@@ -86,10 +86,8 @@ m4f get_camera_view(const struct camera* camera) {
 	return m4f_lookat(camera->position, v3f_add(camera->position, cam_dir), make_v3f(0.0f, 1.0f, 0.0f));
 }
 
-m4f get_camera_projection(const struct camera* camera) {
-	v2i size = get_window_size();
-
-	return video.persp(camera->fov, (f32)size.x / (f32)size.y, camera->near_plane, camera->far_plane);
+m4f get_camera_projection(const struct camera* camera, f32 aspect) {
+	return video.persp(camera->fov, aspect, camera->near_plane, camera->far_plane);
 }
 
 void init_vertex_vector(struct vertex_vector* v, usize element_size, usize initial_capacity) {

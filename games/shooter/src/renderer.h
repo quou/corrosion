@@ -11,6 +11,8 @@ struct mesh {
 	vector(usize) instances;
 
 	usize count;
+
+	struct aabb bound;
 };
 
 struct light {

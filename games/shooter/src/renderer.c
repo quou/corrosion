@@ -322,8 +322,11 @@ void renderer_begin(struct renderer* renderer) {
 }
 
 void renderer_end(struct renderer* renderer, struct camera* camera) {
+	const v2i fb_size = video.get_framebuffer_size(renderer->scene_fb);
+	const f32 aspect = (f32)fb_size.x / (f32)fb_size.y;
+
 	renderer->vertex_config.view = get_camera_view(camera);
-	renderer->vertex_config.projection = get_camera_projection(camera);
+	renderer->vertex_config.projection = get_camera_projection(camera, aspect);
 	renderer->vertex_config.atlas_size = make_v2f(renderer->diffuse_atlas->size.x, renderer->diffuse_atlas->size.y);
 
 	renderer->fragment_config.camera_pos   = camera->position;

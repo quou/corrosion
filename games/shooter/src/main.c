@@ -56,7 +56,7 @@ void cr_init() {
 	srand(time(null));
 
 	for (usize i = 0; i < 30000; i++) {
-		struct entity* monkey = new_entity(app.world, eb_mesh | eb_spin);
+		struct entity* monkey = new_entity(app.world, eb_mesh);
 		monkey->transform = m4f_translation(make_v3f(rand_flt() * 10000.0f, rand_flt() * 10000.0f, rand_flt() * 10000.0f));
 		monkey->transform = m4f_mul(monkey->transform, m4f_rotation(euler(make_v3f(0.0f, rand_flt() * 360.0f, 0.0f))));
 
@@ -83,7 +83,7 @@ void cr_init() {
 		monkey->material.diffuse = make_v3f(rand_flt() * 2.0f, rand_flt() * 2.0f, rand_flt() * 2.0f);
 	}
 
-	for (usize i = 0; i < 100; i++) {
+	for (usize i = 0; i < 200; i++) {
 		struct entity* light = new_entity(app.world, eb_light);
 		light->light.range = 1000.0f;
 		light->light.diffuse = make_rgb(0xffffff);
@@ -187,6 +187,7 @@ void cr_update(f64 ts) {
 	static char fps_buf[256] = "";
 	static char ts_buf[256] = "";
 	static char mem_buf[128];
+	static char culled_buf[128];
 	sprintf(mem_buf, "Memory usage (MIB): %g", (f64)core_get_memory_usage() / 1024.0 / 1024.0);
 	static char draw_call_buf[64];
 	sprintf(draw_call_buf, "Draw calls: %u", app.draw_calls);
@@ -195,6 +196,8 @@ void cr_update(f64 ts) {
 	static char heap_alloc_buf[64];
 	sprintf(heap_alloc_buf, "Heap allocations: %u", app.heap_allocations);
 	static f64 fps_timer = 0.9;
+
+	sprintf(culled_buf, "Culled Meshes: %llu", app.world->culled);
 
 	fps_timer += ts;
 	if (fps_timer >= 1.0) {
@@ -207,6 +210,8 @@ void cr_update(f64 ts) {
 	ui_label(app.ui, ts_buf);
 	ui_label(app.ui, mem_buf);
 	ui_linebreak(app.ui);
+	ui_label(app.ui, culled_buf);
+	ui_linebreak(app.ui);
 	ui_label(app.ui, "== Per-frame stats ==");
 	ui_label(app.ui, draw_call_buf);
 	ui_label(app.ui, table_lookup_buf);
@@ -217,6 +222,7 @@ void cr_update(f64 ts) {
 	video.begin_framebuffer(video.get_default_fb());
 		renderer_finalise(app.renderer);
 		ui_draw(app.ui);
+		gizmos_draw();
 	video.end_framebuffer(video.get_default_fb());
 
 	app.draw_calls = video.get_draw_call_count();

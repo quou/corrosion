@@ -160,7 +160,7 @@ struct camera {
 };
 
 m4f get_camera_view(const struct camera* camera);
-m4f get_camera_projection(const struct camera* camera);
+m4f get_camera_projection(const struct camera* camera, f32 aspect);
 
 struct pipeline;
 struct vertex_buffer;

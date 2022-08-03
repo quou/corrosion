@@ -10,6 +10,7 @@
 #include "font.h"
 #include "gizmo.h"
 #include "maths.h"
+#include "render_util.h"
 #include "res.h"
 #include "simplerenderer.h"
 #include "timer.h"
