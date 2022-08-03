@@ -35,7 +35,7 @@ force_inline struct frustum_plane make_plane(v3f normal, v3f pos) {
 	v3f n_n = v3f_normalised(normal);
 	return (struct frustum_plane) {
 		.normal = n_n,
-		.distance = v3f_dot(n_n, pos)
+		.distance = v3_dot(n_n, pos)
 	};
 }
 
@@ -86,18 +86,6 @@ void compute_frustum_planes(m4f vp, struct frustum_plane* planes) {
 	}
 }
 
-static bool in_front_of_plane(const struct aabb* aabb, const struct frustum_plane* plane) {
-	const v3f extents = v3f_sub(aabb->max, aabb->min);
-	const v3f centre = v3f_add(aabb->min, v3f_scale(extents, 0.5f));
-
-	const f32 r =
-		extents.x * fabsf(plane->normal.x) +
-		extents.y * fabsf(plane->normal.y) +
-		extents.z * fabsf(plane->normal.z);
-
-    return -r <= v3f_dot(plane->normal, centre) - plane->distance;
-}
-
 bool in_frustum(const struct aabb* aabb, const struct frustum_plane* planes) {
 	const v3f extents = v3f_sub(aabb->max, aabb->min);
 	const v3f pos = v3f_add(aabb->min, v3f_scale(extents, 0.5f));
@@ -105,12 +93,9 @@ bool in_frustum(const struct aabb* aabb, const struct frustum_plane* planes) {
 	for (usize i = 0; i < 6; i++) {
 		const struct frustum_plane* plane = planes + i;
 
-		const f32 r =
-			extents.x * fabsf(plane->normal.x) +
-			extents.y * fabsf(plane->normal.y) +
-			extents.z * fabsf(plane->normal.z);
+		const f32 r = v3_dot(v3_abs(plane->normal), extents);
 
-		if ((plane->normal.x * pos.x) + (plane->normal.y * pos.y) + (plane->normal.z * pos.z) + plane->distance <= -r) {
+		if (v3_dot(plane->normal, pos) + plane->distance <= -r) {
 			return false;
 		}
 	}

@@ -260,8 +260,34 @@ _v4_normalised(v4f, f32)
 #define v3f_cross(a_, b_) \
 	make_v3f((a_).y * (b_).z - (a_).z * (b_).y, (a_).z * (b_).x - (a_).x * (b_).z, (a_).x * (b_).y - (a_).y * (b_).x)
 
-#define v3f_dot(a_, b_) \
+/* v_dot */
+#define v2_dot(a_, b_) \
+	((a_).x * (b_).x + (a_).y * (b_).y)
+
+#define v3_dot(a_, b_) \
 	((a_).x * (b_).x + (a_).y * (b_).y + (a_).z * (b_).z)
+
+#define v4_dot(a_, b_) \
+	((a_).x * (b_).x + (a_).y * (b_).y + (a_).z * (b_).z + (a_).w * (b_).w)
+
+/* v_abs */
+#define v2_abs(v_) _Generic((v_), \
+		v2f: make_v2f(fabsf((v_).x), fabsf((v_).y)), \
+		v2i: make_v2f(fabsf((v_).x), fabsf((v_).y)), \
+		v2u: make_v2f(fabsf((v_).x), fabsf((v_).y))  \
+	)
+
+#define v3_abs(v_) _Generic((v_), \
+		v3f: make_v3f(fabsf((v_).x), fabsf((v_).y), fabsf((v_).z)), \
+		v3i: make_v3f(fabsf((v_).x), fabsf((v_).y), fabsf((v_).z)), \
+		v3u: make_v3f(fabsf((v_).x), fabsf((v_).y), fabsf((v_).z))  \
+	)
+
+#define v4_abs(v_) _Generic((v_), \
+		v4f: make_v4f(fabsf((v_).x), fabsf((v_).y), fabsf((v_).z), fabsf((v_).w)), \
+		v4i: make_v4f(fabsf((v_).x), fabsf((v_).y), fabsf((v_).z), fabsf((v_).w)), \
+		v4u: make_v4f(fabsf((v_).x), fabsf((v_).y), fabsf((v_).z), fabsf((v_).w))  \
+	)
 
 /* Quaternion. */
 typedef v4f quat;
@@ -296,7 +322,7 @@ force_inline quat quat_normalised(quat q) {
 }
 
 force_inline quat quat_mul(quat a, quat b) {
-	return (quat) {
+	return quat_normalised((quat) {
 		 a.x * b.w +
 		 a.y * b.z -
 		 a.z * b.y +
@@ -316,7 +342,7 @@ force_inline quat quat_mul(quat a, quat b) {
 		 a.y * b.y -
 		 a.z * b.z +
 		 a.w * b.w
-	};
+	});
 }
 
 force_inline quat quat_rotate(f32 angle, v3f axis) {
@@ -340,7 +366,7 @@ force_inline quat euler(v3f a) {
 	quat y = quat_rotate(a.y, make_v3f(0.0f, 1.0f, 0.0f));
 	quat r = quat_rotate(a.z, make_v3f(0.0f, 0.0f, 1.0f));
 
-	return quat_normalised(quat_mul(quat_normalised(quat_mul(p, y)), r));
+	return quat_mul(quat_mul(p, y), r);
 }
 
 /* 4x4 float matrix. */
@@ -474,9 +500,9 @@ force_inline m4f m4f_lookat(v3f c, v3f o, v3f u) {
 	r.m[0][2] = -f.x;
 	r.m[1][2] = -f.y;
 	r.m[2][2] = -f.z;
-	r.m[3][0] = -v3f_dot(s, c);
-	r.m[3][1] = -v3f_dot(u, c);
-	r.m[3][2] =  v3f_dot(f, c);
+	r.m[3][0] = -v3_dot(s, c);
+	r.m[3][1] = -v3_dot(u, c);
+	r.m[3][2] =  v3_dot(f, c);
 
 	return r;
 }
