@@ -27,7 +27,11 @@ struct app_config cr_config() {
 		.name = "Shooter",
 		.video_config = (struct video_config) {
 			.api = video_api_vulkan,
+#ifdef debug
 			.enable_validation = true,
+#else
+			.enable_validation = false,
+#endif
 			.clear_colour = make_rgba(0x000000, 255)
 		},
 		.window_config = (struct window_config) {
@@ -140,8 +144,8 @@ void cr_update(f64 ts) {
 			app.first_move = false;
 		}
 
-		cam->rotation.y += (f32)change_x * 0.1f;
-		cam->rotation.x += (f32)change_y * 0.1f;
+		cam->rotation.y += (f32)change_x * 0.05f;
+		cam->rotation.x += (f32)change_y * 0.05f;
 
 		if (cam->rotation.x >= 89.0f) {
 			cam->rotation.x = 89.0f;
