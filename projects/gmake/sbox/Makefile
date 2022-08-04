@@ -56,10 +56,10 @@ memcheck: | $(deps) $(target)
 	$(silent) cd ../../../sbox; \
 	valgrind --leak-check=full ./../projects/gmake/sbox/$(target)
 
-sources = $(wildcard $(srcdir)/*.c $(srcdir/*/*.c))
+sources = $(wildcard $(srcdir)/*.c $(srcdir)/*/*.c)
 objects = $(sources:$(srcdir)/%.c=$(objdir)/%.o)
 
-shaders = $(wildcard $(srcdir)/*.glsl $(srcdir/*/*.glsl))
+shaders = $(wildcard $(srcdir)/*.glsl $(srcdir)/*/*.glsl)
 
 shader_targetdir = ../../../sbox/shaders/
 shader_targets = $(shaders:$(srcdir)%.glsl=$(shader_targetdir)%.csh)

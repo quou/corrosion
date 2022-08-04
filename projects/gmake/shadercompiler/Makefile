@@ -41,10 +41,10 @@ endif
 
 all: $(deps) $(target)
 
-sources = $(wildcard $(srcdir)/*.c $(srcdir/*/*.c))
+sources = $(wildcard $(srcdir)/*.c $(srcdir)/*/*.c)
 objects = $(sources:$(srcdir)/%.c=$(objdir)/%.o)
 
-sourcespp = $(wildcard $(srcdir)/*.cpp $(srcdir/*/*.cpp))
+sourcespp = $(wildcard $(srcdir)/*.cpp $(srcdir)/*/*.cpp)
 objectspp = $(sourcespp:$(srcdir)/%.cpp=$(objdir)/%.o)
 
 $(objects): | $(objdir)
