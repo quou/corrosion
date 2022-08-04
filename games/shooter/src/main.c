@@ -60,8 +60,8 @@ void cr_init() {
 	srand(time(null));
 
 	for (usize i = 0; i < 30000; i++) {
-		struct entity* monkey = new_entity(app.world, eb_mesh);
-		monkey->transform = m4f_translation(make_v3f(rand_flt() * 10000.0f, rand_flt() * 10000.0f, rand_flt() * 10000.0f));
+		struct entity* monkey = new_entity(app.world, eb_mesh | eb_spin);
+		monkey->transform = m4f_translation(make_v3f(rand_flt() * 100.0f, rand_flt() * 100.0f, rand_flt() * 100.0f));
 		monkey->transform = m4f_mul(monkey->transform, m4f_rotation(euler(make_v3f(0.0f, rand_flt() * 360.0f, 0.0f))));
 
 		f32 v = rand_flt();
@@ -89,11 +89,11 @@ void cr_init() {
 
 	for (usize i = 0; i < 200; i++) {
 		struct entity* light = new_entity(app.world, eb_light);
-		light->light.range = 1000.0f;
+		light->light.range = 10.0f;
 		light->light.diffuse = make_rgb(0xffffff);
 		light->light.specular = make_rgb(0xffffff);
 		light->light.intensity = 1.0f;
-		light->light.position = make_v3f(rand_flt() * 10000.0f, rand_flt() * 10000.0f, rand_flt() * 10000.0f);
+		light->light.position = make_v3f(rand_flt() * 100.0f, rand_flt() * 100.0f, rand_flt() * 100.0f);
 	}
 
 	/*/struct entity* monkey = new_entity(app.world, eb_mesh | eb_spin);
@@ -128,9 +128,9 @@ void cr_update(f64 ts) {
 	if (app.camera_active) {
 		struct camera* cam = &app.world->camera;
 
-		f32 camera_speed = 300.0f;
+		f32 camera_speed = 3.0f;
 		if (key_pressed(key_shift)) {
-			camera_speed = 2000.0f;
+			camera_speed = 20.0f;
 		}
 
 		v2i mouse_pos = get_mouse_pos();

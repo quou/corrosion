@@ -20,7 +20,7 @@ struct world* new_world(struct renderer* renderer) {
 		.fov = 70.0f,
 		.near_plane = 0.1f,
 		.far_plane = 10000.0f,
-		.position.z = -500.0f
+		.position.z = -5.0f
 	};
 
 	return world;
