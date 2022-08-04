@@ -87,7 +87,7 @@ void cr_init() {
 		monkey->material.diffuse = make_v3f(rand_flt() * 2.0f, rand_flt() * 2.0f, rand_flt() * 2.0f);
 	}
 
-	for (usize i = 0; i < 200; i++) {
+	for (usize i = 0; i < 500; i++) {
 		struct entity* light = new_entity(app.world, eb_light);
 		light->light.range = 10.0f;
 		light->light.diffuse = make_rgb(0xffffff);
