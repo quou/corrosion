@@ -9,6 +9,8 @@ struct {
 	bool is_deinit;
 	bool end_called;
 	bool has_default_fb;
+
+	struct framebuffer* current_fb;
 } validation_state;
 
 #define get_api_proc(n_) \
@@ -272,6 +274,45 @@ static void validated_resize_framebuffer(struct framebuffer* fb, v2i new_size) {
 	abort();
 }
 
+static void validated_begin_framebuffer(struct framebuffer* fb) {
+	bool ok = true;
+
+	check_is_init("begin_framebuffer");
+
+	if (validation_state.current_fb) {
+		error("video.begin_framebuffer: Mismatched video.begin_framebuffer/video.end_framebuffer."
+		"Did you forget to call video.end_framebuffer?");
+		ok = false;
+	}
+
+	if (ok) {
+		validation_state.current_fb = fb;
+		get_api_proc(begin_framebuffer)(fb);
+		return;
+	}
+
+	abort();
+}
+
+static void validated_end_framebuffer(struct framebuffer* fb) {
+	bool ok = true;
+
+	check_is_init("end_framebuffer");
+
+	if (validation_state.current_fb != fb) {
+		error("video.end_framebuffer: Mismatched video.begin_framebuffer/video.end_framebuffer");
+		ok = false;
+	}
+
+	if (ok) {
+		validation_state.current_fb = null;
+		get_api_proc(end_framebuffer)(fb);
+		return;
+	}
+
+	abort();
+}
+
 static void find_procs(u32 api, bool enable_validation) {
 #define get_v_proc(n_) \
 	enable_validation ? cat(validated_, n_) : get_api_proc(n_)
@@ -288,8 +329,8 @@ static void find_procs(u32 api, bool enable_validation) {
 	video.free_framebuffer     = get_v_proc(free_framebuffer);
 	video.get_framebuffer_size = get_v_proc(get_framebuffer_size);
 	video.resize_framebuffer   = get_v_proc(resize_framebuffer);
-	video.begin_framebuffer    = video_vk_begin_framebuffer;
-	video.end_framebuffer      = video_vk_end_framebuffer;
+	video.begin_framebuffer    = get_v_proc(begin_framebuffer);
+	video.end_framebuffer      = get_v_proc(end_framebuffer);
 
 	video.new_pipeline                 = video_vk_new_pipeline;
 	video.free_pipeline                = video_vk_free_pipeline;
