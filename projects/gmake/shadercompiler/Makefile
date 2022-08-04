@@ -10,11 +10,11 @@ endif
 
 cc = gcc
 cpp = g++
-includes = -I../../../corrosion/include
+includes = -I../../../corrosion/include -I../../../corrosion/include/corrosion
 target_name = shadercompiler
 deps =
 srcdir = ../../../shadercompiler/src
-libs =
+libs = -lshaderc_shared
 defines =
 
 ifeq ($(config),debug)
@@ -44,15 +44,23 @@ all: $(deps) $(target)
 sources = $(wildcard $(srcdir)/*.c $(srcdir/*/*.c))
 objects = $(sources:$(srcdir)/%.c=$(objdir)/%.o)
 
+sourcespp = $(wildcard $(srcdir)/*.cpp $(srcdir/*/*.cpp))
+objectspp = $(sourcespp:$(srcdir)/%.cpp=$(objdir)/%.o)
+
 $(objects): | $(objdir)
+$(objectspp): | $(objdir)
 
 $(objects): $(objdir)%.o : $(srcdir)%.c
 	@echo $(notdir $<)
 	$(silent) $(cc) $(cflags) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
 
-$(target): $(objects) $(deps) | $(target_dir)
+$(objectspp): $(objdir)%.o : $(srcdir)%.cpp
+	@echo $(notdir $<)
+	$(silent) $(cpp) $(cflags) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
+
+$(target): $(objects) $(objectspp) $(deps) | $(target_dir)
 	@echo Linking $(target)
-	$(silent) $(cpp) -o "$@" $(objects) $(lflags) $(libs)
+	$(silent) $(cpp) -o "$@" $(objects) $(objectspp) $(lflags) $(libs)
 
 $(deps):
 	$(silent) make --no-print-directory -C "$@" -f Makefile config=$(config)

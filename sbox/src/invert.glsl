@@ -1,6 +1,6 @@
 #version 440
 
-#begin VERTEX
+#begin vertex
 
 layout (location = 0) in vec2 position;
 layout (location = 1) in vec2 uv;
@@ -15,9 +15,9 @@ void main() {
 	gl_Position = vec4(position, 0.0, 1.0);
 }
 
-#end VERTEX
+#end vertex
 
-#begin FRAGMENT
+#begin fragment
 
 layout (location = 0) out vec4 colour;
 
@@ -33,4 +33,4 @@ void main() {
 	colour = vec4(src_col.rgb, src_col.a);
 }
 
-#end FRAGMENT
+#end fragment

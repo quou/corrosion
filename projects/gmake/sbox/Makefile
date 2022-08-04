@@ -75,9 +75,9 @@ $(target): $(objects) $(deps) | $(target_dir)
 	@echo Linking $(target)
 	$(silent) $(cpp) -o "$@" $(objects) $(lflags) $(libs)
 
-$(shader_targets): $(shader_targetdir)%.csh : $(srcdir)%.glsl | $(shader_targetdir) $(objdir)
+$(shader_targets): $(shader_targetdir)%.csh : $(srcdir)%.glsl | $(shader_targetdir)
 	@echo $(notdir $<)
-	$(silent) ./$(shader_compiler) $< $(objdir) $@
+	$(silent) ./$(shader_compiler) $< $@
 
 $(deps):
 	$(silent) make --no-print-directory -C "$@" -f Makefile config=$(config)

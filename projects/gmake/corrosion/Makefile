@@ -91,9 +91,9 @@ $(objectspp): $(objdir)%.o : $(srcdir)%.cpp
 	@echo $(notdir $<)
 	$(silent) $(cxx) $(cppflags) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
 
-$(shader_targets): $(shader_targetdir)%.csh : $(srcdir)%.glsl | $(shader_targetdir) $(objdir) $(deps)
+$(shader_targets): $(shader_targetdir)%.csh : $(srcdir)%.glsl | $(shader_targetdir) $(deps)
 	@echo $(notdir $<)
-	$(silent) ./$(shader_compiler) $< $(objdir) $@
+	$(silent) ./$(shader_compiler) $< $@
 
 $(shader_targetdir):
 	$(silent) mkdir -p $(shader_targetdir)

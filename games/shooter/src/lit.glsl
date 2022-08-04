@@ -1,6 +1,6 @@
 #version 440
 
-#begin VERTEX
+#begin vertex
 
 /* Mesh data */
 layout (location = 0) in vec3 position;
@@ -49,9 +49,9 @@ void main() {
 	gl_Position = projection * view * vec4(vs_out.world_pos, 1.0);
 }
 
-#end VERTEX
+#end vertex
 
-#begin FRAGMENT
+#begin fragment
 
 layout (location = 0) out vec4 colour;
 layout (location = 1) out vec4 normal;
@@ -77,4 +77,4 @@ void main() {
 	position = vec4(fs_in.world_pos, 1.0);
 }
 
-#end FRAGMENT
+#end fragment

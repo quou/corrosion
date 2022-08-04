@@ -1,6 +1,6 @@
 #version 440
 
-#begin VERTEX
+#begin vertex
 
 layout (location = 0) in vec3 position;
 layout (location = 1) in vec4 colour;
@@ -19,9 +19,9 @@ void main() {
 	gl_Position = camera * vec4(position, 1.0);
 }
 
-#end VERTEX
+#end vertex
 
-#begin FRAGMENT
+#begin fragment
 
 layout (location = 0) out vec4 colour;
 
@@ -33,4 +33,4 @@ void main() {
 	colour = fs_in.colour;
 }
 
-#end FRAGMENT
+#end fragment
