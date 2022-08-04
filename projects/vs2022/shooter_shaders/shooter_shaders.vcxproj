@@ -179,12 +179,12 @@
   <ItemGroup>
     <CustomBuild Include="..\..\..\games\shooter\src\lighting.glsl">
       <FileType>Document</FileType>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(SolutionDir)shadercompiler\bin\$(Configuration)\shadercompiler.exe $(SolutionDir)..\..\games\shooter\src\%(FileName)%(Extension) $(ProjectDir)obj\$(Configuration)\ $(SolutionDir)..\..\games\shooter\shaders\%(Filename).csh</Command>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(SolutionDir)shadercompiler\bin\$(Configuration)\shadercompiler.exe $(SolutionDir)..\..\games\shooter\src\%(FileName)%(Extension) $(ProjectDir)obj\$(Configuration)\ $(SolutionDir)..\..\games\shooter\shaders\%(Filename).csh</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(SolutionDir)shadercompiler\bin\$(Configuration)\shadercompiler.exe $(SolutionDir)..\..\games\shooter\src\%(FileName)%(Extension) $(SolutionDir)..\..\games\shooter\shaders\%(Filename).csh</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(SolutionDir)shadercompiler\bin\$(Configuration)\shadercompiler.exe $(SolutionDir)..\..\games\shooter\src\%(FileName)%(Extension) $(SolutionDir)..\..\games\shooter\shaders\%(Filename).csh</Command>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(SolutionDir)..\..\games\shooter\shaders\%(Filename).csh</Outputs>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(SolutionDir)..\..\games\shooter\shaders\%(Filename).csh</Outputs>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(SolutionDir)shadercompiler\bin\$(Configuration)\shadercompiler.exe $(SolutionDir)..\..\games\shooter\src\%(FileName)%(Extension) $(ProjectDir)obj\$(Configuration)\ $(SolutionDir)..\..\games\shooter\shaders\%(Filename).csh</Command>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(SolutionDir)shadercompiler\bin\$(Configuration)\shadercompiler.exe $(SolutionDir)..\..\games\shooter\src\%(FileName)%(Extension) $(ProjectDir)obj\$(Configuration)\ $(SolutionDir)..\..\games\shooter\shaders\%(Filename).csh</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(SolutionDir)shadercompiler\bin\$(Configuration)\shadercompiler.exe $(SolutionDir)..\..\games\shooter\src\%(FileName)%(Extension) $(SolutionDir)..\..\games\shooter\shaders\%(Filename).csh</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(SolutionDir)shadercompiler\bin\$(Configuration)\shadercompiler.exe $(SolutionDir)..\..\games\shooter\src\%(FileName)%(Extension) $(SolutionDir)..\..\games\shooter\shaders\%(Filename).csh</Command>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(SolutionDir)..\..\games\shooter\shaders\%(Filename).csh</Outputs>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(SolutionDir)..\..\games\shooter\shaders\%(Filename).csh</Outputs>
     </CustomBuild>
@@ -192,10 +192,10 @@
       <FileType>Document</FileType>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(SolutionDir)..\..\games\shooter\shaders\%(Filename).csh</Outputs>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(SolutionDir)..\..\games\shooter\shaders\%(Filename).csh</Outputs>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(SolutionDir)shadercompiler\bin\$(Configuration)\shadercompiler.exe $(SolutionDir)..\..\games\shooter\src\%(FileName)%(Extension) $(ProjectDir)obj\$(Configuration)\ $(SolutionDir)..\..\games\shooter\shaders\%(Filename).csh</Command>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(SolutionDir)shadercompiler\bin\$(Configuration)\shadercompiler.exe $(SolutionDir)..\..\games\shooter\src\%(FileName)%(Extension) $(ProjectDir)obj\$(Configuration)\ $(SolutionDir)..\..\games\shooter\shaders\%(Filename).csh</Command>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(SolutionDir)shadercompiler\bin\$(Configuration)\shadercompiler.exe $(SolutionDir)..\..\games\shooter\src\%(FileName)%(Extension) $(ProjectDir)obj\$(Configuration)\ $(SolutionDir)..\..\games\shooter\shaders\%(Filename).csh</Command>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(SolutionDir)shadercompiler\bin\$(Configuration)\shadercompiler.exe $(SolutionDir)..\..\games\shooter\src\%(FileName)%(Extension) $(ProjectDir)obj\$(Configuration)\ $(SolutionDir)..\..\games\shooter\shaders\%(Filename).csh</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(SolutionDir)shadercompiler\bin\$(Configuration)\shadercompiler.exe $(SolutionDir)..\..\games\shooter\src\%(FileName)%(Extension) $(SolutionDir)..\..\games\shooter\shaders\%(Filename).csh</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(SolutionDir)shadercompiler\bin\$(Configuration)\shadercompiler.exe $(SolutionDir)..\..\games\shooter\src\%(FileName)%(Extension) $(SolutionDir)..\..\games\shooter\shaders\%(Filename).csh</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(SolutionDir)shadercompiler\bin\$(Configuration)\shadercompiler.exe $(SolutionDir)..\..\games\shooter\src\%(FileName)%(Extension) $(SolutionDir)..\..\games\shooter\shaders\%(Filename).csh</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(SolutionDir)shadercompiler\bin\$(Configuration)\shadercompiler.exe $(SolutionDir)..\..\games\shooter\src\%(FileName)%(Extension) $(SolutionDir)..\..\games\shooter\shaders\%(Filename).csh</Command>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(SolutionDir)..\..\games\shooter\shaders\%(Filename).csh</Outputs>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(SolutionDir)..\..\games\shooter\shaders\%(Filename).csh</Outputs>
     </CustomBuild>

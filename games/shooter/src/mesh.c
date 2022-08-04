@@ -42,12 +42,12 @@ static struct mesh process_mesh(ufbx_scene* scene, ufbx_mesh* mesh) {
 			ufbx_vec3 normal = ufbx_get_vertex_vec3(&mesh->vertex_normal, idx);
 			ufbx_vec2 uv = mesh->vertex_uv.exists ? ufbx_get_vertex_vec2(&mesh->vertex_uv, idx) : default_uv;
 
-			rmesh.bound.min.x = cr_min(pos.x, rmesh.bound.min.x);
-			rmesh.bound.min.y = cr_min(pos.y, rmesh.bound.min.y);
-			rmesh.bound.min.z = cr_min(pos.z, rmesh.bound.min.z);
-			rmesh.bound.max.x = cr_max(pos.x, rmesh.bound.max.x);
-			rmesh.bound.max.y = cr_max(pos.y, rmesh.bound.max.y);
-			rmesh.bound.max.z = cr_max(pos.z, rmesh.bound.max.z);
+			rmesh.bound.min.x = cr_min((f32)pos.x, rmesh.bound.min.x);
+			rmesh.bound.min.y = cr_min((f32)pos.y, rmesh.bound.min.y);
+			rmesh.bound.min.z = cr_min((f32)pos.z, rmesh.bound.min.z);
+			rmesh.bound.max.x = cr_max((f32)pos.x, rmesh.bound.max.x);
+			rmesh.bound.max.y = cr_max((f32)pos.y, rmesh.bound.max.y);
+			rmesh.bound.max.z = cr_max((f32)pos.z, rmesh.bound.max.z);
 
 			struct mesh_vertex v = {
 				.position = make_v3f(pos.x,    pos.y,    pos.z),

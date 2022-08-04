@@ -179,12 +179,12 @@
   <ItemGroup>
     <CustomBuild Include="..\..\..\sbox\src\invert.glsl">
       <FileType>Document</FileType>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(SolutionDir)shadercompiler\bin\$(Configuration)\shadercompiler.exe $(SolutionDir)..\..\sbox\src\%(FileName)%(Extension) $(ProjectDir)obj\$(Configuration)\ $(SolutionDir)..\..\sbox\shaders\%(Filename).csh</Command>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(SolutionDir)shadercompiler\bin\$(Configuration)\shadercompiler.exe $(SolutionDir)..\..\sbox\src\%(FileName)%(Extension) $(ProjectDir)obj\$(Configuration)\ $(SolutionDir)..\..\sbox\shaders\%(Filename).csh</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(SolutionDir)shadercompiler\bin\$(Configuration)\shadercompiler.exe $(SolutionDir)..\..\sbox\src\%(FileName)%(Extension) $(SolutionDir)..\..\sbox\shaders\%(Filename).csh</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(SolutionDir)shadercompiler\bin\$(Configuration)\shadercompiler.exe $(SolutionDir)..\..\sbox\src\%(FileName)%(Extension) $(SolutionDir)..\..\sbox\shaders\%(Filename).csh</Command>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(SolutionDir)..\..\sbox\shaders\%(Filename).csh</Outputs>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(SolutionDir)..\..\sbox\shaders\%(Filename).csh</Outputs>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(SolutionDir)shadercompiler\bin\$(Configuration)\shadercompiler.exe $(SolutionDir)..\..\sbox\src\%(FileName)%(Extension) $(ProjectDir)obj\$(Configuration)\ $(SolutionDir)..\..\sbox\shaders\%(Filename).csh</Command>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(SolutionDir)shadercompiler\bin\$(Configuration)\shadercompiler.exe $(SolutionDir)..\..\sbox\src\%(FileName)%(Extension) $(ProjectDir)obj\$(Configuration)\ $(SolutionDir)..\..\sbox\shaders\%(Filename).csh</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(SolutionDir)shadercompiler\bin\$(Configuration)\shadercompiler.exe $(SolutionDir)..\..\sbox\src\%(FileName)%(Extension) $(SolutionDir)..\..\sbox\shaders\%(Filename).csh</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(SolutionDir)shadercompiler\bin\$(Configuration)\shadercompiler.exe $(SolutionDir)..\..\sbox\src\%(FileName)%(Extension) $(SolutionDir)..\..\sbox\shaders\%(Filename).csh</Command>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(SolutionDir)..\..\sbox\shaders\%(Filename).csh</Outputs>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(SolutionDir)..\..\sbox\shaders\%(Filename).csh</Outputs>
     </CustomBuild>

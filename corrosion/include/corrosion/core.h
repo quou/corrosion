@@ -64,7 +64,7 @@ void alloc_init();
 void alloc_deinit();
 void leak_check();
 
-struct type_info {
+/*struct type_info {
 	u64 id;
 	usize size;
 	const char* name;
@@ -75,7 +75,7 @@ struct type_info {
 		.id = elf_hash((const u8*)#t_, sizeof(t_)), \
 		.size = sizeof(t_), \
 		.name = #t_ \
-	})
+	})*/
 
 /* Generic hash table.
  *

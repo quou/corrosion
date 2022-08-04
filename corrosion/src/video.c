@@ -41,7 +41,8 @@ static void validated_init(bool enable_validation, v4f clear_colour) {
 		validation_state.is_init = true;
 		validation_state.is_deinit = false;
 		validation_state.end_called = true;
-		return get_api_proc(init)(enable_validation, clear_colour);
+		get_api_proc(init)(enable_validation, clear_colour);
+		return;
 	}
 
 	abort();
@@ -59,7 +60,8 @@ static void validated_deinit() {
 	
 	if (ok) {
 		validation_state.is_deinit = true;
-		return get_api_proc(deinit)();
+		get_api_proc(deinit)();
+		return;
 	}
 
 	abort();
@@ -77,7 +79,8 @@ static void validated_begin() {
 
 	if (ok) {	
 		validation_state.end_called = false;
-		return get_api_proc(begin)();
+		get_api_proc(begin)();
+		return;
 	}
 
 	abort();
@@ -91,7 +94,8 @@ static void validated_end() {
 
 	if (ok) {
 		validation_state.end_called = true;
-		return get_api_proc(end)();
+		get_api_proc(end)();
+		return;
 	}
 
 	abort();
@@ -221,7 +225,8 @@ static void validated_free_framebuffer(struct framebuffer* fb) {
 	}
 
 	if (ok) {
-		return get_api_proc(free_framebuffer)(fb);
+		get_api_proc(free_framebuffer)(fb);
+		return;
 	}
 
 	abort();
@@ -260,7 +265,8 @@ static void validated_resize_framebuffer(struct framebuffer* fb, v2i new_size) {
 	}
 
 	if (ok) {
-		return get_api_proc(resize_framebuffer)(fb, new_size);
+		get_api_proc(resize_framebuffer)(fb, new_size);
+		return;
 	}
 
 	abort();

@@ -15,11 +15,9 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\..\..\corrosion\src\error.glsl" />
-    <None Include="..\..\..\corrosion\src\line.glsl" />
-    <None Include="..\..\..\corrosion\src\simple.glsl" />
-  </ItemGroup>
-  <ItemGroup>
     <CustomBuild Include="..\..\..\corrosion\src\ui.glsl" />
+    <CustomBuild Include="..\..\..\corrosion\src\error.glsl" />
+    <CustomBuild Include="..\..\..\corrosion\src\line.glsl" />
+    <CustomBuild Include="..\..\..\corrosion\src\simple.glsl" />
   </ItemGroup>
 </Project>
