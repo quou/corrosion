@@ -128,6 +128,11 @@ static struct framebuffer* validated_new_framebuffer(
 		ok = false;
 	}
 
+	if (flags & framebuffer_flags_default && attachment_count > 2) {
+		error("video.new_framebuffer: Cannot have more than two attachments on the default framebuffer.");
+		ok = false;
+	}
+
 	if (flags > (framebuffer_flags_fit | framebuffer_flags_default | framebuffer_flags_headless)) {
 		error("video.new_framebuffer: Invalid flags.");
 		ok = false;

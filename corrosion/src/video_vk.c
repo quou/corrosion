@@ -647,15 +647,15 @@ no_validation:
 	vctx.default_fb = video_vk_new_framebuffer(	framebuffer_flags_default | framebuffer_flags_fit, get_window_size(),
 		(struct framebuffer_attachment_desc[]) {
 			{
+				.type = framebuffer_attachment_depth,
+				.format = framebuffer_format_depth,
+				.clear_colour = clear_colour
+			},
+			{
 				.type = framebuffer_attachment_colour,
 				.format = framebuffer_format_rgba8i,
 				.clear_colour = clear_colour
 			},
-			{
-				.type = framebuffer_attachment_depth,
-				.format = framebuffer_format_depth,
-				.clear_colour = clear_colour
-			}
 		}, 2);
 }
 
@@ -1213,11 +1213,11 @@ static void init_vk_framebuffer(struct video_vk_framebuffer* fb,
 
 		if (fb->use_depth) {
 			new_depth_resources(&fb->depth_image, &fb->depth_image_view, &fb->depth_memory, fb->size, false);
-			image_attachments[1] = fb->depth_image_view;
+			image_attachments[depth_index] = fb->depth_image_view;
 		}
 
 		for (u32 i = 0; i < vctx.swapchain_image_count; i++) {
-			image_attachments[0] = vctx.swapchain_image_views[i];
+			image_attachments[depth_index == 1 ? 0 : 1] = vctx.swapchain_image_views[i];
 
 			if (vkCreateFramebuffer(vctx.device, &(VkFramebufferCreateInfo) {
 					.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
