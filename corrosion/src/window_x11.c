@@ -4,6 +4,7 @@
 
 #include <X11/X.h>
 #include <X11/Xlib.h>
+#include <X11/extensions/XInput2.h>
 #include <GL/glx.h>
 
 #include "core.h"
@@ -245,12 +246,14 @@ void update_events() {
 				window.released_keys[key] = true;
 			} break;
 			case MotionNotify: {
-				if (window.mouse_locked) {
-					v2i centre = make_v2i(window.size.x / 2, window.size.y / 2);
-					window.raw_pos = make_v2i(e.xmotion.x, e.xmotion.y);
-					window.mouse_pos = v2i_add(v2i_sub(window.raw_pos, centre), window.mouse_pos);
-				} else {
-					window.mouse_pos = make_v2i(e.xmotion.x, e.xmotion.y);
+				if (!window.mouse_locked) {
+					v2i raw_pos = make_v2i(e.xmotion.x, e.xmotion.y);
+
+					v2i delta = v2i_sub(raw_pos, window.last_mouse);
+
+					window.mouse_pos = raw_pos;
+
+					window.last_mouse = raw_pos;
 				}
 			} break;
 			case ButtonPress: {
@@ -287,13 +290,29 @@ void update_events() {
 				}
 				break;
 			} break;
+			case GenericEvent: {
+				if (window.mouse_locked) {
+					if (XGetEventData(display, &e.xcookie) && e.xcookie.evtype == XI_RawMotion) {
+						XIRawEvent* re = e.xcookie.data;
+
+						if (re->valuators.mask_len) {
+							const double* values = re->raw_values;
+
+							if (XIMaskIsSet(re->valuators.mask, 0)) {
+								window.mouse_pos.x += (i32)*values;
+								values++;
+							}
+
+							if (XIMaskIsSet(re->valuators.mask, 1)) {
+								window.mouse_pos.y += (i32)*values;
+							}
+						}
+						XFreeEventData(display, &e.xcookie);
+					}
+				}
+			} break;
 			default: break;
 		}
-	}
-
-	if (window.mouse_locked) {
-		XWarpPointer(display, None, window.window, 0, 0, 0, 0, window.size.x / 2, window.size.y / 2);
-		XSync(display, False);
 	}
 }
 
@@ -324,13 +343,27 @@ bool mouse_btn_just_released(u32 code) {
 void lock_mouse(bool lock) {
 	if (lock) {
 		XColor col;
-		char data[1] = {0X00};
+		char data[1] = {0x00};
 		Pixmap blank = XCreateBitmapFromData(display, window.window, data, 1, 1);
 		Cursor cursor = XCreatePixmapCursor(display, blank, blank, &col, &col, 0, 0);
 		XDefineCursor(display, window.window, cursor);
-		XFreePixmap(display, blank);
+		XGrabPointer(display, window.window, True,
+			ButtonPressMask |
+			ButtonReleaseMask |
+			PointerMotionMask, GrabModeAsync, GrabModeAsync, window.window, None, CurrentTime);
+
+    	XIEventMask em;
+    	unsigned char mask[XIMaskLen(XI_RawMotion)] = { 0 };
+
+    	em.deviceid = XIAllMasterDevices;
+    	em.mask_len = sizeof(mask);
+    	em.mask = mask;
+    	XISetMask(mask, XI_RawMotion);
+
+    	XISelectEvents(display, DefaultRootWindow(display), &em, 1);
 	} else {
 		XUndefineCursor(display, window.window);
+		XUngrabPointer(display, CurrentTime);
 	}
 
 	window.mouse_locked = lock;
