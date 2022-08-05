@@ -14,12 +14,10 @@ struct alloc_info {
 	struct alloc_info* prev;
 };
 
-struct alloc_info* alloc_head;
-struct alloc_info* alloc_tail;
+list(struct alloc_info) alloc_list;
 
 void alloc_init() {
-	alloc_head = null;
-	alloc_tail = null;
+	memset(&alloc_list, 0, sizeof alloc_list);
 }
 
 void alloc_deinit() {
@@ -27,60 +25,16 @@ void alloc_deinit() {
 }
 
 static void alloc_insert(struct alloc_info* node, struct alloc_info* new_node) {
-	if (node) {
-		new_node->next = node->next;
-		new_node->prev = node;
-
-		if (node->next) {
-			node->next->prev = new_node;
-		}
-		node->next = new_node;
-	} else {
-		if (!alloc_head) {
-			alloc_head = new_node;
-			alloc_head->next = null;
-			alloc_head->prev = null;
-		} else {
-			alloc_head->prev = new_node;
-			new_node->next = alloc_head;
-			alloc_head = new_node;
-		}
-	}
-
-	if (!alloc_tail) {
-		alloc_tail = new_node;
-		alloc_tail->next = null;
-		alloc_tail->prev = null;
-	}
-
-	if (node == alloc_tail) {
-		alloc_tail = new_node;
-	}
+	list_insert(alloc_list, node, new_node);
 }
 
 static void alloc_add(struct alloc_info* info) {
 	heap_allocation_count++;
-	alloc_insert(alloc_tail, info);
+	list_push(alloc_list, info);
 }
 
 static void alloc_remove(struct alloc_info* node) {
-	if (!alloc_head || !node) { return; }
-
-	if (alloc_head == node) {
-		alloc_head = node->next;
-	}
-
-	if (alloc_tail == node) {
-		alloc_tail = node->prev;
-	}
-
-	if (node->next) {
-		node->next->prev = node->prev;
-	}
-
-	if (node->prev) {
-		node->prev->next = node->next;
-	}
+	list_remove(alloc_list, node);
 }
 
 void* _core_alloc(usize size, struct alloc_code_info cinfo) {
@@ -177,7 +131,7 @@ usize core_get_memory_usage() {
 
 void leak_check() {
 	if (core_get_memory_usage() != 0) {
-		struct alloc_info* node = alloc_head;
+		struct alloc_info* node = alloc_list.head;
 		while (node) {
 			warning("Leaked block of %llu bytes allocated at: %s:%u", node->size, node->file, node->line);
 

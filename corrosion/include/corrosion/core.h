@@ -357,3 +357,61 @@ char* copy_string(const char* str);
 
 #define optional_remove_value(o_) \
 	(o).has_value = false;
+
+/* Linked list that doesn't do any allocation.
+ * Rather, it relies on the users data type containing
+ * a `next' and `prev' field.
+ *
+ * Lists should be initialised to null before usage. */
+
+#define list(t_) struct { t_* head; t_* tail; }
+
+#define list_insert(l_, n_, a_) \
+	do { \
+		if ((n_)) { \
+			(a_)->next = (n_)->next; \
+			(a_)->prev = (n_); \
+			if ((n_)->next) { \
+				(n_)->next->prev = (a_); \
+			} \
+			(n_)->next = (a_); \
+		} else { \
+			if (!(l_).head) { \
+				(l_).head = (a_); \
+				(l_).head->next = null; \
+				(l_).head->prev = null; \
+			} else { \
+				(l_).head->prev = (a_); \
+				(a_)->next = (l_).head; \
+				(l_).head = (a_); \
+			} \
+		} \
+		if (!(l_).tail) { \
+			(l_).tail = (a_); \
+			(l_).tail->next = null; \
+			(l_).tail->prev = null; \
+		} \
+		if ((n_) == (l_).tail) { \
+			(l_).tail = (a_); \
+		} \
+	} while (0)
+
+#define list_push(l_, a_) \
+	list_insert(l_, (l_).tail, a_)
+
+#define list_remove(l_, n_) \
+	do { \
+		if (!(l_).head || !(n_)) { return; } \
+		if ((l_).head == (n_)) { \
+			(l_).head = (n_)->next; \
+		} \
+		if ((l_).tail == (n_)) { \
+			(l_).tail = (n_)->prev; \
+		} \
+		if ((n_)->next) { \
+			(n_)->next->prev = (n_)->prev; \
+		} \
+		if ((n_)->prev) { \
+			(n_)->prev->next = (n_)->next; \
+		} \
+	} while (0)

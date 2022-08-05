@@ -144,8 +144,8 @@ void cr_update(f64 ts) {
 			app.first_move = false;
 		}
 
-		cam->rotation.y += (f32)change_x * 0.05f;
-		cam->rotation.x += (f32)change_y * 0.05f;
+		cam->rotation.y += (f32)change_x * 0.01f;
+		cam->rotation.x += (f32)change_y * 0.01f;
 
 		if (cam->rotation.x >= 89.0f) {
 			cam->rotation.x = 89.0f;
