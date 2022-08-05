@@ -708,9 +708,6 @@ void video_vk_deinit() {
 	destroy_debug_utils_messenger_ext(vctx.instance, vctx.messenger, null);
 
 	vkDestroyInstance(vctx.instance, null);
-
-	free_table(vctx.framebuffers);
-	free_table(vctx.pipelines);
 }
 
 void video_vk_begin() {
@@ -917,14 +914,20 @@ static void recreate() {
 	deinit_swapchain();
 	init_swapchain();
 
-	for (struct video_vk_framebuffer** i = table_first(vctx.framebuffers); i; i = table_next(vctx.framebuffers, *i)) {
-		if ((*i)->flags & framebuffer_flags_fit) {
-			video_vk_resize_framebuffer((struct framebuffer*)*i, get_window_size());
+	struct video_vk_framebuffer* framebuffer = vctx.framebuffers.head;
+	while (framebuffer) {
+		if (framebuffer->flags & framebuffer_flags_fit) {
+			video_vk_resize_framebuffer((struct framebuffer*)framebuffer, get_window_size());
 		}
+
+		framebuffer = framebuffer->next;
 	}
 
-	for (struct video_vk_pipeline** i = table_first(vctx.pipelines); i; i = table_next(vctx.pipelines, *i)) {
-		video_vk_recreate_pipeline((struct pipeline*)*i);
+	struct video_vk_pipeline* pipeline = vctx.pipelines.head;
+	while (pipeline) {
+		video_vk_recreate_pipeline((struct pipeline*)pipeline);
+
+		pipeline = pipeline->next;
 	}
 }
 
@@ -1300,7 +1303,7 @@ struct framebuffer* video_vk_new_framebuffer(u32 flags, v2i size, const struct f
 
 	init_vk_framebuffer(fb, flags, size, attachments, attachment_count);
 
-	table_set(vctx.framebuffers, fb, fb);
+	list_push(vctx.framebuffers, fb);
 
 	return (struct framebuffer*)fb;
 }
@@ -1318,7 +1321,7 @@ void video_vk_free_framebuffer(struct framebuffer* framebuffer) {
 
 	deinit_vk_framebuffer(fb);
 
-	table_delete(vctx.framebuffers, fb);
+	list_remove(vctx.framebuffers, fb);
 
 	core_free(fb->attachment_descs);
 	core_free(fb);
@@ -2057,7 +2060,7 @@ struct pipeline* video_vk_new_pipeline(u32 flags, const struct shader* shader, c
 		}
 	}
 
-	table_set(vctx.pipelines, pipeline, pipeline);
+	list_push(vctx.pipelines, pipeline);
 
 	init_pipeline(pipeline, flags, (const struct video_vk_shader*)shader,
 		(const struct video_vk_framebuffer*)framebuffer, &attrib_bindings, &descriptor_sets);
@@ -2076,7 +2079,7 @@ void video_vk_free_pipeline(struct pipeline* pipeline_) {
 
 	struct video_vk_pipeline* pipeline = (struct video_vk_pipeline*)pipeline_;
 
-	table_delete(vctx.pipelines, pipeline);
+	list_remove(vctx.pipelines, pipeline);
 
 	deinit_pipeline(pipeline);
 

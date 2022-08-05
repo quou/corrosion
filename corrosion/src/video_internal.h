@@ -90,9 +90,8 @@ struct vk_video_context {
 
 	struct update_queue update_queues[max_frames_in_flight];
 
-	/* TODO: Make these linked lists? */
-	table(struct video_vk_framebuffer*, struct video_vk_framebuffer*) framebuffers;
-	table(struct video_vk_pipeline*,    struct video_vk_pipeline*)    pipelines;
+	list(struct video_vk_framebuffer) framebuffers;
+	list(struct video_vk_pipeline) pipelines;
 
 	u32 draw_call_count;
 };
@@ -146,6 +145,9 @@ struct video_vk_framebuffer {
 	usize attachment_count;
 
 	struct framebuffer_attachment_desc* attachment_descs;
+
+	struct video_vk_framebuffer* next;
+	struct video_vk_framebuffer* prev;
 };
 
 struct video_vk_impl_uniform_buffer {
@@ -184,6 +186,9 @@ struct video_vk_pipeline {
 	const struct framebuffer* framebuffer;
 	struct pipeline_attribute_bindings bindings;
 	vector(struct pipeline_descriptor_set) descriptor_sets;
+
+	struct video_vk_pipeline* next;
+	struct video_vk_pipeline* prev;
 };
 
 struct video_vk_vertex_buffer {
