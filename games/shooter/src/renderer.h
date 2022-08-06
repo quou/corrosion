@@ -40,6 +40,10 @@ struct model_node {
 struct model {
 	vector(struct mesh) meshes;
 	vector(struct model_node) nodes;
+
+	usize mesh_count;
+
+	struct aabb bound;
 };
 
 void init_model_from_fbx(struct model* model, const u8* raw, usize raw_size);

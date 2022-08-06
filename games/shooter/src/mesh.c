@@ -122,6 +122,31 @@ void init_model_from_fbx(struct model* model, const u8* raw, usize raw_size) {
 		vector_push(model->meshes, process_mesh(scene, scene->meshes.data[i]));
 	}
 
+	model->bound = (struct aabb) {
+		.min = { INFINITY, INFINITY, INFINITY },
+		.max = { -INFINITY, -INFINITY, -INFINITY }
+	};
+
+	for (usize i = 0; i < vector_count(model->meshes); i++) {
+		struct mesh* mesh = &model->meshes[i];
+
+		for (usize j = 0; j < vector_count(mesh->instances); j++) {
+			struct model_node* node = &model->nodes[mesh->instances[j]];
+
+			struct aabb mesh_bound = transform_aabb(&mesh->bound, node->transform);
+
+			model->bound.min.x = cr_min(mesh_bound.min.x, model->bound.min.x);
+			model->bound.min.y = cr_min(mesh_bound.min.y, model->bound.min.y);
+			model->bound.min.z = cr_min(mesh_bound.min.z, model->bound.min.z);
+
+			model->bound.max.x = cr_max(mesh_bound.max.x, model->bound.max.x);
+			model->bound.max.y = cr_max(mesh_bound.max.y, model->bound.max.y);
+			model->bound.max.z = cr_max(mesh_bound.max.z, model->bound.max.z);
+
+			model->mesh_count++;
+		}
+	}
+
 	ufbx_free_scene(scene);
 }
 

@@ -41,6 +41,8 @@ void update_world(struct world* world, f64 ts) {
 
 	world->culled = 0;
 
+	gizmo_camera(&world->camera);
+
 	for (usize i = 0; i < max_entities; i++) {
 		struct entity* e = &world->entities[i];
 
@@ -51,19 +53,35 @@ void update_world(struct world* world, f64 ts) {
 		}
 
 		if (e->behaviour & eb_mesh) {
-			for (usize j = 0; j < vector_count(e->model->meshes); j++) {
-				struct mesh* mesh = &e->model->meshes[j];
+			struct aabb model_bound = transform_aabb(&e->model->bound, e->transform);
 
-				for (usize x = 0; x < vector_count(mesh->instances); x++) {
-					m4f t = m4f_mul(e->transform, e->model->nodes[mesh->instances[x]].transform);
+			if (in_frustum(&model_bound, fplanes)) {
+				for (usize j = 0; j < vector_count(e->model->meshes); j++) {
+					struct mesh* mesh = &e->model->meshes[j];
 
-					struct aabb mesh_bound = transform_aabb(&mesh->bound, t);
-					if (in_frustum(&mesh_bound, fplanes)) {
-						renderer_push(world->renderer, mesh, &e->material, t);
-					} else {
-						world->culled++;
+					for (usize x = 0; x < vector_count(mesh->instances); x++) {
+						m4f t = m4f_mul(e->transform, e->model->nodes[mesh->instances[x]].transform);
+
+						struct aabb mesh_bound = transform_aabb(&mesh->bound, t);
+						if (in_frustum(&mesh_bound, fplanes)) {
+							renderer_push(world->renderer, mesh, &e->material, t);
+
+							gizmo_box(
+								v3f_add(mesh_bound.min, v3f_scale(v3f_sub(mesh_bound.max, mesh_bound.min), 0.5f)),
+								v3f_sub(mesh_bound.max, mesh_bound.min), euler(make_v3f(0.0f, 0.0f, 0.0f)));
+						} else {
+							world->culled++;
+						}
 					}
 				}
+
+				if (world->draw_debug) {
+					gizmo_box(
+						v3f_add(model_bound.min, v3f_scale(v3f_sub(model_bound.max, model_bound.min), 0.5f)),
+						v3f_sub(model_bound.max, model_bound.min), euler(make_v3f(0.0f, 0.0f, 0.0f)));
+				}
+			} else {
+				world->culled += e->model->mesh_count;
 			}
 		}
 

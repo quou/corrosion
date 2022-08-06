@@ -8,7 +8,9 @@ enum entity_behaviour {
 	eb_none         = 1 << 0,
 	eb_mesh         = 1 << 1,
 	eb_spin         = 1 << 2,
-	eb_light        = 1 << 3
+	eb_light        = 1 << 3,
+	eb_staticbody   = 1 << 4,
+	eb_dynamicbody  = 1 << 5
 };
 
 struct entity {
@@ -32,6 +34,8 @@ struct world {
 	struct entity entities[max_entities];
 	usize avail_entities[max_entities];
 	usize avail_entity_count;
+
+	bool draw_debug;
 
 	usize culled;
 
