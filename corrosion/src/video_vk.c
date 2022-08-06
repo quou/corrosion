@@ -1080,34 +1080,12 @@ static void init_vk_framebuffer(struct video_vk_framebuffer* fb,
 		}
 	}
 
-	VkSubpassDependency deps[2];
-	usize dep_count = 0;
-
-	if (fb->colour_count > 0) {
-		deps[dep_count] = (VkSubpassDependency) {
-			.srcSubpass = VK_SUBPASS_EXTERNAL,
-			.dstSubpass = 0,
-			.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-			.dstStageMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-			.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT
-		};
-
-		dep_count++;
-	}
-
-	if (fb->use_depth) {
-		deps[dep_count] = (VkSubpassDependency) {
-			.srcSubpass = VK_SUBPASS_EXTERNAL,
-			.dstSubpass = 0,
-			.srcStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
-			.srcAccessMask = 0,
-			.dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
-			.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
-			.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT
-		};
-
-		dep_count++;
-	}
+	/* Subpass dependencies are not used. Rather, sync is done manually with
+	 * memory barriers on framebuffer begin/end calls.
+	 *
+	 * I'm using Vulkan 1.0 (I can't get a driver for anything newer), so
+	 * dynamic rendering isn't available and I simply use a dummy render pass
+	 * just because it's required. */
 
 	if (vkCreateRenderPass(vctx.device, &(VkRenderPassCreateInfo) {
 			.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
@@ -1115,8 +1093,8 @@ static void init_vk_framebuffer(struct video_vk_framebuffer* fb,
 			.pAttachments = v_attachments,
 			.subpassCount = 1,
 			.pSubpasses = &subpass,
-			.dependencyCount = (u32)dep_count,
-			.pDependencies = deps
+			.dependencyCount = 0,
+			.pDependencies = null
 		}, null, &fb->render_pass) != VK_SUCCESS) {
 		abort_with("Failed to create render pass.");
 	}
