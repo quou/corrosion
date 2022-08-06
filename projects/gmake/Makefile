@@ -6,7 +6,7 @@ ifndef verbose
   silent = @
 endif
 
-projects = shadercompiler corrosion sbox shooter
+projects = shadercompiler corrosion sbox shooter bloom
 runnables =           \
     run_sbox          \
     debug_sbox        \
@@ -14,6 +14,9 @@ runnables =           \
     run_shooter       \
     debug_shooter     \
     memcheck_shooter  \
+    run_bloom         \
+    debug_bloom       \
+    memcheck_bloom    \
 
 .PHONY: all clean $(projects) $(runnables)
 
@@ -44,6 +47,10 @@ shooter: corrosion
 	@echo == Building $@ ==
 	$(silent) make --no-print-directory -C games/$@ config=$(config)
 
+bloom: corrosion
+	@echo == Building $@ ==
+	$(silent) make --no-print-directory -C games/$@ config=$(config)
+
 run_shooter: shooter
 	$(silent) make --no-print-directory -C games/shooter run
 
@@ -53,8 +60,18 @@ debug_shooter: shooter
 memcheck_shooter: shooter
 	$(silent) make --no-print-directory -C games/shooter memcheck
 
+run_bloom: bloom
+	$(silent) make --no-print-directory -C games/bloom run
+
+debug_bloom: bloom
+	$(silent) make --no-print-directory -C games/bloom debug
+
+memcheck_bloom: bloom
+	$(silent) make --no-print-directory -C games/bloom memcheck
+
 clean:
 	$(silent) make --no-print-directory -C corrosion clean
 	$(silent) make --no-print-directory -C shadercompiler clean
 	$(silent) make --no-print-directory -C sbox clean
 	$(silent) make --no-print-directory -C games/shooter clean
+	$(silent) make --no-print-directory -C games/bloom clean
