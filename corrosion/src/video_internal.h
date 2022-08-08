@@ -2,6 +2,8 @@
 
 #include <vulkan/vulkan.h>
 
+#define VMA_VULKAN_VERSION 1002000
+
 #include "common.h"
 #include "video.h"
 #include "vk_mem_alloc.h"

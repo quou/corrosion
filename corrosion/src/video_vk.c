@@ -198,6 +198,7 @@ static bool device_supports_extensions(VkPhysicalDevice device) {
 		}
 
 		if (!found) {
+			error("Failed to find extension: `%s'", device_extensions[i]);
 			core_free(avail_exts);
 			return false;
 		}
@@ -603,7 +604,7 @@ no_validation:
 
 	/* Create the allocator. */
 	vmaCreateAllocator(&(VmaAllocatorCreateInfo) {
-		.vulkanApiVersion = VK_API_VERSION_1_0,
+		.vulkanApiVersion = VK_API_VERSION_1_2,
 		.physicalDevice = vctx.pdevice,
 		.device = vctx.device,
 		.instance = vctx.instance,
