@@ -99,6 +99,8 @@ struct vk_video_context {
 struct video_vk_framebuffer_attachment {
 	u32 type;
 
+	VkClearValue clear_value;
+
 	VkImage images[max_frames_in_flight];
 	VkImageView image_views[max_frames_in_flight];
 	VmaAllocation image_memories[max_frames_in_flight];
@@ -108,6 +110,11 @@ static inline VkImageAspectFlags get_vk_frambuffer_attachment_aspect_flags(const
 	return a->type == framebuffer_attachment_colour ? VK_IMAGE_ASPECT_COLOR_BIT : VK_IMAGE_ASPECT_DEPTH_BIT;
 }
 
+/* Since dynamic rendering is being used, this is a "fake" framebuffer.
+ *
+ * It's sort of just an emulation of a typical framebuffer as it would
+ * exist in something like OpenGL, mainly just a container for image
+ * and depth attachments. */
 struct video_vk_framebuffer {
 	bool is_headless;
 	bool use_depth;
@@ -115,14 +122,6 @@ struct video_vk_framebuffer {
 	u32 flags;
 
 	v2i size;
-
-	VkFramebuffer* swapchain_framebuffers;
-	VkFramebuffer  offscreen_framebuffers[max_frames_in_flight];
-
-	/* Points to either swapchain_framebuffers if this is
-	 * the default framebuffer, or offscreen_framebuffers
-	 * if this is a headless framebuffer. */
-	VkFramebuffer* framebuffers;
 
 	struct video_vk_framebuffer_attachment* colours;
 	usize colour_count;
@@ -137,9 +136,6 @@ struct video_vk_framebuffer {
 
 	table(usize, struct video_vk_framebuffer_attachment*) attachment_map;
 
-	VkClearValue* clear_colours;
-
-	VkRenderPass render_pass;
 	VkSampler sampler;
 
 	usize attachment_count;

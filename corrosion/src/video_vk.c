@@ -34,7 +34,8 @@ static void add_memcpy_cmd(struct update_queue* buf, void* target, const void* d
 }
 
 static const char* device_extensions[] = {
-	VK_KHR_SWAPCHAIN_EXTENSION_NAME
+	VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+	VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME,
 };
 
 struct vk_video_context vctx;
@@ -512,7 +513,7 @@ no_validation:
 	if (vkCreateInstance(&(VkInstanceCreateInfo) {
 			.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
 			.pApplicationInfo = &(VkApplicationInfo) {
-				.apiVersion = VK_API_VERSION_1_0,
+				.apiVersion = VK_API_VERSION_1_2,
 				.pApplicationName = "Corrosion Application."
 			},
 			.enabledExtensionCount = (u32)vector_count(extensions),
@@ -955,272 +956,41 @@ static void init_vk_framebuffer(struct video_vk_framebuffer* fb,
 		if (depth_index > attachment_count && attachments[i].type == framebuffer_attachment_depth) {
 			depth_index = i;
 			fb->use_depth = true;
-			break;
+		}
+
+		if (attachments[i].type == framebuffer_attachment_colour) {
+			fb->colour_count++;
+		}
+	}
+
+	fb->colours = core_calloc(fb->colour_count, sizeof *fb->colours);
+
+	for (usize i = 0; i < attachment_count; i++) {
+		struct framebuffer_attachment_desc* attachment_desc = &attachments[i];
+
+		if (attachment_desc->type == framebuffer_attachment_colour) {
+			table_set(fb->attachment_map, i, );
 		}
 	}
 
 	fb->colour_count = 0;
 
-	/* Create the colour attachments. */
-	VkAttachmentDescription* ca_descs = core_calloc(attachment_count, sizeof(VkAttachmentDescription));
-	VkAttachmentReference*   ca_refs  = core_calloc(attachment_count, sizeof(VkAttachmentReference));
-	VkFormat* colour_formats           = core_calloc(attachment_count, sizeof(VkFormat));
-	for (usize i = 0; i < attachment_count; i++) {
-		if (attachments[i].type == framebuffer_attachment_colour) {
-			const struct framebuffer_attachment_desc* colour_attachment = attachments + i;
-
-			usize idx = fb->colour_count++;
-
-			if (fb->is_headless) {
-				colour_formats[idx] = fb_attachment_format(colour_attachment->format);
-			} else {
-				colour_formats[idx] = vctx.swapchain_format;
-			}
-
-			VkAttachmentDescription* ca_desc = ca_descs + idx;
-
-			ca_desc->format = colour_formats[idx];
-			ca_desc->samples = VK_SAMPLE_COUNT_1_BIT;
-			ca_desc->loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-			ca_desc->storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-			ca_desc->stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-			ca_desc->stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-			ca_desc->initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-
-			if (fb->is_headless) {
-				ca_desc->finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-			} else {
-				ca_desc->finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-			}
-
-			ca_refs[idx].attachment = (u32)i;
-			ca_refs[idx].layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-		}
+	if (vkCreateSampler(vctx.device, &(VkSamplerCreateInfo) {
+			.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+			.magFilter = VK_FILTER_NEAREST,
+			.minFilter = VK_FILTER_NEAREST,
+			.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT,
+			.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT,
+			.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT,
+			.anisotropyEnable = VK_FALSE,
+			.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK,
+			.unnormalizedCoordinates = VK_FALSE,
+			.compareEnable = VK_FALSE,
+			.compareOp = VK_COMPARE_OP_ALWAYS,
+			.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR
+		}, null, &fb->sampler) != VK_SUCCESS) {
+		abort_with("Failed to create texture sampler.");
 	}
-
-	if (fb->is_headless) {
-		fb->colours = core_calloc(fb->colour_count, sizeof(struct video_vk_framebuffer_attachment));
-
-		/* Map the actual indices to attachments. */
-		for (usize i = 0, ci = 0; i < attachment_count; i++, ci++) {
-			if (attachments[i].type == framebuffer_attachment_colour) {
-				table_set(fb->attachment_map, i, fb->colours + ci);
-			} else {
-				table_set(fb->attachment_map, i, &fb->depth);
-			}
-		}
-	} else {
-		/* Only one colour attachment is supported on the default framebuffer. */
-		fb->colour_count = 1;
-
-		/* Ensure that the framebufer doesn't get created larger than the swapchain
-		 * images, since the Vulkan spec states that doing so is illegal. */
-		fb->size.x = vctx.swapchain_extent.width;
-		fb->size.y = vctx.swapchain_extent.height;
-	}
-
-	VkAttachmentDescription depth_attachment = {
-		.format = find_depth_format(),
-		.samples = VK_SAMPLE_COUNT_1_BIT,
-		.samples = VK_SAMPLE_COUNT_1_BIT,
-		.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
-		.storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-		.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
-		.stencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE,
-		.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-		.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
-	};
-
-	VkAttachmentReference depth_attachment_ref = {
-		.attachment = (u32)depth_index,
-		.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
-	};
-
-	VkSubpassDescription subpass = {
-		.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
-		.colorAttachmentCount = (u32)fb->colour_count,
-		.pColorAttachments = fb->colour_count > 0 ? ca_refs : null
-	};
-
-	if (fb->use_depth) {
-		subpass.pDepthStencilAttachment = &depth_attachment_ref;
-	}
-
-	/* Combine the depth and colour attachments in to a single array that's
-	 * suitable to give to vkCreateRenderPass. */
-	VkAttachmentDescription* v_attachments;
-	fb->clear_colours = core_calloc(attachment_count, sizeof(VkClearValue));
-	if (fb->use_depth && fb->colour_count > 0) {
-		v_attachments = core_calloc(attachment_count, sizeof(VkAttachmentDescription));
-
-		for (usize i = 0; i < depth_index; i++) {
-			v_attachments[i] = ca_descs[i];
-			v4f c = attachments[i].clear_colour;
-			fb->clear_colours[i].color = (VkClearColorValue) { c.x, c.y, c.z, c.w };
-		}
-
-		v_attachments[depth_index] = depth_attachment;
-		fb->clear_colours[depth_index].depthStencil = (VkClearDepthStencilValue) { 1.0f, 0 };
-
-		for (usize i = depth_index + 1; i < attachment_count; i++) {
-			v_attachments[i] = ca_descs[i - 1];
-			v4f c = attachments[i].clear_colour;
-			fb->clear_colours[i].color = (VkClearColorValue) { c.x, c.y, c.z, c.w };
-		}
-	} else if (fb->use_depth && fb->colour_count == 0) {
-		v_attachments = core_calloc(1, sizeof(VkAttachmentDescription));
-		v_attachments[depth_index] = depth_attachment;
-		fb->clear_colours[depth_index].depthStencil = (VkClearDepthStencilValue) { 1.0f, 0 };
-	} else {
-		v_attachments = ca_descs;
-
-		for (usize i = 0; i < attachment_count; i++) {
-			v4f c = attachments[i].clear_colour;
-			fb->clear_colours[i].color = (VkClearColorValue) { c.x, c.y, c.z, c.w };
-		}
-	}
-
-	/* Subpass dependencies are not used. Rather, sync is done manually with
-	 * memory barriers on framebuffer begin/end calls.
-	 *
-	 * I'm using Vulkan 1.0 (I can't get a driver for anything newer), so
-	 * dynamic rendering isn't available and I simply use a dummy render pass
-	 * just because it's required. */
-
-	if (vkCreateRenderPass(vctx.device, &(VkRenderPassCreateInfo) {
-			.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
-			.attachmentCount = (u32)attachment_count,
-			.pAttachments = v_attachments,
-			.subpassCount = 1,
-			.pSubpasses = &subpass,
-			.dependencyCount = 0,
-			.pDependencies = null
-		}, null, &fb->render_pass) != VK_SUCCESS) {
-		abort_with("Failed to create render pass.");
-	}
-
-	if (fb->is_headless) {
-		/* Create images and image views for off-screen rendering. */
-		fb->framebuffers = fb->offscreen_framebuffers;
-
-		for (usize i = 0; i < fb->colour_count; i++) {
-			struct video_vk_framebuffer_attachment* attachment = fb->colours + i;
-			attachment->type = framebuffer_attachment_colour;
-
-			VkFormat fmt = colour_formats[i];
-
-			for (usize ii = 0; ii < max_frames_in_flight; ii++) {
-				new_image(fb->size, fmt, VK_IMAGE_TILING_OPTIMAL,
-					VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-					VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-					attachment->images + ii, attachment->image_memories + ii,
-					VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, false);
-				attachment->image_views[ii] = new_image_view(attachment->images[ii], fmt, VK_IMAGE_ASPECT_COLOR_BIT);
-			}
-		}
-
-		if (fb->use_depth) {
-			VkFormat fmt = find_depth_format();
-
-			fb->depth.type = framebuffer_attachment_depth;
-
-			for (usize i = 0; i < max_frames_in_flight; i++) {
-				new_depth_resources(fb->depth.images + i, fb->depth.image_views + i, fb->depth.image_memories + i,
-					fb->size, true);
-			}
-		}
-
-		VkImageView* image_attachments = core_calloc(attachment_count, sizeof(VkImageView));
-
-		/* Create framebuffers, one for each frame in flight. */
-		for (usize i = 0; i < max_frames_in_flight; i++) {
-			if (fb->use_depth && fb->colour_count > 0) {
-				for (usize ii = 0; ii < depth_index; ii++) {
-					image_attachments[ii] = fb->colours[ii].image_views[i];
-				}
-
-				image_attachments[depth_index] = fb->depth.image_views[i];
-
-				for (usize ii = depth_index + 1; ii < attachment_count; ii++) {
-					image_attachments[ii] = fb->colours[ii].image_views[i];
-				}
-			} else if (fb->use_depth && fb->colour_count == 0) {
-					image_attachments[depth_index] = fb->depth.image_views[i];
-			} else {
-				for (usize ii = 0; ii < attachment_count; ii++) {
-					image_attachments[ii] = fb->colours[ii].image_views[i];
-				}
-			}
-
-			if (vkCreateFramebuffer(vctx.device, &(VkFramebufferCreateInfo) {
-					.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
-					.renderPass = fb->render_pass,
-					.attachmentCount = (u32)attachment_count,
-					.pAttachments = image_attachments,
-					.width =  (u32)fb->size.x,
-					.height = (u32)fb->size.y,
-					.layers = 1
-				}, null, fb->framebuffers + i) != VK_SUCCESS) {
-				abort_with("Failed to create framebuffer.");
-			}
-		}
-
-		core_free(image_attachments);
-
-		if (vkCreateSampler(vctx.device, &(VkSamplerCreateInfo) {
-				.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
-				.magFilter = VK_FILTER_NEAREST,
-				.minFilter = VK_FILTER_NEAREST,
-				.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT,
-				.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT,
-				.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT,
-				.anisotropyEnable = VK_FALSE,
-				.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK,
-				.unnormalizedCoordinates = VK_FALSE,
-				.compareEnable = VK_FALSE,
-				.compareOp = VK_COMPARE_OP_ALWAYS,
-				.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR
-			}, null, &fb->sampler) != VK_SUCCESS) {
-			abort_with("Failed to create texture sampler.");
-		}
-	} else {
-		/* For the swapchain... */
-		fb->swapchain_framebuffers = core_calloc(vctx.swapchain_image_count, sizeof(VkFramebuffer));
-		fb->framebuffers = fb->swapchain_framebuffers;
-
-		/* Only two attachments are allowed on the default framebuffer;
-		 * Depth-stencil and colour. */
-		VkImageView image_attachments[2];
-
-		if (fb->use_depth) {
-			new_depth_resources(&fb->depth_image, &fb->depth_image_view, &fb->depth_memory, fb->size, false);
-			image_attachments[depth_index] = fb->depth_image_view;
-		}
-
-		for (u32 i = 0; i < vctx.swapchain_image_count; i++) {
-			image_attachments[depth_index == 1 ? 0 : 1] = vctx.swapchain_image_views[i];
-
-			if (vkCreateFramebuffer(vctx.device, &(VkFramebufferCreateInfo) {
-					.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
-					.renderPass = fb->render_pass,
-					.attachmentCount = fb->use_depth ? 2 : 1,
-					.pAttachments = image_attachments,
-					.width  = (u32)fb->size.x,
-					.height = (u32)fb->size.y,
-					.layers = 1,
-				}, null, fb->framebuffers + i) != VK_SUCCESS) {
-				abort_with("Failed to create framebuffer.");
-			}
-		}
-	}
-
-	if (fb->use_depth) {
-			core_free(v_attachments);
-	}
-
-	core_free(colour_formats);
-	core_free(ca_descs);
-	core_free(ca_refs);
 }
 
 static void deinit_vk_framebuffer(struct video_vk_framebuffer* fb) {
