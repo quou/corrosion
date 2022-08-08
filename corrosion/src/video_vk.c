@@ -950,6 +950,7 @@ static void init_vk_framebuffer(struct video_vk_framebuffer* fb,
 	fb->is_headless = flags & framebuffer_flags_headless;
 
 	fb->use_depth = false;
+	fb->colour_count = 0;
 
 	usize depth_index = (usize)-1;
 	for (usize i = 0; i < attachment_count; i++) {
@@ -964,39 +965,87 @@ static void init_vk_framebuffer(struct video_vk_framebuffer* fb,
 	}
 
 	fb->colours = core_calloc(fb->colour_count, sizeof *fb->colours);
+	fb->colour_infos = core_calloc(fb->colour_count, sizeof *fb->colour_infos);
 
+	usize colour_index = 0;
 	for (usize i = 0; i < attachment_count; i++) {
-		struct framebuffer_attachment_desc* attachment_desc = &attachments[i];
+		const struct framebuffer_attachment_desc* attachment_desc = &attachments[i];
 
 		if (attachment_desc->type == framebuffer_attachment_colour) {
-			table_set(fb->attachment_map, i, );
+			usize idx = colour_index++;
+
+			if (fb->is_headless) {
+				fb->colours[idx].format = fb_attachment_format(attachment_desc->format);
+			} else {
+				fb->colours[idx].format = vctx.swapchain_format;
+			}
+
+			fb->colours[idx].clear_colour = attachment_desc->clear_colour;
+
+			table_set(fb->attachment_map, i, &fb->colours[idx]);
+		} else if (attachment_desc->type == framebuffer_attachment_depth) {
+			if (fb->is_headless) {
+				table_set(fb->attachment_map, i, &fb->depth);
+			}
 		}
 	}
 
-	fb->colour_count = 0;
+	if (fb->is_headless) {
+		/* Create images for the colour attachments. */
+		for (usize i = 0; i < fb->colour_count; i++) {
+			struct video_vk_framebuffer_attachment* attachment = &fb->colours[i];
 
-	if (vkCreateSampler(vctx.device, &(VkSamplerCreateInfo) {
-			.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
-			.magFilter = VK_FILTER_NEAREST,
-			.minFilter = VK_FILTER_NEAREST,
-			.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT,
-			.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT,
-			.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT,
-			.anisotropyEnable = VK_FALSE,
-			.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK,
-			.unnormalizedCoordinates = VK_FALSE,
-			.compareEnable = VK_FALSE,
-			.compareOp = VK_COMPARE_OP_ALWAYS,
-			.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR
-		}, null, &fb->sampler) != VK_SUCCESS) {
-		abort_with("Failed to create texture sampler.");
+			for (usize ii = 0; ii < max_frames_in_flight; ii++) {
+				new_image(fb->size, attachment->format, VK_IMAGE_TILING_OPTIMAL,
+					VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+					VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+					&attachment->images[ii], &attachment->image_memories[ii],
+					VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, false);
+				attachment->image_views[ii] = new_image_view(attachment->images[ii],
+					attachment->format, VK_IMAGE_ASPECT_COLOR_BIT);
+			}
+		}
+
+		/* Create images for the depth attachment if required. */
+		if (fb->use_depth) {
+			VkFormat fmt = find_depth_format();
+
+			fb->depth.type = framebuffer_attachment_depth;
+
+			for (usize i = 0; i < max_frames_in_flight; i++) {
+				new_depth_resources(&fb->depth.images[i], &fb->depth.image_views[i],
+					&fb->depth.image_memories[i], fb->size, true);
+			}
+		}
+
+		if (vkCreateSampler(vctx.device, &(VkSamplerCreateInfo) {
+				.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+				.magFilter = VK_FILTER_NEAREST,
+				.minFilter = VK_FILTER_NEAREST,
+				.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT,
+				.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT,
+				.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT,
+				.anisotropyEnable = VK_FALSE,
+				.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK,
+				.unnormalizedCoordinates = VK_FALSE,
+				.compareEnable = VK_FALSE,
+				.compareOp = VK_COMPARE_OP_ALWAYS,
+				.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR
+			}, null, &fb->sampler) != VK_SUCCESS) {
+			abort_with("Failed to create texture sampler.");
+		}
+	} else {
+		/* Create depth resources for a swapchain framebuffer. */
+		if (fb->use_depth) {
+			new_depth_resources(&fb->depth_image, &fb->depth_image_view, &fb->depth_memory, fb->size, false);
+		}
 	}
 }
 
 static void deinit_vk_framebuffer(struct video_vk_framebuffer* fb) {
 	vkDeviceWaitIdle(vctx.device);
 
-	if (fb->is_headless) {
+	/*if (fb->is_headless) {
 		if (fb->use_depth) {
 			for (usize i = 0; i < max_frames_in_flight; i++) {
 				vkDestroyImageView(vctx.device, fb->depth.image_views[i], null);
@@ -1037,7 +1086,7 @@ static void deinit_vk_framebuffer(struct video_vk_framebuffer* fb) {
 
 	core_free(fb->clear_colours);
 
-	vkDestroyRenderPass(vctx.device, fb->render_pass, null);
+	vkDestroyRenderPass(vctx.device, fb->render_pass, null); */
 }
 
 struct framebuffer* video_vk_new_framebuffer(u32 flags, v2i size, const struct framebuffer_attachment_desc* attachments, usize attachment_count) {
@@ -1088,14 +1137,6 @@ void video_vk_resize_framebuffer(struct framebuffer* framebuffer, v2i new_size) 
 	init_vk_framebuffer(fb, fb->flags, new_size, fb->attachment_descs, fb->attachment_count);
 }
 
-static VkFramebuffer get_current_fb(const struct video_vk_framebuffer* fb) {
-	if (fb->is_headless) {
-		return fb->framebuffers[vctx.current_frame];
-	}
-
-	return fb->framebuffers[vctx.image_id];
-}
-
 void video_vk_begin_framebuffer(struct framebuffer* framebuffer) {
 	struct video_vk_framebuffer* fb = (struct video_vk_framebuffer*)framebuffer;
 
@@ -1130,12 +1171,41 @@ void video_vk_begin_framebuffer(struct framebuffer* framebuffer) {
 				stage, stage,
 				0, 0, null, 0, null, 1, &barrier);
 		}
+	} else {
+		/* TODO: Transition image layout to be writable, from presentable */
 	}
 
-	vkCmdBeginRenderPass(vctx.command_buffers[vctx.current_frame], &(VkRenderPassBeginInfo) {
-		.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
-		.renderPass = fb->render_pass,
-		.framebuffer = get_current_fb(fb),
+	for (usize i = 0; i < fb->colour_count; i++) {
+		VkRenderingAttachmentInfoKHR* info = &fb->colour_infos[i];
+
+		v4f cc = fb->colours[i].clear_colour;
+
+		*info = (VkRenderingAttachmentInfoKHR) {
+			.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR,
+			.imageView = fb->colours[i].image_views[vctx.current_frame],
+			.imageLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL_KHR,
+			.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+			.storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+			.clearValue.color = { cc.r, cc.g, cc.b, cc.a }
+		};
+	}
+
+	VkRenderingAttachmentInfoKHR depth_info = {
+		.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR,
+		.imageLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL_KHR,
+		.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+		.storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+		.clearValue.depthStencil = { 1.0f,  0 }
+	};
+
+	if (fb->is_headless) {
+		depth_info.imageView = fb->depth.image_views[vctx.current_frame];
+	} else {
+		depth_info.imageView = fb->depth_image_view;
+	}
+
+	VkRenderingInfoKHR rendering_info = {
+		.sType = VK_STRUCTURE_TYPE_RENDERING_INFO_KHR,
 		.renderArea = {
 			.offset = { 0, 0 },
 			.extent = {
@@ -1143,15 +1213,21 @@ void video_vk_begin_framebuffer(struct framebuffer* framebuffer) {
 				.height = (u32)fb->size.y
 			}
 		},
-		.clearValueCount = (u32)fb->attachment_count,
-		.pClearValues = fb->clear_colours
-	}, VK_SUBPASS_CONTENTS_INLINE);
+		.colorAttachmentCount = (u32)fb->colour_count,
+		.pColorAttachments = fb->colour_infos
+	};
+
+	if (fb->use_depth) {
+		rendering_info.pDepthAttachment = &depth_info;
+	}
+
+	vkCmdBeginRenderingKHR(vctx.command_buffers[vctx.current_frame], &rendering_info);
 }
 
 void video_vk_end_framebuffer(struct framebuffer* framebuffer) {
 	struct video_vk_framebuffer* fb = (struct video_vk_framebuffer*)framebuffer;
 
-	vkCmdEndRenderPass(vctx.command_buffers[vctx.current_frame]);
+	vkCmdEndRenderingKHR(vctx.command_buffers[vctx.current_frame]);
 
 	if (fb->is_headless) {
 		for (usize* i = table_first(fb->attachment_map); i; i = table_next(fb->attachment_map, *i)) {
@@ -1184,6 +1260,8 @@ void video_vk_end_framebuffer(struct framebuffer* framebuffer) {
 				prev_stage, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
 				0, 0, null, 0, null, 1, &barrier);
 		}
+	} else {
+		/* Transition swapchain images to be presentable */
 	}
 }
 
@@ -1673,6 +1751,8 @@ no_descriptors:
 		.pDynamicStates = dynamic_states
 	};
 
+	/* TODO: Set pipeline pNext to a VkPipelineRenderingCreateInfoKHR struct. */
+
 	if (vkCreateGraphicsPipelines(vctx.device, VK_NULL_HANDLE, 1, &(VkGraphicsPipelineCreateInfo) {
 			.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
 			.stageCount = 2,
@@ -1686,7 +1766,6 @@ no_descriptors:
 			.pDynamicState = &dynamic_state,
 			.pDepthStencilState = &depth_stencil,
 			.layout = pipeline->layout,
-			.renderPass = framebuffer->render_pass,
 			.subpass = 0
 		}, null, &pipeline->pipeline) != VK_SUCCESS) {
 		abort_with("Failed to create pipeline.");

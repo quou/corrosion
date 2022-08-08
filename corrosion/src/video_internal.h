@@ -99,7 +99,9 @@ struct vk_video_context {
 struct video_vk_framebuffer_attachment {
 	u32 type;
 
-	VkClearValue clear_value;
+	v4f clear_colour;
+
+	VkFormat format;
 
 	VkImage images[max_frames_in_flight];
 	VkImageView image_views[max_frames_in_flight];
@@ -110,7 +112,8 @@ static inline VkImageAspectFlags get_vk_frambuffer_attachment_aspect_flags(const
 	return a->type == framebuffer_attachment_colour ? VK_IMAGE_ASPECT_COLOR_BIT : VK_IMAGE_ASPECT_DEPTH_BIT;
 }
 
-/* Since dynamic rendering is being used, this is a "fake" framebuffer.
+/* Since dynamic rendering is being used (we don't need to use Vulkan
+ * framebuffers anymore, this is a "fake" framebuffer.
  *
  * It's sort of just an emulation of a typical framebuffer as it would
  * exist in something like OpenGL, mainly just a container for image
@@ -126,6 +129,8 @@ struct video_vk_framebuffer {
 	struct video_vk_framebuffer_attachment* colours;
 	usize colour_count;
 	struct video_vk_framebuffer_attachment depth;
+
+	VkRenderingAttachmentInfoKHR* colour_infos;
 
 	/* Used if this is the default framebuffer. On the default
 	 * framebuffer, the depth buffer can't be sampled and a
