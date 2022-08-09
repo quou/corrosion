@@ -598,8 +598,8 @@ no_validation:
 	free_vector(unique_queue_families);
 
 	/* Load extensions */
-	vctx.vkCmdBeginRenderingKHR = vkGetDeviceProcAddr(vctx.device, "vkCmdBeginRenderingKHR");
-	vctx.vkCmdEndRenderingKHR = vkGetDeviceProcAddr(vctx.device, "vkCmdEndRenderingKHR");
+	vctx.vkCmdBeginRenderingKHR = (PFN_vkCmdBeginRenderingKHR)vkGetDeviceProcAddr(vctx.device, "vkCmdBeginRenderingKHR");
+	vctx.vkCmdEndRenderingKHR = (PFN_vkCmdEndRenderingKHR)vkGetDeviceProcAddr(vctx.device, "vkCmdEndRenderingKHR");
 
 	/* Create the allocator. */
 	vmaCreateAllocator(&(VmaAllocatorCreateInfo) {
@@ -965,6 +965,7 @@ static void init_vk_framebuffer(struct video_vk_framebuffer* fb,
 		if (depth_index > attachment_count && attachments[i].type == framebuffer_attachment_depth) {
 			depth_index = i;
 			fb->use_depth = true;
+			fb->depth_format = find_depth_format(vctx.device);
 		}
 
 		if (attachments[i].type == framebuffer_attachment_colour) {
@@ -1020,8 +1021,6 @@ static void init_vk_framebuffer(struct video_vk_framebuffer* fb,
 		/* Create images for the depth attachment if required. */
 		if (fb->use_depth) {
 			VkFormat fmt = find_depth_format();
-
-			fb->depth_format = fmt;
 
 			fb->depth.type = framebuffer_attachment_depth;
 
@@ -1187,6 +1186,24 @@ void video_vk_begin_framebuffer(struct framebuffer* framebuffer) {
 				old_stage, stage,
 				0, 0, null, 0, null, 1, &barrier);
 		}
+	} else {
+		const struct video_vk_framebuffer_attachment* attachment = fb->colours;
+
+		VkImageMemoryBarrier barrier = {
+			.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+			.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+			.image = vctx.swapchain_images[vctx.image_id],
+			.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+			.subresourceRange = { get_vk_frambuffer_attachment_aspect_flags(attachment), 0, 1, 0, 1},
+			.srcAccessMask = 0,
+			.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+			.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+			.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED
+		};
+
+		vkCmdPipelineBarrier(vctx.command_buffers[vctx.current_frame],
+			VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+			0, 0, null, 0, null, 1, &barrier);
 	}
 
 	for (usize i = 0; i < fb->colour_count; i++) {
@@ -1209,7 +1226,7 @@ void video_vk_begin_framebuffer(struct framebuffer* framebuffer) {
 		.imageLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL_KHR,
 		.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
 		.storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-		.clearValue.depthStencil = { 1.0f,  0 }
+		.clearValue.depthStencil = { 1.0f, 0 }
 	};
 
 	if (fb->is_headless) {
@@ -1278,21 +1295,20 @@ void video_vk_end_framebuffer(struct framebuffer* framebuffer) {
 		const struct video_vk_framebuffer_attachment* attachment = fb->colours;
 
 		VkImageMemoryBarrier barrier = {
-				.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-				.oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-				.image = vctx.swapchain_images[vctx.image_id],
-				.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-				.subresourceRange = { get_vk_frambuffer_attachment_aspect_flags(attachment), 0, 1, 0, 1},
-				.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-				.dstAccessMask = 0,
-				.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-				.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED
-			};
+			.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+			.oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+			.image = vctx.swapchain_images[vctx.image_id],
+			.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+			.subresourceRange = { get_vk_frambuffer_attachment_aspect_flags(attachment), 0, 1, 0, 1},
+			.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+			.dstAccessMask = 0,
+			.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+			.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED
+		};
 
-			vkCmdPipelineBarrier(vctx.command_buffers[vctx.current_frame],
-				VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
-				0, 0, null, 0, null, 1, &barrier);
-
+		vkCmdPipelineBarrier(vctx.command_buffers[vctx.current_frame],
+			VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+			0, 0, null, 0, null, 1, &barrier);
 	}
 }
 
