@@ -94,6 +94,10 @@ struct vk_video_context {
 	list(struct video_vk_pipeline) pipelines;
 
 	u32 draw_call_count;
+
+	/* Extensions */
+	PFN_vkCmdBeginRenderingKHR vkCmdBeginRenderingKHR;
+	PFN_vkCmdEndRenderingKHR vkCmdEndRenderingKHR;
 };
 
 struct video_vk_framebuffer_attachment {
@@ -129,6 +133,9 @@ struct video_vk_framebuffer {
 	struct video_vk_framebuffer_attachment* colours;
 	usize colour_count;
 	struct video_vk_framebuffer_attachment depth;
+
+	VkFormat* colour_formats;
+	VkFormat depth_format;
 
 	VkRenderingAttachmentInfoKHR* colour_infos;
 

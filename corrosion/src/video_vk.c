@@ -582,7 +582,11 @@ no_validation:
 				0
 			},
 			.enabledExtensionCount = sizeof(device_extensions) / sizeof(*device_extensions),
-			.ppEnabledExtensionNames = device_extensions
+			.ppEnabledExtensionNames = device_extensions,
+			.pNext = &(VkPhysicalDeviceDynamicRenderingFeaturesKHR) {
+				.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES_KHR,
+				.dynamicRendering = VK_TRUE
+			}
 		}, null, &vctx.device) != VK_SUCCESS) {
 		abort_with("Failed to create a Vulkan device.");
 	}
@@ -592,6 +596,10 @@ no_validation:
 
 	free_vector(queue_infos);
 	free_vector(unique_queue_families);
+
+	/* Load extensions */
+	vctx.vkCmdBeginRenderingKHR = vkGetDeviceProcAddr(vctx.device, "vkCmdBeginRenderingKHR");
+	vctx.vkCmdEndRenderingKHR = vkGetDeviceProcAddr(vctx.device, "vkCmdEndRenderingKHR");
 
 	/* Create the allocator. */
 	vmaCreateAllocator(&(VmaAllocatorCreateInfo) {
@@ -966,6 +974,7 @@ static void init_vk_framebuffer(struct video_vk_framebuffer* fb,
 
 	fb->colours = core_calloc(fb->colour_count, sizeof *fb->colours);
 	fb->colour_infos = core_calloc(fb->colour_count, sizeof *fb->colour_infos);
+	fb->colour_formats = core_calloc(fb->colour_count, sizeof *fb->colour_formats);
 
 	usize colour_index = 0;
 	for (usize i = 0; i < attachment_count; i++) {
@@ -976,8 +985,10 @@ static void init_vk_framebuffer(struct video_vk_framebuffer* fb,
 
 			if (fb->is_headless) {
 				fb->colours[idx].format = fb_attachment_format(attachment_desc->format);
+				fb->colour_formats[idx] = fb_attachment_format(attachment_desc->format);
 			} else {
 				fb->colours[idx].format = vctx.swapchain_format;
+				fb->colour_formats[idx] = vctx.swapchain_format;
 			}
 
 			fb->colours[idx].clear_colour = attachment_desc->clear_colour;
@@ -1009,6 +1020,8 @@ static void init_vk_framebuffer(struct video_vk_framebuffer* fb,
 		/* Create images for the depth attachment if required. */
 		if (fb->use_depth) {
 			VkFormat fmt = find_depth_format();
+
+			fb->depth_format = fmt;
 
 			fb->depth.type = framebuffer_attachment_depth;
 
@@ -1149,10 +1162,13 @@ void video_vk_begin_framebuffer(struct framebuffer* framebuffer) {
 			u32 access     = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 			u32 stage      = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 
+			u32 old_stage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+
 			if (attachment->type == framebuffer_attachment_depth) {
 				new_layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 				access     = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 				stage      = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+				old_stage  = stage;
 			}
 
 			VkImageMemoryBarrier barrier = {
@@ -1161,18 +1177,16 @@ void video_vk_begin_framebuffer(struct framebuffer* framebuffer) {
 				.image = attachment->images[vctx.current_frame],
 				.newLayout = new_layout,
 				.subresourceRange = { get_vk_frambuffer_attachment_aspect_flags(attachment), 0, 1, 0, 1},
-				.srcAccessMask = access,
+				.srcAccessMask = 0,
 				.dstAccessMask = access,
 				.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
 				.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED
 			};
 
 			vkCmdPipelineBarrier(vctx.command_buffers[vctx.current_frame],
-				stage, stage,
+				old_stage, stage,
 				0, 0, null, 0, null, 1, &barrier);
 		}
-	} else {
-		/* TODO: Transition image layout to be writable, from presentable */
 	}
 
 	for (usize i = 0; i < fb->colour_count; i++) {
@@ -1221,13 +1235,13 @@ void video_vk_begin_framebuffer(struct framebuffer* framebuffer) {
 		rendering_info.pDepthAttachment = &depth_info;
 	}
 
-	vkCmdBeginRenderingKHR(vctx.command_buffers[vctx.current_frame], &rendering_info);
+	vctx.vkCmdBeginRenderingKHR(vctx.command_buffers[vctx.current_frame], &rendering_info);
 }
 
 void video_vk_end_framebuffer(struct framebuffer* framebuffer) {
 	struct video_vk_framebuffer* fb = (struct video_vk_framebuffer*)framebuffer;
 
-	vkCmdEndRenderingKHR(vctx.command_buffers[vctx.current_frame]);
+	vctx.vkCmdEndRenderingKHR(vctx.command_buffers[vctx.current_frame]);
 
 	if (fb->is_headless) {
 		for (usize* i = table_first(fb->attachment_map); i; i = table_next(fb->attachment_map, *i)) {
@@ -1261,7 +1275,24 @@ void video_vk_end_framebuffer(struct framebuffer* framebuffer) {
 				0, 0, null, 0, null, 1, &barrier);
 		}
 	} else {
-		/* Transition swapchain images to be presentable */
+		const struct video_vk_framebuffer_attachment* attachment = fb->colours;
+
+		VkImageMemoryBarrier barrier = {
+				.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+				.oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+				.image = vctx.swapchain_images[vctx.image_id],
+				.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+				.subresourceRange = { get_vk_frambuffer_attachment_aspect_flags(attachment), 0, 1, 0, 1},
+				.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+				.dstAccessMask = 0,
+				.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+				.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED
+			};
+
+			vkCmdPipelineBarrier(vctx.command_buffers[vctx.current_frame],
+				VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+				0, 0, null, 0, null, 1, &barrier);
+
 	}
 }
 
@@ -1751,8 +1782,6 @@ no_descriptors:
 		.pDynamicStates = dynamic_states
 	};
 
-	/* TODO: Set pipeline pNext to a VkPipelineRenderingCreateInfoKHR struct. */
-
 	if (vkCreateGraphicsPipelines(vctx.device, VK_NULL_HANDLE, 1, &(VkGraphicsPipelineCreateInfo) {
 			.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
 			.stageCount = 2,
@@ -1766,7 +1795,13 @@ no_descriptors:
 			.pDynamicState = &dynamic_state,
 			.pDepthStencilState = &depth_stencil,
 			.layout = pipeline->layout,
-			.subpass = 0
+			.subpass = 0,
+			.pNext = &(VkPipelineRenderingCreateInfoKHR) {
+				.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR,
+				.colorAttachmentCount = framebuffer->colour_count,
+				.pColorAttachmentFormats = framebuffer->colour_formats,
+				.depthAttachmentFormat = framebuffer->depth_format
+			}
 		}, null, &pipeline->pipeline) != VK_SUCCESS) {
 		abort_with("Failed to create pipeline.");
 	}
