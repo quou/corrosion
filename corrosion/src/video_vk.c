@@ -1189,21 +1189,36 @@ void video_vk_begin_framebuffer(struct framebuffer* framebuffer) {
 	} else {
 		const struct video_vk_framebuffer_attachment* attachment = fb->colours;
 
-		VkImageMemoryBarrier barrier = {
-			.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-			.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-			.image = vctx.swapchain_images[vctx.image_id],
-			.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-			.subresourceRange = { get_vk_frambuffer_attachment_aspect_flags(attachment), 0, 1, 0, 1},
-			.srcAccessMask = 0,
-			.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-			.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-			.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED
-		};
-
 		vkCmdPipelineBarrier(vctx.command_buffers[vctx.current_frame],
 			VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-			0, 0, null, 0, null, 1, &barrier);
+			0, 0, null, 0, null, 1, &(VkImageMemoryBarrier) {
+				.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+				.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+				.image = vctx.swapchain_images[vctx.image_id],
+				.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+				.subresourceRange = { get_vk_frambuffer_attachment_aspect_flags(attachment), 0, 1, 0, 1},
+				.srcAccessMask = 0,
+				.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+				.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+				.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED
+			});
+
+		if (fb->use_depth) {
+			vkCmdPipelineBarrier(vctx.command_buffers[vctx.current_frame],
+				VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+				VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+				0, 0, null, 0, null, 1, &(VkImageMemoryBarrier) {
+					.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+					.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+					.image = fb->depth_image,
+					.newLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
+					.subresourceRange = { VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1},
+					.srcAccessMask = 0,
+					.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+					.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+					.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED
+				});
+		}
 	}
 
 	for (usize i = 0; i < fb->colour_count; i++) {
@@ -1253,6 +1268,20 @@ void video_vk_begin_framebuffer(struct framebuffer* framebuffer) {
 	}
 
 	vctx.vkCmdBeginRenderingKHR(vctx.command_buffers[vctx.current_frame], &rendering_info);
+	vkCmdSetViewport(vctx.command_buffers[vctx.current_frame], 0, 1, &(VkViewport) {
+		.x = 0,
+		.y = 0,
+		.width = (u32)fb->size.x,
+		.height = (u32)fb->size.y
+	});
+
+	vkCmdSetScissor(vctx.command_buffers[vctx.current_frame], 0, 1, &(VkRect2D) {
+		.offset = { 0, 0 },
+		.extent = {
+			.width  = (u32)fb->size.x,
+			.height = (u32)fb->size.y
+		}
+	});
 }
 
 void video_vk_end_framebuffer(struct framebuffer* framebuffer) {
