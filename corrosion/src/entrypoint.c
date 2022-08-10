@@ -22,7 +22,7 @@ i32 main(i32 argc, const char** argv) {
 
 	res_init(argv[0]);
 
-	init_video(cfg.video_config.api, cfg.video_config.enable_validation, cfg.video_config.clear_colour);
+	init_video(&cfg.video_config);
 
 	gizmos_init();
 

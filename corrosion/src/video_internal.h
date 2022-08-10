@@ -84,6 +84,7 @@ struct vk_video_context {
 	struct framebuffer* default_fb;
 
 	bool want_recreate;
+	bool enable_vsync;
 
 	u32 current_frame;
 	u32 image_id;

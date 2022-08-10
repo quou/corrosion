@@ -28,14 +28,14 @@ struct {
 		ok = false; \
 	}
 
-static void validated_init(bool enable_validation, v4f clear_colour) {
+static void validated_init(const struct video_config* config) {
 	bool ok = true;
 
-	if (clear_colour.r > 1.0f || clear_colour.g > 1.0f || clear_colour.b > 1.0f || clear_colour.a > 1.0f) {
+	if (config->clear_colour.r > 1.0f || config->clear_colour.g > 1.0f || config->clear_colour.b > 1.0f || config->clear_colour.a > 1.0f) {
 		warning("video.init: clear_color must not be an HDR colour, as the default framebuffer does not support HDR.");
 	}
 
-	if (clear_colour.r < 0.0f || clear_colour.g < 0.0f || clear_colour.b < 0.0f || clear_colour.a < 0.0f) {
+	if (config->clear_colour.r < 0.0f || config->clear_colour.g < 0.0f || config->clear_colour.b < 0.0f || config->clear_colour.a < 0.0f) {
 		warning("video.init: Red, green, blue and alpha values of clear_color must not be negative.");
 	}
 
@@ -43,7 +43,7 @@ static void validated_init(bool enable_validation, v4f clear_colour) {
 		validation_state.is_init = true;
 		validation_state.is_deinit = false;
 		validation_state.end_called = true;
-		get_api_proc(init)(enable_validation, clear_colour);
+		get_api_proc(init)(config);
 		return;
 	}
 
@@ -377,28 +377,28 @@ static void find_procs(u32 api, bool enable_validation) {
 #undef get_proc
 }
 
-void init_video(u32 api, bool enable_validation, v4f clear_colour) {
-	video.api = api;
+void init_video(const struct video_config* config) {
+	video.api = config->api;
 
-	if (api != video_api_vulkan) {
+	if (config->api != video_api_vulkan) {
 		abort_with("Invalid video API.");
 	}
 
-	if (enable_validation) {
+	if (config->enable_validation) {
 		memset(&validation_state, 0, sizeof validation_state);
 	}
 
-	switch (api) {
+	switch (config->api) {
 	case video_api_vulkan:
 		info("Using API: Vulkan.");
 
-		find_procs(api, enable_validation);
+		find_procs(config->api, config->enable_validation);
 
 		video_vk_register_resources();
 		break;
 	}
 
-	video.init(enable_validation, clear_colour);
+	video.init(config);
 
 }
 

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "app.h"
 #include "core.h"
 #include "res.h"
 #include "window.h"
@@ -173,7 +174,7 @@ struct texture;
 struct video {
 	u32 api;
 
-	void (*init)(bool enable_validation, v4f clear_colour);
+	void (*init)(const struct video_config* config);
 	void (*deinit)();
 
 	void (*begin)();
@@ -238,7 +239,7 @@ struct video {
 
 extern struct video video;
 
-void init_video(u32 api, bool enable_validation, v4f clear_colour);
+void init_video(const struct video_config* config);
 void deinit_video();
 
 /* Like `vector', but for vertex data. */

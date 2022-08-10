@@ -12,6 +12,7 @@ struct window_config {
 struct video_config {
 	u32 api;
 	bool enable_validation;
+	bool enable_vsync;
 	v4f clear_colour;
 };
 

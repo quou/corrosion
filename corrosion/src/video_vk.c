@@ -85,17 +85,26 @@ static VkSurfaceFormatKHR choose_swap_surface_format(u32 avail_format_count, VkS
 	return avail_formats[0];
 }
 
-/* If available, VK_PRESENT_MODE_MAILBOX_KHR is used. Otherwise, it will default to VK_PRESENT_MODE_FIFO_KHR.
- *
- * This is basically just what kind of VSync to use. */
+/* This is basically just what kind of VSync to use. */
 static VkPresentModeKHR choose_swap_present_mode(u32 avail_present_mode_count, VkPresentModeKHR* avail_present_modes) {
+	if (!vctx.enable_vsync) {
+		for (u32 i = 0; i < avail_present_mode_count; i++) {
+			if (avail_present_modes[i] == VK_PRESENT_MODE_IMMEDIATE_KHR) {
+				return avail_present_modes[i];
+			}
+		}
+
+		warning("No support for VK_PRESENT_MODE_IMMEDIATE_KHR; "
+			"Vertical sync cannnot be disabled.");
+
+		return VK_PRESENT_MODE_FIFO_KHR;
+	}
+
 	for (u32 i = 0; i < avail_present_mode_count; i++) {
 		if (avail_present_modes[i] == VK_PRESENT_MODE_MAILBOX_KHR) {
 			return avail_present_modes[i];
 		}
 	}
-
-	warning("VK_PRESENT_MODE_MAILBOX_KHR is not supported.");
 
 	return VK_PRESENT_MODE_FIFO_KHR;
 }
@@ -490,13 +499,16 @@ static void init_swapchain();
 static void deinit_swapchain();
 static void recreate();
 
-void video_vk_init(bool enable_validation, v4f clear_colour) {
+void video_vk_init(const struct video_config* config) {
 	memset(&vctx, 0, sizeof vctx);
 
 	vector(const char*) extensions = null;
 	window_get_vk_extensions(&extensions);
 
 	vector(const char*) layers = null;
+
+	bool enable_validation = config->enable_validation;
+	vctx.enable_vsync = config->enable_vsync;
 
 	if (enable_validation) {
 		if (!layer_supported("VK_LAYER_KHRONOS_validation")) {
@@ -659,12 +671,11 @@ no_validation:
 			{
 				.type = framebuffer_attachment_depth,
 				.format = framebuffer_format_depth,
-				.clear_colour = clear_colour
 			},
 			{
 				.type = framebuffer_attachment_colour,
 				.format = framebuffer_format_rgba8i,
-				.clear_colour = clear_colour
+				.clear_colour = config->clear_colour
 			},
 		}, 2);
 }
