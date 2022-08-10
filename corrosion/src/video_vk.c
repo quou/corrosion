@@ -958,6 +958,12 @@ static void init_vk_framebuffer(struct video_vk_framebuffer* fb,
 
 	fb->is_headless = ~flags & framebuffer_flags_default;
 
+	if (!fb->is_headless) {
+		fb->size.x = vctx.swapchain_extent.width;
+		fb->size.y = vctx.swapchain_extent.height;
+		size = fb->size;
+	}
+
 	fb->use_depth = false;
 	fb->colour_count = 0;
 
