@@ -1266,7 +1266,8 @@ void video_vk_begin_framebuffer(struct framebuffer* framebuffer) {
 			}
 		},
 		.colorAttachmentCount = (u32)fb->colour_count,
-		.pColorAttachments = fb->colour_infos
+		.pColorAttachments = fb->colour_infos,
+		.layerCount = 1
 	};
 
 	if (fb->use_depth) {
