@@ -956,7 +956,7 @@ static void init_vk_framebuffer(struct video_vk_framebuffer* fb,
 	fb->size = size;
 	memset(&fb->attachment_map, 0, sizeof fb->attachment_map);
 
-	fb->is_headless = flags & framebuffer_flags_headless;
+	fb->is_headless = ~flags & framebuffer_flags_default;
 
 	fb->use_depth = false;
 	fb->colour_count = 0;
@@ -1191,7 +1191,7 @@ void video_vk_begin_framebuffer(struct framebuffer* framebuffer) {
 		const struct video_vk_framebuffer_attachment* attachment = fb->colours;
 
 		vkCmdPipelineBarrier(vctx.command_buffers[vctx.current_frame],
-			VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+			VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
 			0, 0, null, 0, null, 1, &(VkImageMemoryBarrier) {
 				.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
 				.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
@@ -1229,12 +1229,17 @@ void video_vk_begin_framebuffer(struct framebuffer* framebuffer) {
 
 		*info = (VkRenderingAttachmentInfoKHR) {
 			.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR,
-			.imageView = fb->colours[i].image_views[vctx.current_frame],
 			.imageLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL_KHR,
 			.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
 			.storeOp = VK_ATTACHMENT_STORE_OP_STORE,
 			.clearValue.color = { cc.r, cc.g, cc.b, cc.a }
 		};
+
+		if (fb->is_headless) {
+			info->imageView = fb->colours[i].image_views[vctx.current_frame];
+		} else {
+			info->imageView = vctx.swapchain_image_views[vctx.image_id];
+		}
 	}
 
 	VkRenderingAttachmentInfoKHR depth_info = {
