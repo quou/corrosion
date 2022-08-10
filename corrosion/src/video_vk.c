@@ -1064,7 +1064,14 @@ static void init_vk_framebuffer(struct video_vk_framebuffer* fb,
 static void deinit_vk_framebuffer(struct video_vk_framebuffer* fb) {
 	vkDeviceWaitIdle(vctx.device);
 
-	/*if (fb->is_headless) {
+	if (fb->is_headless) {
+		for (usize i = 0; i < fb->colour_count; i++) {
+			for (usize j = 0; j < max_frames_in_flight; j++) {
+				vkDestroyImageView(vctx.device, fb->colours[i].image_views[j], null);
+				vmaDestroyImage(vctx.allocator, fb->colours[i].images[j], fb->colours[i].image_memories[j]);
+			}
+		}
+
 		if (fb->use_depth) {
 			for (usize i = 0; i < max_frames_in_flight; i++) {
 				vkDestroyImageView(vctx.device, fb->depth.image_views[i], null);
@@ -1072,40 +1079,19 @@ static void deinit_vk_framebuffer(struct video_vk_framebuffer* fb) {
 			}
 		}
 
-		for (usize i = 0; i < fb->colour_count; i++) {
-			struct video_vk_framebuffer_attachment* attachment = fb->colours + i;
-
-			for (usize ii = 0; ii < max_frames_in_flight; ii++) {
-				vkDestroyImageView(vctx.device, attachment->image_views[ii], null);
-				vmaDestroyImage(vctx.allocator, attachment->images[ii], attachment->image_memories[ii]);
-			}
-		}
-
-		for (usize i = 0; i < max_frames_in_flight; i++) {
-			vkDestroyFramebuffer(vctx.device, fb->framebuffers[i], null);
-		}
-
 		vkDestroySampler(vctx.device, fb->sampler, null);
-
-		core_free(fb->colours);
 	} else {
-		for (u32 i = 0; i < vctx.swapchain_image_count; i++) {
-			vkDestroyFramebuffer(vctx.device, fb->swapchain_framebuffers[i], null);
-		}
-
 		if (fb->use_depth) {
 			vkDestroyImageView(vctx.device, fb->depth_image_view, null);
 			vmaDestroyImage(vctx.allocator, fb->depth_image, fb->depth_memory);
 		}
-
-		core_free(fb->swapchain_framebuffers);
 	}
 
+	core_free(fb->colours);
+	core_free(fb->colour_infos);
+	core_free(fb->colour_formats);
+
 	free_table(fb->attachment_map);
-
-	core_free(fb->clear_colours);
-
-	vkDestroyRenderPass(vctx.device, fb->render_pass, null); */
 }
 
 struct framebuffer* video_vk_new_framebuffer(u32 flags, v2i size, const struct framebuffer_attachment_desc* attachments, usize attachment_count) {
