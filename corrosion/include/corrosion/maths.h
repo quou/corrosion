@@ -66,6 +66,17 @@ typedef m4(f32) m4f;
 #define make_v4i(x_, y_, z_, w_) make_v4(v4i, (i32)x_, (i32)y_, (i32)z_, (i32)w_)
 #define make_v4u(x_, y_, z_, w_) make_v4(v4u, (u32)x_, (u32)y_, (u32)z_, (u32)w_)
 
+/* v_zero */
+#define v2f_zero() make_v2f(0.0f, 0.0f)
+#define v2i_zero() make_v2i(0,    0)
+#define v2u_zero() make_v2u(0,    0)
+#define v3f_zero() make_v3f(0.0f, 0.0f, 0.0f)
+#define v3i_zero() make_v3i(0,    0,    0)
+#define v3u_zero() make_v3u(0,    0,    0)
+#define v4f_zero() make_v4f(0.0f, 0.0f, 0.0f, 0.0f)
+#define v4i_zero() make_v4i(0,    0,    0,    0)
+#define v4u_zero() make_v4u(0,    0,    0,    0)
+
 #define make_rgb(rgb_) \
 	make_v3f( \
 		(f32)((((u32)(rgb_)) >> 16) & 0xff) / 255.0f, \

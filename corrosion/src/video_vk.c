@@ -53,18 +53,18 @@ struct swapchain_capabilities {
 static struct swapchain_capabilities get_swapchain_capabilities(VkPhysicalDevice device) {
 	struct swapchain_capabilities r = { 0 };
 
-	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, get_window_surface(), &r.capabilities);
+	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, get_window_vk_surface(), &r.capabilities);
 
-	vkGetPhysicalDeviceSurfaceFormatsKHR(device, get_window_surface(), &r.format_count, null);
+	vkGetPhysicalDeviceSurfaceFormatsKHR(device, get_window_vk_surface(), &r.format_count, null);
 	if (r.format_count > 0) {
 		r.formats = core_alloc(sizeof(VkSurfaceFormatKHR) * r.format_count);
-		vkGetPhysicalDeviceSurfaceFormatsKHR(device, get_window_surface(), &r.format_count, r.formats);
+		vkGetPhysicalDeviceSurfaceFormatsKHR(device, get_window_vk_surface(), &r.format_count, r.formats);
 	}
 
-	vkGetPhysicalDeviceSurfacePresentModesKHR(device, get_window_surface(), &r.present_mode_count, null);
+	vkGetPhysicalDeviceSurfacePresentModesKHR(device, get_window_vk_surface(), &r.present_mode_count, null);
 	if (r.present_mode_count > 0) {
 		r.present_modes = core_alloc(sizeof(VkPresentModeKHR) * r.present_mode_count);
-		vkGetPhysicalDeviceSurfacePresentModesKHR(device, get_window_surface(),
+		vkGetPhysicalDeviceSurfacePresentModesKHR(device, get_window_vk_surface(),
 				&r.present_mode_count, r.present_modes);
 	}
 
@@ -177,7 +177,7 @@ static struct queue_families get_queue_families(VkPhysicalDevice device) {
 		}
 
 		VkBool32 supports_presentation = false;
-		vkGetPhysicalDeviceSurfaceSupportKHR(device, i, get_window_surface(), &supports_presentation);
+		vkGetPhysicalDeviceSurfaceSupportKHR(device, i, get_window_vk_surface(), &supports_presentation);
 		if (supports_presentation) {
 			r.present = (i32)i;
 		}
@@ -874,7 +874,7 @@ static void init_swapchain() {
 
 	VkSwapchainCreateInfoKHR swap_info = {
 		.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
-		.surface = get_window_surface(),
+		.surface = get_window_vk_surface(),
 		.minImageCount = image_count,
 		.imageFormat = surface_format.format,
 		.imageColorSpace = surface_format.colorSpace,

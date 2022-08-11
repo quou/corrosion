@@ -1,5 +1,6 @@
 #include "core.h"
 #include "video.h"
+#include "video_gl.h"
 #include "video_vk.h"
 
 struct video video;
@@ -13,8 +14,9 @@ struct {
 	struct framebuffer* current_fb;
 } validation_state;
 
-#define get_api_proc(n_) \
-	(video.api == video_api_vulkan ? cat(video_vk_, n_) : null)
+#define get_api_proc(n_) ( \
+	video.api == video_api_vulkan ? cat(video_vk_, n_) : \
+	video.api == video_api_opengl ? cat(video_gl_, n_) : null)
 
 #define check_is_init(n_) \
 	if (!validation_state.is_init) { \
@@ -139,7 +141,7 @@ static struct framebuffer* validated_new_framebuffer(
 	}
 
 	if (flags & framebuffer_flags_default && flags & framebuffer_flags_headless) {
-		error("video.new_framebuffer: Flags cannot be framebuffer+flags_default and framebuffer_flags_headless simultaneously.");
+		error("video.new_framebuffer: Flags cannot be framebuffer_flags_default and framebuffer_flags_headless simultaneously.");
 		ok = false;
 	}
 
@@ -337,42 +339,42 @@ static void find_procs(u32 api, bool enable_validation) {
 	video.begin_framebuffer    = get_v_proc(begin_framebuffer);
 	video.end_framebuffer      = get_v_proc(end_framebuffer);
 
-	video.new_pipeline                 = video_vk_new_pipeline;
-	video.free_pipeline                = video_vk_free_pipeline;
-	video.begin_pipeline               = video_vk_begin_pipeline;
-	video.end_pipeline                 = video_vk_end_pipeline;
-	video.recreate_pipeline            = video_vk_recreate_pipeline;
-	video.bind_pipeline_descriptor_set = video_vk_bind_pipeline_descriptor_set;
-	video.update_pipeline_uniform      = video_vk_update_pipeline_uniform;
-	video.pipeline_add_descriptor_set  = video_vk_pipeline_add_descriptor_set;
-	video.pipeline_change_shader       = video_vk_pipeline_change_shader;
+	video.new_pipeline                 = get_api_proc(new_pipeline);
+	video.free_pipeline                = get_api_proc(free_pipeline);
+	video.begin_pipeline               = get_api_proc(begin_pipeline);
+	video.end_pipeline                 = get_api_proc(end_pipeline);
+	video.recreate_pipeline            = get_api_proc(recreate_pipeline);
+	video.bind_pipeline_descriptor_set = get_api_proc(bind_pipeline_descriptor_set);
+	video.update_pipeline_uniform      = get_api_proc(update_pipeline_uniform);
+	video.pipeline_add_descriptor_set  = get_api_proc(pipeline_add_descriptor_set);
+	video.pipeline_change_shader       = get_api_proc(pipeline_change_shader);
 
-	video.new_vertex_buffer    = video_vk_new_vertex_buffer;
-	video.free_vertex_buffer   = video_vk_free_vertex_buffer;
-	video.bind_vertex_buffer   = video_vk_bind_vertex_buffer;
-	video.update_vertex_buffer = video_vk_update_vertex_buffer;
-	video.copy_vertex_buffer   = video_vk_copy_vertex_buffer;
+	video.new_vertex_buffer    = get_api_proc(new_vertex_buffer);
+	video.free_vertex_buffer   = get_api_proc(free_vertex_buffer);
+	video.bind_vertex_buffer   = get_api_proc(bind_vertex_buffer);
+	video.update_vertex_buffer = get_api_proc(update_vertex_buffer);
+	video.copy_vertex_buffer   = get_api_proc(copy_vertex_buffer);
 
-	video.new_index_buffer  = video_vk_new_index_buffer;
-	video.free_index_buffer = video_vk_free_index_buffer;
-	video.bind_index_buffer = video_vk_bind_index_buffer;
+	video.new_index_buffer  = get_api_proc(new_index_buffer);
+	video.free_index_buffer = get_api_proc(free_index_buffer);
+	video.bind_index_buffer = get_api_proc(bind_index_buffer);
 
-	video.draw         = video_vk_draw;
-	video.draw_indexed = video_vk_draw_indexed;
-	video.set_scissor  = video_vk_set_scissor;
+	video.draw         = get_api_proc(draw);
+	video.draw_indexed = get_api_proc(draw_indexed);
+	video.set_scissor  = get_api_proc(set_scissor);
 
-	video.new_texture      = video_vk_new_texture;
-	video.free_texture     = video_vk_free_texture;
-	video.get_texture_size = video_vk_get_texture_size;
-	video.texture_copy     = video_vk_texture_copy;
+	video.new_texture      = get_api_proc(new_texture);
+	video.free_texture     = get_api_proc(free_texture);
+	video.get_texture_size = get_api_proc(get_texture_size);
+	video.texture_copy     = get_api_proc(texture_copy);
 
-	video.new_shader  = video_vk_new_shader;
-	video.free_shader = video_vk_free_shader;
+	video.new_shader  = get_api_proc(new_shader);
+	video.free_shader = get_api_proc(free_shader);
 
-	video.ortho = video_vk_ortho;
-	video.persp = video_vk_persp;
+	video.ortho = get_api_proc(ortho);
+	video.persp = get_api_proc(persp);
 
-	video.get_draw_call_count = video_vk_get_draw_call_count;
+	video.get_draw_call_count = get_api_proc(get_draw_call_count);
 
 #undef get_proc
 }
@@ -380,7 +382,7 @@ static void find_procs(u32 api, bool enable_validation) {
 void init_video(const struct video_config* config) {
 	video.api = config->api;
 
-	if (config->api != video_api_vulkan) {
+	if (config->api != video_api_vulkan && config->api != video_api_opengl) {
 		abort_with("Invalid video API.");
 	}
 
@@ -394,12 +396,20 @@ void init_video(const struct video_config* config) {
 
 		find_procs(config->api, config->enable_validation);
 
+		video.init(config);
+
 		video_vk_register_resources();
 		break;
+	case video_api_opengl:
+		info("Using API: OpenGL ES.");
+
+		find_procs(config->api, config->enable_validation);
+
+		video.init(config);
+
+		video_gl_register_resources();
+		break;
 	}
-
-	video.init(config);
-
 }
 
 void deinit_video() {

@@ -162,7 +162,6 @@ static bool preprocess(const char* filepath, PrepOut& out) {
 					} else if (adding_to == 1) {
 						add_to = &out.frag_src;
 					}
-				info("hi");
 
 					if (add_to) {
 						if (!include_file(i_filename, *add_to)) {

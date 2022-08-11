@@ -7,7 +7,8 @@
 
 enum {
 	video_api_none = 0,
-	video_api_vulkan
+	video_api_vulkan,
+	video_api_opengl
 };
 
 enum {

@@ -2,6 +2,8 @@
 
 #include <corrosion/cr.h>
 
+#if 0
+
 struct {
 	struct texture* texturea;
 	struct texture* textureb;
@@ -344,4 +346,91 @@ void cr_deinit() {
 	free_simple_renderer(app.renderer);
 
 	ui_deinit();
+}
+
+#endif
+
+struct vertex {
+	v2f position;
+};
+
+struct {
+	struct pipeline* pipeline;
+	struct vertex_buffer* tri_vb;
+} app;
+
+struct app_config cr_config() {
+	return (struct app_config) {
+		.name = "Sandbox",
+		.video_config = (struct video_config) {
+			.api = video_api_vulkan,
+#ifdef debug
+			.enable_validation = true,
+#else
+			.enable_validation = false,
+#endif
+			.clear_colour = make_rgba(0x000000, 255)
+		},
+		.window_config = (struct window_config) {
+			.title = "Sandbox",
+			.size = make_v2i(1366, 768),
+			.resizable = true
+		}
+	};
+}
+
+void cr_init() {
+	const struct shader* shader = load_shader("shaders/test.csh");
+
+	app.pipeline = video.new_pipeline(
+		pipeline_flags_draw_tris,
+		shader,
+		video.get_default_fb(),
+		(struct pipeline_attribute_bindings) {
+			.bindings = (struct pipeline_attribute_binding[]) {
+				{
+					.attributes = (struct pipeline_attributes) {
+						.attributes = (struct pipeline_attribute[]) {
+							{
+								.name = "position",
+								.location = 0,
+								.offset = offsetof(struct vertex, position),
+								.type = pipeline_attribute_vec2
+							}
+						},
+						.count = 1
+					},
+					.stride = sizeof(struct vertex),
+					.rate = pipeline_attribute_rate_per_vertex,
+					.binding = 0
+				}
+			},
+			.count = 1
+		},
+		(struct pipeline_descriptor_sets) {
+			.count = 0
+		}
+	);
+
+	struct vertex verts[] = {
+		{ { 0.0f, -0.5f } },
+		{ { -0.5f, 0.5f } },
+		{ { 0.5f, 0.5f } }
+	};
+
+	app.tri_vb = video.new_vertex_buffer(verts, sizeof verts, vertex_buffer_flags_none);
+}
+
+void cr_update(f64 ts) {
+	video.begin_framebuffer(video.get_default_fb());
+		video.begin_pipeline(app.pipeline);
+			video.bind_vertex_buffer(app.tri_vb, 0);
+			video.draw(3, 0, 1);
+		video.end_pipeline(app.pipeline);
+	video.end_framebuffer(video.get_default_fb());
+}
+
+void cr_deinit() {
+	video.free_pipeline(app.pipeline);
+	video.free_vertex_buffer(app.tri_vb);
 }

@@ -67,6 +67,7 @@ sources =                            \
           $(srcdir)/ui_render.c      \
           $(srcdir)/video.c          \
           $(srcdir)/video_vk.c       \
+          $(srcdir)/video_gl.c       \
           $(srcdir)/window_x11.c     \
 
 shaders =                       \
