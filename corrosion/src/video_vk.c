@@ -495,7 +495,7 @@ static void new_depth_resources(VkImage* image, VkImageView* view, VmaAllocation
 	*view = new_image_view(*image, depth_format, VK_IMAGE_ASPECT_DEPTH_BIT);
 }
 
-static void init_swapchain();
+static void init_swapchain(VkSwapchainKHR);
 static void deinit_swapchain();
 static void recreate();
 
@@ -626,7 +626,7 @@ no_validation:
 		}
 	}, &vctx.allocator);
 
-	init_swapchain();
+	init_swapchain(VK_NULL_HANDLE);
 
 	/* Create the command pool. */
 	if (vkCreateCommandPool(vctx.device, &(VkCommandPoolCreateInfo) {
@@ -718,7 +718,7 @@ void video_vk_deinit() {
 
 	vkDestroyCommandPool(vctx.device, vctx.command_pool, null);
 
-	deinit_swapchain();
+	deinit_swapchain(true);
 
 	window_destroy_vk_surface(vctx.instance);
 
@@ -853,7 +853,7 @@ void video_vk_want_recreate() {
 	vctx.want_recreate = true;
 }
 
-static void init_swapchain() {
+static void init_swapchain(VkSwapchainKHR old_swapchain) {
 	vkDeviceWaitIdle(vctx.device);
 
 	struct swapchain_capabilities scc = get_swapchain_capabilities(vctx.pdevice);
@@ -885,7 +885,7 @@ static void init_swapchain() {
 		.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
 		.presentMode = present_mode,
 		.clipped = VK_TRUE,
-		.oldSwapchain = VK_NULL_HANDLE
+		.oldSwapchain = old_swapchain
 	};
 
 	u32 queue_family_indices[2] = { vctx.qfs.graphics, vctx.qfs.present };
@@ -932,8 +932,21 @@ static void deinit_swapchain() {
 
 static void recreate() {
 	vkDeviceWaitIdle(vctx.device);
-	deinit_swapchain();
-	init_swapchain();
+
+	VkImage* old_swapchain_images = vctx.swapchain_images;
+	VkImageView* old_swapchain_image_views = vctx.swapchain_image_views;
+	VkSwapchainKHR old_swapchain = vctx.swapchain;
+
+	init_swapchain(vctx.swapchain);
+
+	for (u32 i = 0; i < vctx.swapchain_image_count; i++) {
+		vkDestroyImageView(vctx.device, old_swapchain_image_views[i], null);
+	}
+
+	vkDestroySwapchainKHR(vctx.device, old_swapchain, null);
+
+	core_free(old_swapchain_images);
+	core_free(old_swapchain_image_views);
 
 	struct video_vk_framebuffer* framebuffer = vctx.framebuffers.head;
 	while (framebuffer) {
