@@ -2,6 +2,7 @@
 #include <vector>
 #include <fstream>
 #include <sstream>
+#include <unordered_map>
 
 #include <shaderc/shaderc.hpp>
 #include <spirv_cross/spirv_cross.hpp>
@@ -35,6 +36,55 @@ struct ShaderHeader {
 	u64 f_gl_size;
 };
 #pragma pack(pop)
+
+
+std::vector<std::string> included;
+
+static std::string convert_filename(const std::string& path, const std::string& name) {
+	usize slash = path.find_last_of("/");
+	return path.substr(0, slash + 1) + name;
+}
+
+static bool include_file(const std::string& filepath, std::string& out) {
+	std::ifstream file(filepath);
+	if (!file.good()) {
+		error("Failed to open `%s'", filepath.c_str());
+		return false;
+	}
+
+	std::string line;
+
+	while (std::getline(file, line)) {
+		if (line.find("#include") == 0) {
+			usize pos;
+			if ((pos = line.find("\"")) != std::string::npos) {
+				usize last_pos = line.find("\"", pos + 1);
+
+				if (last_pos == pos || last_pos == std::string::npos) {
+					error("Expected \" after string literal.");
+					return false;
+				}
+
+				std::string i_filename = convert_filename(filepath, line.substr(pos + 1, last_pos - pos - 1));
+
+				if (std::find(included.begin(), included.end(), i_filename) == included.end()) {
+					if (!include_file(i_filename, out)) {
+						return false;
+					}
+				}
+			} else {
+				error("Expected string literal after `#include'.");
+				return false;
+			}
+		} else {
+			out += line;
+		}
+	}
+
+	included.push_back(filepath);
+
+	return true;
+}
 
 static bool preprocess(const char* filepath, PrepOut& out) {
 	out.is_compute = false;
@@ -92,6 +142,40 @@ static bool preprocess(const char* filepath, PrepOut& out) {
 			}
 		} else if (!out.is_compute && line.find("#end") == 0) {
 			adding_to = -1;
+		} else if (line.find("#include") == 0) {
+			usize pos;
+			if ((pos = line.find("\"")) != std::string::npos) {
+				usize last_pos = line.find("\"", pos + 1);
+
+				if (last_pos == pos || last_pos == std::string::npos) {
+					error("Expected \" after string literal.");
+					return false;
+				}
+
+				std::string i_filename = convert_filename(filepath, line.substr(pos + 1, last_pos - pos - 1));
+
+				if (std::find(included.begin(), included.end(), i_filename) == included.end()) {
+					std::string* add_to = nullptr;
+
+					if (adding_to == 0) {
+						add_to = &out.vert_src;
+					} else if (adding_to == 1) {
+						add_to = &out.frag_src;
+					}
+				info("hi");
+
+					if (add_to) {
+						if (!include_file(i_filename, *add_to)) {
+							return false;
+						}
+					}
+				}
+			} else {
+				error("Expected string literal after `#include'.");
+				return false;
+			}
+
+			goto loop_end;
 		}
 
 		if (out.is_compute) {
@@ -136,9 +220,6 @@ static std::string compile_for_opengl(const std::vector<u32> data) {
 		compiler.unset_decoration(resource.id, spv::DecorationDescriptorSet);
 
 		/* TODO: Properly modify the binding. */
-		u32 d;
-		compiler.get_binary_offset_for_decoration(resource.id, spv::DecorationDescriptorSet, d);
-		info("%d", d);
 
 		compiler.set_decoration(resource.id, spv::DecorationBinding, binding);
 	}
