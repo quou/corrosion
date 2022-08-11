@@ -17,6 +17,10 @@ struct shader_header {
 	u64 f_offset;
 	u64 v_size;
 	u64 f_size;
+	u64 v_gl_offset;
+	u64 f_gl_offset;
+	u64 v_gl_size;
+	u64 f_gl_size;
 };
 #pragma pack(pop)
 

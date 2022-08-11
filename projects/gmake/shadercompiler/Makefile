@@ -14,7 +14,7 @@ includes = -I../../../corrosion/include -I../../../corrosion/include/corrosion
 target_name = shadercompiler
 deps =
 srcdir = ../../../shadercompiler/src
-libs = -lshaderc_shared
+libs = -lshaderc_shared -lspirv-cross-cpp -lspirv-cross-glsl -lspirv-cross-util -lspirv-cross-core
 defines =
 
 ifeq ($(config),debug)
