@@ -1,11 +1,23 @@
+#define GLAD_GLES2_IMPLEMENTATION
+#include "gles2.h"
+
 #include "video_gl.h"
+#include "window_internal.h"
 
 void video_gl_init(const struct video_config* config) {
-	abort_with("Not implemented");
+	window_create_gl_context();
+
+	if (!gladLoadGLES2((GLADloadfunc)window_get_gl_proc)) {
+		abort_with("Failed to load OpenGL ES functions.");
+	}
+
+	info("GL_VENDOR: \t%s.", glGetString(GL_VENDOR));
+	info("GL_RENDERER: \t%s.", glGetString(GL_RENDERER));
+	info("GL_VERSION: \t%s.", glGetString(GL_VERSION));
 }
 
 void video_gl_deinit() {
-	abort_with("Not implemented");
+	window_destroy_gl_context();
 }
 
 void video_gl_begin() {

@@ -64,6 +64,10 @@ struct window {
 
 	VkSurfaceKHR surface;
 
+	/* Context handle is a void pointer and not a GLXContext because
+	 * including `GL/glx.h' will cause conflicts with Glad. */
+	void* context;
+
 	bool held_keys[key_count];
 	bool pressed_keys[key_count];
 	bool released_keys[key_count];

@@ -14,7 +14,7 @@ includes = -I../../../../corrosion/include
 target_name = bloom
 deps =
 srcdir = ../../../../games/bloom/src
-libs = -lm -lX11 -lXi -lvulkan
+libs = -lm -lX11 -lXi -lvulkan -lGL
 defines =
 
 ifeq ($(config),debug)

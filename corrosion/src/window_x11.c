@@ -163,15 +163,55 @@ VkSurfaceKHR get_window_vk_surface() {
 }
 
 void window_create_gl_context() {
+	int visual_attribs[] = {
+		GLX_RENDER_TYPE,   GLX_RGBA_BIT,
+		GLX_DRAWABLE_TYPE, GLX_WINDOW_BIT,
+		GLX_DOUBLEBUFFER,  true,
+		GLX_RED_SIZE,      8,
+		GLX_GREEN_SIZE,    8,
+		GLX_BLUE_SIZE,     8,
+		GLX_DEPTH_SIZE,    24,
+		GLX_STENCIL_SIZE,  8,
+		None
+	};
 
+	i32 num_fbc = 0;
+	GLXFBConfig* fbc = glXChooseFBConfig(display, DefaultScreen(display),
+			visual_attribs, &num_fbc);
+	if (!fbc) {
+		abort_with("Failed to create default OpenGL framebuffer.");
+	}
+
+	create_context_func create_context = (create_context_func)
+			glXGetProcAddress((const u8*)"glXCreateContextAttribsARB");
+	
+	if (!create_context) {
+		abort_with("Failed to find glXCreateContextAttribsARB.");
+	}
+
+	i32 context_attribs[] = {
+		GLX_CONTEXT_MAJOR_VERSION_ARB, 3,
+		GLX_CONTEXT_MINOR_VERSION_ARB, 2,
+		GLX_CONTEXT_PROFILE_MASK_ARB, GLX_CONTEXT_ES2_PROFILE_BIT_EXT,
+		None
+	};
+
+	window.context = create_context(display, fbc[0], null, true, context_attribs);
+	if (!window.context) {
+		abort_with("Failed to create OpenGL ES context");
+	}
+
+	glXMakeCurrent(display, window.window, window.context);
+
+	XFree(fbc);
 }
 
 void window_destroy_gl_context() {
-
+	glXDestroyContext(display, window.context);
 }
 
 void* window_get_gl_proc(const char* name) {
-
+	return glXGetProcAddress((const u8*)name);
 }
 
 void deinit_window() {
