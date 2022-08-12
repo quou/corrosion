@@ -2,7 +2,7 @@
 
 #include <corrosion/cr.h>
 
-#if 0
+//#if 0
 
 struct {
 	struct texture* texturea;
@@ -73,9 +73,9 @@ void cr_init() {
 
 	v2f tri_verts[] = {
 		/* Position          UV */
-		{ -1.0, -1.0 },      { 0.0f, 0.0f },
-		{ -1.0,  3.0 },      { 0.0f, 2.0f },
-		{  3.0, -1.0 },      { 2.0f, 0.0f }
+		{ -1.0,   1.0   },   { 0.0f, 0.0f },
+		{ -1.0,  -3.0 },     { 0.0f, 2.0f },
+		{  3.0,   1.0   },   { 2.0f, 0.0f }
 	};
 
 	app.tri_vb = video.new_vertex_buffer(tri_verts, sizeof tri_verts, vertex_buffer_flags_none);
@@ -348,9 +348,9 @@ void cr_deinit() {
 	ui_deinit();
 }
 
-#endif
+//#endif
 
-//#if 0
+#if 0
 struct vertex {
 	v2f position;
 };
@@ -364,7 +364,7 @@ struct app_config cr_config() {
 	return (struct app_config) {
 		.name = "Sandbox",
 		.video_config = (struct video_config) {
-			.api = video_api_opengl,
+			.api = video_api_vulkan,
 #ifdef debug
 			.enable_validation = true,
 #else
@@ -414,9 +414,9 @@ void cr_init() {
 	);
 
 	struct vertex verts[] = {
-		{ { 0.0f, -0.5f } },
-		{ { -0.5f, 0.5f } },
-		{ { 0.5f, 0.5f } }
+		{ { 0.0f, 0.5f } },
+		{ { -0.5f, -0.5f } },
+		{ { 0.5f,  -0.5f } }
 	};
 
 	app.tri_vb = video.new_vertex_buffer(verts, sizeof verts, vertex_buffer_flags_none);
@@ -435,4 +435,4 @@ void cr_deinit() {
 	video.free_pipeline(app.pipeline);
 	video.free_vertex_buffer(app.tri_vb);
 }
-//#endif
+#endif

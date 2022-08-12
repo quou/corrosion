@@ -24,7 +24,7 @@ i32 main(i32 argc, const char** argv) {
 
 	init_video(&cfg.video_config);
 
-	//gizmos_init();
+	gizmos_init();
 
 	cr_init();
 
@@ -48,7 +48,7 @@ i32 main(i32 argc, const char** argv) {
 
 	cr_deinit();
 
-	//gizmos_deinit();
+	gizmos_deinit();
 
 	res_deinit();
 

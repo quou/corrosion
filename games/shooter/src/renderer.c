@@ -183,10 +183,10 @@ struct renderer* new_renderer(const struct framebuffer* framebuffer) {
 	}, 4);
 
 	v2f tri_verts[] = {
-		/* Position          UV */
-		{ -1.0, -1.0 },      { 0.0f, 0.0f },
-		{ -1.0,  3.0 },      { 0.0f, 2.0f },
-		{  3.0, -1.0 },      { 2.0f, 0.0f }
+		/* Position        UV */
+		{ -1.0,   1.0 },   { 0.0f, 0.0f },
+		{ -1.0,  -3.0 },   { 0.0f, 2.0f },
+		{  3.0,   1.0 },   { 2.0f, 0.0f }
 	};
 
 	renderer->tri_vb = video.new_vertex_buffer(tri_verts, sizeof tri_verts, vertex_buffer_flags_none);

@@ -1293,9 +1293,9 @@ void video_vk_begin_framebuffer(struct framebuffer* framebuffer) {
 	vctx.vkCmdBeginRenderingKHR(vctx.command_buffers[vctx.current_frame], &rendering_info);
 	vkCmdSetViewport(vctx.command_buffers[vctx.current_frame], 0, 1, &(VkViewport) {
 		.x = 0,
-		.y = 0,
-		.width = (u32)fb->size.x,
-		.height = (u32)fb->size.y
+		.y = fb->size.y,
+		.width = fb->size.x,
+		.height = -fb->size.y
 	});
 
 	vkCmdSetScissor(vctx.command_buffers[vctx.current_frame], 0, 1, &(VkRect2D) {
@@ -1525,9 +1525,9 @@ static void init_pipeline(struct video_vk_pipeline* pipeline, u32 flags, const s
 		.pViewports = (VkViewport[]) {
 			{
 				.x = 0.0f,
-				.y = 0.0f,
+				.y = (f32)framebuffer->size.y,
 				.width  = (f32)framebuffer->size.x,
-				.height = (f32)framebuffer->size.y,
+				.height = -(f32)framebuffer->size.y,
 				.minDepth = 0.0f,
 				.maxDepth = 1.0f
 			}
@@ -2593,21 +2593,13 @@ void video_vk_register_resources() {
 m4f video_vk_ortho(f32 l, f32 r, f32 b, f32 t, f32 n, f32 f) {
 	m4f res = m4f_identity();
 
-	f32 temp = t;
-	t = b;
-	b = temp;
+	res.m[0][0] = (f32)2 / (r - l);
+	res.m[1][1] = (f32)2 / (t - b);
+	res.m[2][2] = (f32)2 / (n - f);
 
-	f32 lr = 1.0f / (l - r);
-	f32 bt = 1.0f / (b - t);
-	f32 nf = 1.0f / (n - f);
-
-	res.m[0][0] = -2.0f * lr;
-	res.m[1][1] = -2.0f * bt;
-	res.m[2][2] =  2.0f * nf;
-
-	res.m[3][0] = (l + r) * lr;
-	res.m[3][1] = (t + b) * bt;
-	res.m[3][2] = (f + n) * nf;
+	res.m[3][0] = (l + r) / (l - r);
+	res.m[3][1] = (b + t) / (b - t);
+	res.m[3][2] = (f + n) / (f - n);
 
 	return res;
 }
@@ -2621,7 +2613,7 @@ m4f video_vk_persp(f32 fov, f32 aspect, f32 near_clip, f32 far_clip) {
 	const f32 c = (2.0f * near_clip * far_clip) / (near_clip - far_clip);
 
 	r.m[0][0] = a;
-	r.m[1][1] = -q;
+	r.m[1][1] = q;
 	r.m[2][2] = b;
 	r.m[2][3] = -1.0f;
 	r.m[3][2] = c;
