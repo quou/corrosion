@@ -214,6 +214,10 @@ void* window_get_gl_proc(const char* name) {
 	return glXGetProcAddress((const u8*)name);
 }
 
+void window_gl_swap() {
+	glXSwapBuffers(display, window.window);
+}
+
 void deinit_window() {
 	XDestroyWindow(display, window.window);
 

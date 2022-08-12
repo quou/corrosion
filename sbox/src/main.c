@@ -350,6 +350,7 @@ void cr_deinit() {
 
 #endif
 
+//#if 0
 struct vertex {
 	v2f position;
 };
@@ -434,3 +435,4 @@ void cr_deinit() {
 	video.free_pipeline(app.pipeline);
 	video.free_vertex_buffer(app.tri_vb);
 }
+//#endif

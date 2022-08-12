@@ -2022,7 +2022,7 @@ void video_vk_free_pipeline(struct pipeline* pipeline_) {
 			core_free((void*)set->descriptors[ii].name);
 		}
 
-		free_vector((void*)set->descriptors);
+		free_vector(set->descriptors);
 	}
 
 	free_vector(pipeline->descriptor_sets);
@@ -2030,10 +2030,10 @@ void video_vk_free_pipeline(struct pipeline* pipeline_) {
 	for (usize i = 0; i < pipeline->bindings.count; i++) {
 		struct pipeline_attribute_binding* binding = (void*)(pipeline->bindings.bindings + i);
 
-		core_free((void*)binding->attributes.attributes);
+		core_free(binding->attributes.attributes);
 	}
 
-	core_free((void*)pipeline->bindings.bindings);
+	core_free(pipeline->bindings.bindings);
 
 	core_free(pipeline);
 }

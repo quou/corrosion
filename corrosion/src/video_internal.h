@@ -258,3 +258,38 @@ struct update_cmd_memcpy {
 };
 
 static void add_memcpy_cmd(struct update_queue* buf, void* target, const void* data, usize size);
+
+struct gl_video_context {
+	struct framebuffer* default_fb;
+
+	struct video_gl_pipeline* bound_pipeline;
+
+	u32 draw_call_count;
+};
+
+struct video_gl_pipeline {
+	u32 flags;
+
+	table(u32, struct pipeline_attribute_binding) attribute_bindings;
+
+	const struct video_gl_shader* shader;
+
+	u32 vao;
+	u32 mode;
+
+	vector(u32) to_enable;
+};
+
+struct video_gl_shader {
+	u32 program;
+};
+
+struct video_gl_vertex_buffer {
+	u32 flags;
+	u32 id;
+};
+
+struct video_gl_index_buffer {
+	u32 flags;
+	u32 id;
+};

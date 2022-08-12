@@ -204,7 +204,7 @@ static std::string compile_for_opengl(const std::vector<u32> data) {
 
 	spirv_cross::CompilerGLSL::Options options;
 
-	options.version = 330;
+	options.version = 320;
 	options.es = true;
 
 	compiler.set_common_options(options);

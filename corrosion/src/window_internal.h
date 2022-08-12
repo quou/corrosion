@@ -100,3 +100,4 @@ VkSurfaceKHR get_window_vk_surface();
 void window_create_gl_context();
 void window_destroy_gl_context();
 void* window_get_gl_proc(const char* name);
+void window_gl_swap();

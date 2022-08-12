@@ -74,7 +74,7 @@ struct pipeline_attribute {
 };
 
 struct pipeline_attributes {
-	const struct pipeline_attribute* attributes;
+	struct pipeline_attribute* attributes;
 	usize count;
 };
 
@@ -91,7 +91,7 @@ struct pipeline_attribute_binding {
 };
 
 struct pipeline_attribute_bindings {
-	const struct pipeline_attribute_binding* bindings;
+	struct pipeline_attribute_binding* bindings;
 	usize count;
 };
 
@@ -127,12 +127,12 @@ struct pipeline_descriptor {
 
 struct pipeline_descriptor_set {
 	const char* name;
-	const struct pipeline_descriptor* descriptors;
+	struct pipeline_descriptor* descriptors;
 	usize count;
 };
 
 struct pipeline_descriptor_sets {
-	const struct pipeline_descriptor_set* sets;
+	struct pipeline_descriptor_set* sets;
 	usize count;
 };
 
