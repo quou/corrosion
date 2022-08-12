@@ -525,3 +525,34 @@ force_inline v4f m4f_transform(m4f m, v4f p) {
 		m.m[0][2] * p.x + m.m[1][2] * p.y + m.m[2][2] * p.z + m.m[3][2] * p.w,
 		m.m[0][3] * p.x + m.m[1][3] * p.y + m.m[2][3] * p.z + m.m[3][3] * p.w);
 }
+
+force_inline m4f m4f_ortho(f32 l, f32 r, f32 b, f32 t, f32 n, f32 f) {
+	m4f res = m4f_identity();
+
+	res.m[0][0] = (f32)2 / (r - l);
+	res.m[1][1] = (f32)2 / (t - b);
+	res.m[2][2] = (f32)2 / (n - f);
+
+	res.m[3][0] = (l + r) / (l - r);
+	res.m[3][1] = (b + t) / (b - t);
+	res.m[3][2] = (f + n) / (f - n);
+
+	return res;
+}
+
+force_inline m4f m4f_persp(f32 fov, f32 aspect, f32 near_clip, f32 far_clip) {
+	m4f r = m4f_identity();
+
+	const f32 q = 1.0f / tanf(to_rad(fov) / 2.0f);
+	const f32 a = q / aspect;
+	const f32 b = (near_clip + far_clip) / (near_clip - far_clip);
+	const f32 c = (2.0f * near_clip * far_clip) / (near_clip - far_clip);
+
+	r.m[0][0] = a;
+	r.m[1][1] = q;
+	r.m[2][2] = b;
+	r.m[2][3] = -1.0f;
+	r.m[3][2] = c;
+
+	return r;
+}

@@ -371,9 +371,6 @@ static void find_procs(u32 api, bool enable_validation) {
 	video.new_shader  = get_api_proc(new_shader);
 	video.free_shader = get_api_proc(free_shader);
 
-	video.ortho = get_api_proc(ortho);
-	video.persp = get_api_proc(persp);
-
 	video.get_draw_call_count = get_api_proc(get_draw_call_count);
 
 #undef get_proc
@@ -427,7 +424,7 @@ m4f get_camera_view(const struct camera* camera) {
 }
 
 m4f get_camera_projection(const struct camera* camera, f32 aspect) {
-	return video.persp(camera->fov, aspect, camera->near_plane, camera->far_plane);
+	return m4f_persp(camera->fov, aspect, camera->near_plane, camera->far_plane);
 }
 
 void init_vertex_vector(struct vertex_vector* v, usize element_size, usize initial_capacity) {

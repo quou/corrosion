@@ -2590,37 +2590,6 @@ void video_vk_register_resources() {
 	});
 }
 
-m4f video_vk_ortho(f32 l, f32 r, f32 b, f32 t, f32 n, f32 f) {
-	m4f res = m4f_identity();
-
-	res.m[0][0] = (f32)2 / (r - l);
-	res.m[1][1] = (f32)2 / (t - b);
-	res.m[2][2] = (f32)2 / (n - f);
-
-	res.m[3][0] = (l + r) / (l - r);
-	res.m[3][1] = (b + t) / (b - t);
-	res.m[3][2] = (f + n) / (f - n);
-
-	return res;
-}
-
-m4f video_vk_persp(f32 fov, f32 aspect, f32 near_clip, f32 far_clip) {
-	m4f r = m4f_identity();
-
-	const f32 q = 1.0f / tanf(to_rad(fov) / 2.0f);
-	const f32 a = q / aspect;
-	const f32 b = (near_clip + far_clip) / (near_clip - far_clip);
-	const f32 c = (2.0f * near_clip * far_clip) / (near_clip - far_clip);
-
-	r.m[0][0] = a;
-	r.m[1][1] = q;
-	r.m[2][2] = b;
-	r.m[2][3] = -1.0f;
-	r.m[3][2] = c;
-
-	return r;
-}
-
 u32 video_vk_get_draw_call_count() {
 	return vctx.draw_call_count;
 }

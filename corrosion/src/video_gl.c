@@ -471,16 +471,6 @@ void video_gl_register_resources() {
 	});
 }
 
-m4f video_gl_ortho(f32 l, f32 r, f32 b, f32 t, f32 n, f32 f) {
-	abort_with("Not implemented");
-	return m4f_identity();
-}
-
-m4f video_gl_persp(f32 fov, f32 aspect, f32 near, f32 far) {
-	abort_with("Not implemented");
-	return m4f_identity();
-}
-
 u32 video_gl_get_draw_call_count() {
 	return gctx.draw_call_count;
 }

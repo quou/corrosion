@@ -210,7 +210,7 @@ void simple_renderer_push(struct simple_renderer* renderer, const struct simple_
 void simple_renderer_flush(struct simple_renderer* renderer) {
 	v2i window_size = video.get_framebuffer_size(renderer->framebuffer);
 
-	renderer->vertex_ub.projection = video.ortho(0.0f, (f32)window_size.x, (f32)window_size.y, 0.0f, -1.0f, 1.0f);
+	renderer->vertex_ub.projection = m4f_ortho(0.0f, (f32)window_size.x, (f32)window_size.y, 0.0f, -1.0f, 1.0f);
 	video.update_pipeline_uniform(renderer->pipeline, "primary", "VertexUniformData", &renderer->vertex_ub);
 
 	video.begin_pipeline(renderer->pipeline);
