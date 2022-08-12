@@ -2,7 +2,7 @@
 
 #include <corrosion/cr.h>
 
-#if 0
+//#if 0
 
 struct {
 	struct texture* texturea;
@@ -348,9 +348,9 @@ void cr_deinit() {
 	ui_deinit();
 }
 
-#endif
+//#endif
 
-//#if 0
+#if 0
 struct vertex {
 	v2f position;
 };
@@ -435,4 +435,4 @@ void cr_deinit() {
 	video.free_pipeline(app.pipeline);
 	video.free_vertex_buffer(app.tri_vb);
 }
-//#endif
+#endif
