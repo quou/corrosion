@@ -44,7 +44,7 @@ static void gl_log(u32 line, const char* file) {
 				break;
 		}
 
-		error("from %s:%u: glError returned %s", name);
+		error("from %s:%u: glError errored with %s", file, line, name);
 	}
 }
 
@@ -69,8 +69,8 @@ void video_gl_deinit() {
 }
 
 void video_gl_begin() {
-	glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-	glClear(GL_COLOR_BUFFER_BIT);
+	check_gl(glClearColor(0.0f, 0.0f, 0.0f, 0.0f));
+	check_gl(glClear(GL_COLOR_BUFFER_BIT));
 }
 
 void video_gl_end() {
