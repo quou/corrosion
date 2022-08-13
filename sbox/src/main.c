@@ -353,6 +353,7 @@ void cr_deinit() {
 //#if 0
 struct vertex {
 	v2f position;
+	v2f uv;
 };
 
 struct {
@@ -402,9 +403,15 @@ void cr_init() {
 								.location = 0,
 								.offset = offsetof(struct vertex, position),
 								.type = pipeline_attribute_vec2
+							},
+							{
+								.name = "uv",
+								.location = 1,
+								.offset = offsetof(struct vertex, uv),
+								.type = pipeline_attribute_vec2
 							}
 						},
-						.count = 1
+						.count = 2
 					},
 					.stride = sizeof(struct vertex),
 					.rate = pipeline_attribute_rate_per_vertex,
@@ -414,15 +421,32 @@ void cr_init() {
 			.count = 1
 		},
 		(struct pipeline_descriptor_sets) {
-			.count = 0
+			.sets = (struct pipeline_descriptor_set[]) {
+				{
+					.descriptors = (struct pipeline_descriptor[]) {
+						{
+							.name = "image",
+							.binding = 0,
+							.stage = pipeline_stage_fragment,
+							.resource = {
+								.type = pipeline_resource_texture,
+								.texture = app.texture
+							}
+						}
+					},
+					.count = 1,
+					.name = "primary"
+				}
+			},
+			.count = 1
 		}
 	);
 
 	struct vertex verts[] = {
-		{ { -0.5f,  0.5f } },
-		{ { -0.5f, -0.5f } },
-		{ {  0.5f, -0.5f } },
-		{ {  0.5f,  0.5f } }
+		{ { -0.5f,  0.5f }, { 1.0f, 0.0f } },
+		{ { -0.5f, -0.5f }, { 1.0f, 1.0f } },
+		{ {  0.5f, -0.5f }, { 0.0f, 1.0f } },
+		{ {  0.5f,  0.5f }, { 0.0f, 0.0f } }
 	};
 
 	u16 indices[] = {
@@ -437,6 +461,8 @@ void cr_init() {
 void cr_update(f64 ts) {
 	video.begin_framebuffer(video.get_default_fb());
 		video.begin_pipeline(app.pipeline);
+			video.bind_pipeline_descriptor_set(app.pipeline, "primary", 0);
+
 			video.bind_vertex_buffer(app.tri_vb, 0);
 			video.bind_index_buffer(app.tri_ib);
 			video.draw_indexed(6, 0, 1);

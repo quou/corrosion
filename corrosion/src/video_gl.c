@@ -129,6 +129,7 @@ struct pipeline* video_gl_new_pipeline(u32 flags, const struct shader* shader, c
 
 	pipeline->shader = (const struct video_gl_shader*)shader;
 
+	/* Copy attribute bindings. */
 	for (usize i = 0; i < attrib_bindings.count; i++) {
 		struct pipeline_attribute_binding dst = { 0 };
 		const struct pipeline_attribute_binding* src = attrib_bindings.bindings + i;
@@ -150,6 +151,27 @@ struct pipeline* video_gl_new_pipeline(u32 flags, const struct shader* shader, c
 		}
 
 		table_set(pipeline->attribute_bindings, dst.binding, dst);
+	}
+
+	/* Copy descriptor sets. */
+	for (usize i = 0; i < descriptor_sets.count; i++) {
+		struct pipeline_descriptor_set* set = &descriptor_sets.sets[i];
+
+		u64 set_key = hash_string(set->name);
+
+		struct video_gl_descriptor_set target_set = { 0 };
+
+		for (usize j = 0; j < set->count; j++) {
+			struct pipeline_descriptor* desc = &set->descriptors[j];
+
+			table_set(target_set.descriptors, hash_string(desc->name), ((struct video_gl_descriptor) {
+				.binding = desc->binding,
+				.stage = desc->stage,
+				.resource = desc->resource
+			}));
+		}
+
+		table_set(pipeline->descriptor_sets, set_key, target_set);
 	}
 
 	if (flags & pipeline_flags_depth_test) {
@@ -187,6 +209,14 @@ void video_gl_free_pipeline(struct pipeline* pipeline_) {
 	check_gl(glDeleteVertexArrays(1, &pipeline->vao));
 
 	free_vector(pipeline->to_enable);
+
+	for (u64* i = table_first(pipeline->descriptor_sets); i; i = table_next(pipeline->descriptor_sets, *i)) {
+		struct video_gl_descriptor_set* set = table_get(pipeline->descriptor_sets, *i);
+
+		free_table(set->descriptors);
+	}
+
+	free_table(pipeline->descriptor_sets);
 
 	for (u32* i = table_first(pipeline->attribute_bindings); i; i = table_next(pipeline->attribute_bindings, *i)) {
 		struct pipeline_attribute_binding* ab = table_get(pipeline->attribute_bindings, *i);
@@ -253,8 +283,29 @@ void video_gl_update_pipeline_uniform(struct pipeline* pipeline, const char* set
 	abort_with("Not implemented");
 }
 
-void video_gl_bind_pipeline_descriptor_set(struct pipeline* pipeline, const char* set, usize target) {
-	abort_with("Not implemented");
+void video_gl_bind_pipeline_descriptor_set(struct pipeline* pipeline_, const char* set, usize target) {
+	struct video_gl_pipeline* pipeline = (struct video_gl_pipeline*)pipeline_;
+
+	/* TODO: Remap the bindings to take `target' into account. */
+
+	struct video_gl_descriptor_set* desc_set = table_get(pipeline->descriptor_sets, hash_string(set));
+	if (!desc_set) {
+		error("%s: No such descriptor set.", set);
+		return;
+	}
+
+	for (u64* i = table_first(desc_set->descriptors); i; i = table_next(desc_set->descriptors, *i)) {
+		struct video_gl_descriptor* desc = table_get(desc_set->descriptors, *i);
+
+		switch (desc->resource.type) {
+			case pipeline_resource_texture: {
+				const struct video_gl_texture* texture = (const struct video_gl_texture*)desc->resource.texture;
+
+				check_gl(glActiveTexture(GL_TEXTURE0 + desc->binding));
+				check_gl(glBindTexture(GL_TEXTURE_2D, texture->id));
+			} break;
+		}
+	}
 }
 
 void video_gl_pipeline_add_descriptor_set(struct pipeline* pipeline, const struct pipeline_descriptor_set* set) {
@@ -370,12 +421,14 @@ void video_gl_bind_index_buffer(const struct index_buffer* ib_) {
 
 void video_gl_draw(usize count, usize offset, usize instances) {
 	check_gl(glDrawArraysInstanced(gctx.bound_pipeline->mode, offset, count, instances));
+	gctx.draw_call_count++;
 }
 
 void video_gl_draw_indexed(usize count, usize offset, usize instances) {
 	check_gl(glDrawElementsInstanced(gctx.bound_pipeline->mode, count,
 		gctx.bound_vb->flags & index_buffer_flags_u32 ? GL_UNSIGNED_INT : GL_UNSIGNED_SHORT,
 		(void*)offset, instances));
+	gctx.draw_call_count++;
 }
 
 void video_gl_set_scissor(v4i rect) {

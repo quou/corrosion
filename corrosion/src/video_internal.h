@@ -269,10 +269,21 @@ struct gl_video_context {
 	u32 draw_call_count;
 };
 
+struct video_gl_descriptor {
+	u32 binding;
+	u32 stage;
+	struct pipeline_resource resource;
+};
+
+struct video_gl_descriptor_set {
+	table(u64, struct video_gl_descriptor) descriptors;
+};
+
 struct video_gl_pipeline {
 	u32 flags;
 
 	table(u32, struct pipeline_attribute_binding) attribute_bindings;
+	table(u64, struct video_gl_descriptor_set) descriptor_sets;
 
 	const struct video_gl_shader* shader;
 
