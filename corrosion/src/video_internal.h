@@ -273,6 +273,9 @@ struct video_gl_descriptor {
 	u32 binding;
 	u32 stage;
 	struct pipeline_resource resource;
+
+	u32 ub_id;
+	usize ub_size;
 };
 
 struct video_gl_descriptor_set {

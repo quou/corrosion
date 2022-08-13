@@ -164,11 +164,20 @@ struct pipeline* video_gl_new_pipeline(u32 flags, const struct shader* shader, c
 		for (usize j = 0; j < set->count; j++) {
 			struct pipeline_descriptor* desc = &set->descriptors[j];
 
-			table_set(target_set.descriptors, hash_string(desc->name), ((struct video_gl_descriptor) {
+			struct video_gl_descriptor target_desc = {
 				.binding = desc->binding,
 				.stage = desc->stage,
 				.resource = desc->resource
-			}));
+			};
+
+			if (desc->resource.type == pipeline_resource_uniform_buffer) {
+				check_gl(glGenBuffers(1, &target_desc.ub_id));
+				check_gl(glBindBuffer(GL_UNIFORM_BUFFER, target_desc.ub_id));
+				check_gl(glBufferData(GL_UNIFORM_BUFFER, desc->resource.uniform.size, null, GL_DYNAMIC_DRAW));
+				target_desc.ub_size = desc->resource.uniform.size;
+			}
+
+			table_set(target_set.descriptors, hash_string(desc->name), target_desc);
 		}
 
 		table_set(pipeline->descriptor_sets, set_key, target_set);
@@ -212,6 +221,14 @@ void video_gl_free_pipeline(struct pipeline* pipeline_) {
 
 	for (u64* i = table_first(pipeline->descriptor_sets); i; i = table_next(pipeline->descriptor_sets, *i)) {
 		struct video_gl_descriptor_set* set = table_get(pipeline->descriptor_sets, *i);
+
+		for (u64* j = table_first(set->descriptors); j; j = table_next(set->descriptors, *j)) {
+			struct video_gl_descriptor* desc = table_get(set->descriptors, *j);
+
+			if (desc->resource.type == pipeline_resource_uniform_buffer) {
+				check_gl(glDeleteBuffers(1, &desc->ub_id));
+			}
+		}
 
 		free_table(set->descriptors);
 	}
@@ -279,8 +296,26 @@ void video_gl_recreate_pipeline(struct pipeline* pipeline) {
 
 }
 
-void video_gl_update_pipeline_uniform(struct pipeline* pipeline, const char* set, const char* descriptor, const void* data) {
-	abort_with("Not implemented");
+void video_gl_update_pipeline_uniform(struct pipeline* pipeline_, const char* set, const char* descriptor, const void* data) {
+	struct video_gl_pipeline* pipeline = (struct video_gl_pipeline*)pipeline_;
+
+	u64 set_name_hash  = hash_string(set);
+	u64 desc_name_hash = hash_string(descriptor);
+
+	struct video_gl_descriptor_set* desc_set = table_get(pipeline->descriptor_sets, set_name_hash);
+	if (!desc_set) {
+		error("%s: No such descriptor set.", set);
+		return;
+	}
+
+	struct video_gl_descriptor* desc = table_get(desc_set->descriptors, desc_name_hash);
+	if (!desc) {
+		error("%s: No such descriptor on descriptor set `%s'.", descriptor, set);
+		return;
+	}
+
+	check_gl(glBindBuffer(GL_UNIFORM_BUFFER, desc->ub_id));
+	check_gl(glBufferSubData(GL_UNIFORM_BUFFER, 0, desc->ub_size, data));
 }
 
 void video_gl_bind_pipeline_descriptor_set(struct pipeline* pipeline_, const char* set, usize target) {
@@ -303,6 +338,9 @@ void video_gl_bind_pipeline_descriptor_set(struct pipeline* pipeline_, const cha
 
 				check_gl(glActiveTexture(GL_TEXTURE0 + desc->binding));
 				check_gl(glBindTexture(GL_TEXTURE_2D, texture->id));
+			} break;
+			case pipeline_resource_uniform_buffer: {
+				check_gl(glBindBufferBase(GL_UNIFORM_BUFFER, desc->binding, desc->ub_id));
 			} break;
 		}
 	}

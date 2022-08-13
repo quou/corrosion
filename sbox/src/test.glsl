@@ -9,10 +9,14 @@ layout (location = 0) out VSOut {
 	vec2 uv;
 } vs_out;
 
+layout (binding = 1) uniform VertexConfig {
+	mat4 transform;
+};
+
 void main() {
 	vs_out.uv = uv;
 
-	gl_Position = vec4(position, 0.0, 1.0);
+	gl_Position = transform * vec4(position, 0.0, 1.0);
 }
 
 #end vertex

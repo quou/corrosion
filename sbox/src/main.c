@@ -362,6 +362,12 @@ struct {
 	struct index_buffer* tri_ib;
 
 	struct texture* texture;
+
+	struct {
+		m4f transform;
+	} v_config;
+
+	f64 time;
 } app;
 
 struct app_config cr_config() {
@@ -432,9 +438,18 @@ void cr_init() {
 								.type = pipeline_resource_texture,
 								.texture = app.texture
 							}
+						},
+						{
+							.name = "VertexConfig",
+							.binding = 1,
+							.stage = pipeline_stage_vertex,
+							.resource = {
+								.type = pipeline_resource_uniform_buffer,
+								.uniform.size = sizeof app.v_config
+							}
 						}
 					},
-					.count = 1,
+					.count = 2,
 					.name = "primary"
 				}
 			},
@@ -459,6 +474,12 @@ void cr_init() {
 }
 
 void cr_update(f64 ts) {
+	app.time += ts;
+
+	app.v_config.transform = m4f_rotation(euler(make_v3f(0.0f, 0.0f, (f32)app.time * 10.0f)));
+
+	video.update_pipeline_uniform(app.pipeline, "primary", "VertexConfig", &app.v_config);
+
 	video.begin_framebuffer(video.get_default_fb());
 		video.begin_pipeline(app.pipeline);
 			video.bind_pipeline_descriptor_set(app.pipeline, "primary", 0);
