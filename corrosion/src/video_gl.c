@@ -323,6 +323,8 @@ void video_gl_free_vertex_buffer(struct vertex_buffer* vb_) {
 void video_gl_bind_vertex_buffer(const struct vertex_buffer* vb_, u32 point) {
 	const struct video_gl_vertex_buffer* vb = (struct video_gl_vertex_buffer*)vb_;
 
+	gctx.bound_vb = vb;
+
 	check_gl(glBindBuffer(GL_ARRAY_BUFFER, vb->id));
 
 	pipeline_setup_va(gctx.bound_pipeline, point);
@@ -337,16 +339,33 @@ void video_gl_copy_vertex_buffer(struct vertex_buffer* dst, usize dst_offset, co
 }
 
 struct index_buffer* video_gl_new_index_buffer(void* elements, usize count, u32 flags) {
-	abort_with("Not implemented");
-	return null;
+	struct video_gl_index_buffer* ib = core_calloc(1, sizeof *ib);
+
+	ib->flags = flags;
+
+	usize el_size = ib->flags & index_buffer_flags_u32 ? sizeof(u32) : sizeof(u16);
+
+	check_gl(glGenBuffers(1, &ib->id));
+	check_gl(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ib->id));
+	check_gl(glBufferData(GL_ELEMENT_ARRAY_BUFFER, count * el_size, elements, GL_STATIC_DRAW));
+
+	return (struct index_buffer*)ib;
 }
 
-void video_gl_free_index_buffer(struct index_buffer* ib) {
-	abort_with("Not implemented");
+void video_gl_free_index_buffer(struct index_buffer* ib_) {
+	struct video_gl_index_buffer* ib = (struct video_gl_index_buffer*)ib_;
+
+	check_gl(glDeleteBuffers(1, &ib->id));
+
+	core_free(ib);
 }
 
-void video_gl_bind_index_buffer(const struct index_buffer* ib) {
-	abort_with("Not implemented");
+void video_gl_bind_index_buffer(const struct index_buffer* ib_) {
+	const struct video_gl_index_buffer* ib = (const struct video_gl_index_buffer*)ib_;
+
+	check_gl(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ib->id));
+
+	gctx.bound_ib = ib;
 }
 
 void video_gl_draw(usize count, usize offset, usize instances) {
@@ -354,7 +373,9 @@ void video_gl_draw(usize count, usize offset, usize instances) {
 }
 
 void video_gl_draw_indexed(usize count, usize offset, usize instances) {
-	abort_with("Not implemented");
+	check_gl(glDrawElementsInstanced(gctx.bound_pipeline->mode, count,
+		gctx.bound_vb->flags & index_buffer_flags_u32 ? GL_UNSIGNED_INT : GL_UNSIGNED_SHORT,
+		(void*)offset, instances));
 }
 
 void video_gl_set_scissor(v4i rect) {

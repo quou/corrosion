@@ -358,6 +358,7 @@ struct vertex {
 struct {
 	struct pipeline* pipeline;
 	struct vertex_buffer* tri_vb;
+	struct index_buffer* tri_ib;
 } app;
 
 struct app_config cr_config() {
@@ -414,19 +415,27 @@ void cr_init() {
 	);
 
 	struct vertex verts[] = {
-		{ { 0.0f, 0.5f } },
+		{ { -0.5f,  0.5f } },
 		{ { -0.5f, -0.5f } },
-		{ { 0.5f,  -0.5f } }
+		{ {  0.5f, -0.5f } },
+		{ {  0.5f,  0.5f } }
+	};
+
+	u16 indices[] = {
+		0, 1, 2,
+		0, 2, 3
 	};
 
 	app.tri_vb = video.new_vertex_buffer(verts, sizeof verts, vertex_buffer_flags_none);
+	app.tri_ib = video.new_index_buffer(indices, sizeof indices, index_buffer_flags_u16);
 }
 
 void cr_update(f64 ts) {
 	video.begin_framebuffer(video.get_default_fb());
 		video.begin_pipeline(app.pipeline);
 			video.bind_vertex_buffer(app.tri_vb, 0);
-			video.draw(3, 0, 1);
+			video.bind_index_buffer(app.tri_ib);
+			video.draw_indexed(6, 0, 1);
 		video.end_pipeline(app.pipeline);
 	video.end_framebuffer(video.get_default_fb());
 }
@@ -434,5 +443,6 @@ void cr_update(f64 ts) {
 void cr_deinit() {
 	video.free_pipeline(app.pipeline);
 	video.free_vertex_buffer(app.tri_vb);
+	video.free_index_buffer(app.tri_ib);
 }
 //#endif

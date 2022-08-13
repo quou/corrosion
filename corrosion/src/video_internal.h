@@ -263,6 +263,8 @@ struct gl_video_context {
 	struct framebuffer* default_fb;
 
 	struct video_gl_pipeline* bound_pipeline;
+	const struct video_gl_vertex_buffer* bound_vb;
+	const struct video_gl_index_buffer*  bound_ib;
 
 	u32 draw_call_count;
 };
