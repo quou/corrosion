@@ -379,21 +379,45 @@ void video_gl_draw_indexed(usize count, usize offset, usize instances) {
 }
 
 void video_gl_set_scissor(v4i rect) {
-	abort_with("Not implemented");
+	glScissor(rect.x, rect.y, rect.z, rect.w);
+}
+
+static void init_texture(struct video_gl_texture* texture, const struct image* image, u32 flags) {
+	texture->flags = flags;
+	texture->size = image->size;
+
+	u32 filter = flags & texture_flags_filter_linear ? GL_LINEAR : GL_NEAREST;
+
+	check_gl(glGenTextures(1, &texture->id));
+	check_gl(glBindTexture(GL_TEXTURE_2D, texture->id));
+	check_gl(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filter));
+	check_gl(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filter));
+	check_gl(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT));
+	check_gl(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT));
+
+	check_gl(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, image->size.x, image->size.y, 0,
+		GL_RGBA, GL_UNSIGNED_BYTE, image->colours));
+}
+
+static void deinit_texture(struct video_gl_texture* texture) {
+	check_gl(glDeleteTextures(1, &texture->id));
 }
 
 struct texture* video_gl_new_texture(const struct image* image, u32 flags) {
-	abort_with("Not implemented");
-	return null;
+	struct video_gl_texture* texture = core_calloc(1, sizeof *texture);
+
+	init_texture(texture, image, flags);
+
+	return (struct texture*)texture;
 }
 
 void video_gl_free_texture(struct texture* texture) {
-	abort_with("Not implemented");
+	deinit_texture((struct video_gl_texture*)texture);
+	core_free(texture);
 }
 
-v2i  video_gl_get_texture_size(const struct texture* texture) {
-	abort_with("Not implemented");
-	return v2i_zero();
+v2i video_gl_get_texture_size(const struct texture* texture) {
+	return ((struct video_gl_texture*)texture)->size;
 }
 
 void video_gl_texture_copy(struct texture* dst, v2i dst_offset, const struct texture* src, v2i src_offset, v2i dimensions) {
@@ -480,15 +504,36 @@ static void shader_on_unload(void* payload, usize payload_size) {
 	deinit_shader(payload);
 }
 
+static void texture_on_load(const char* filename, u8* raw, usize raw_size, void* payload, usize payload_size, void* udata) {
+	struct image image;
+	init_image_from_raw(&image, raw, raw_size);
+
+	init_texture(payload, &image, *(u32*)udata);
+}
+
+static void texture_on_unload(void* payload, usize payload_size) {
+	deinit_texture(payload);
+}
+
 void video_gl_register_resources() {
 	reg_res_type("shader", &(struct res_config) {
-		.payload_size = sizeof(struct video_vk_shader),
+		.payload_size = sizeof(struct video_gl_shader),
 		.free_raw_on_load = true,
 		.terminate_raw = false,
 		.alt_raw = bir_error_csh,
 		.alt_raw_size = bir_error_csh_size,
 		.on_load = shader_on_load,
 		.on_unload = shader_on_unload
+	});
+
+	reg_res_type("texture", &(struct res_config) {
+		.payload_size = sizeof(struct video_gl_texture),
+		.free_raw_on_load = true,
+		.terminate_raw = false,
+		.alt_raw = bir_error_png,
+		.alt_raw_size = bir_error_png_size,
+		.on_load = texture_on_load,
+		.on_unload = texture_on_unload
 	});
 }
 

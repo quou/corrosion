@@ -295,3 +295,10 @@ struct video_gl_index_buffer {
 	u32 flags;
 	u32 id;
 };
+
+struct video_gl_texture {
+	u32 flags;
+	u32 id;
+
+	v2i size;
+};

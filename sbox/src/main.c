@@ -359,6 +359,8 @@ struct {
 	struct pipeline* pipeline;
 	struct vertex_buffer* tri_vb;
 	struct index_buffer* tri_ib;
+
+	struct texture* texture;
 } app;
 
 struct app_config cr_config() {
@@ -384,8 +386,10 @@ struct app_config cr_config() {
 void cr_init() {
 	const struct shader* shader = load_shader("shaders/test.csh");
 
+	app.texture = load_texture("res/chad.jpg", texture_flags_filter_linear);
+
 	app.pipeline = video.new_pipeline(
-		pipeline_flags_draw_tris,
+		pipeline_flags_draw_tris | pipeline_flags_cull_back_face,
 		shader,
 		video.get_default_fb(),
 		(struct pipeline_attribute_bindings) {

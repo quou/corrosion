@@ -102,3 +102,5 @@ struct image {
 
 void init_image_from_raw(struct image* image, const u8* raw, usize raw_size);
 void deinit_image(struct image* image);
+
+void flip_image_y(struct image* image);

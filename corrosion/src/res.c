@@ -286,6 +286,21 @@ void deinit_image(struct image* image) {
 	stbi_image_free(image->colours);
 }
 
+void flip_image_y(struct image* image) {
+	const usize stride = image->size.x * 4;
+	u8* row  = core_alloc(stride);
+	u8* low  = image->colours;
+	u8* high = &image->colours[(image->size.y - 1) * stride];
+
+	for (; low < high; low += stride, high -= stride) {
+		memcpy(row, low, stride);
+		memcpy(low, high, stride);
+		memcpy(high, row, stride);
+	}
+
+	core_free(row);
+}
+
 struct res {
 	u8* payload;
 	usize payload_size;
