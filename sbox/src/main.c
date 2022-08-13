@@ -367,6 +367,10 @@ struct {
 		m4f transform;
 	} v_config;
 
+	struct {
+		v3f colour;
+	} f_config;
+
 	f64 time;
 } app;
 
@@ -374,7 +378,7 @@ struct app_config cr_config() {
 	return (struct app_config) {
 		.name = "Sandbox",
 		.video_config = (struct video_config) {
-			.api = video_api_opengl,
+			.api = video_api_vulkan,
 #ifdef debug
 			.enable_validation = true,
 #else
@@ -439,9 +443,15 @@ void cr_init() {
 								.texture = app.texture
 							}
 						},
+					},
+					.count = 1,
+					.name = "primary"
+				},
+				{
+					.descriptors = (struct pipeline_descriptor[]) {
 						{
 							.name = "VertexConfig",
-							.binding = 1,
+							.binding = 0,
 							.stage = pipeline_stage_vertex,
 							.resource = {
 								.type = pipeline_resource_uniform_buffer,
@@ -449,11 +459,28 @@ void cr_init() {
 							}
 						}
 					},
-					.count = 2,
-					.name = "primary"
+					.count = 1,
+					.name = "ubdata"
+
+				},
+				{
+					.descriptors = (struct pipeline_descriptor[]) {
+						{
+							.name = "FragmentConfig",
+							.binding = 0,
+							.stage = pipeline_stage_fragment,
+							.resource = {
+								.type = pipeline_resource_uniform_buffer,
+								.uniform.size = sizeof app.f_config
+							}
+						}
+					},
+					.count = 1,
+					.name = "fubdata"
+
 				}
 			},
-			.count = 1
+			.count = 3
 		}
 	);
 
@@ -477,12 +504,16 @@ void cr_update(f64 ts) {
 	app.time += ts;
 
 	app.v_config.transform = m4f_rotation(euler(make_v3f(0.0f, 0.0f, (f32)app.time * 10.0f)));
+	app.f_config.colour = make_rgb(0xff0000);
 
-	video.update_pipeline_uniform(app.pipeline, "primary", "VertexConfig", &app.v_config);
+	video.update_pipeline_uniform(app.pipeline, "ubdata", "VertexConfig", &app.v_config);
+	video.update_pipeline_uniform(app.pipeline, "fubdata", "FragmentConfig", &app.f_config);
 
 	video.begin_framebuffer(video.get_default_fb());
 		video.begin_pipeline(app.pipeline);
 			video.bind_pipeline_descriptor_set(app.pipeline, "primary", 0);
+			video.bind_pipeline_descriptor_set(app.pipeline, "ubdata", 1);
+			video.bind_pipeline_descriptor_set(app.pipeline, "fubdata", 2);
 
 			video.bind_vertex_buffer(app.tri_vb, 0);
 			video.bind_index_buffer(app.tri_ib);
