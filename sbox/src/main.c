@@ -2,7 +2,7 @@
 
 #include <corrosion/cr.h>
 
-#if 0
+//#if 0
 
 struct {
 	struct texture* texturea;
@@ -28,7 +28,7 @@ struct app_config cr_config() {
 	return (struct app_config) {
 		.name = "Sandbox",
 		.video_config = (struct video_config) {
-			.api = video_api_vulkan,
+			.api = video_api_opengl,
 #ifdef debug
 			.enable_validation = true,
 #else
@@ -348,9 +348,9 @@ void cr_deinit() {
 	ui_deinit();
 }
 
-#endif
+//#endif
 
-//#if 0
+#if 0
 struct vertex {
 	v2f position;
 	v2f uv;
@@ -527,6 +527,15 @@ void cr_update(f64 ts) {
 	app.f_config.colour = make_rgb(0xff0000);
 	app.f_config_blue.colour = make_rgb(0x0000ff);
 
+	gizmo_camera(&(struct camera) {
+		.fov = 70.0f,
+		.near_plane = 0.1f,
+		.far_plane = 100.0f
+	});
+
+	gizmo_colour(make_rgba(0x00ffff, 255));
+	gizmo_box(make_v3f(1.0f, -1.0f, 3.0f), make_v3f(1.0f, 1.0f, 1.0f), euler(make_v3f(0.0f, 25.0f, 0.0f)));
+
 	video.update_pipeline_uniform(app.pipeline, "ubdata", "VertexConfig", &app.v_config);
 	video.update_pipeline_uniform(app.pipeline, "fubdata", "FragmentConfig", &app.f_config);
 	video.update_pipeline_uniform(app.pipeline, "fubdata_blue", "FragmentConfig", &app.f_config_blue);
@@ -546,6 +555,8 @@ void cr_update(f64 ts) {
 			video.bind_index_buffer(app.tri_ib);
 			video.draw_indexed(6, 0, 1);
 		video.end_pipeline(app.pipeline);
+
+		gizmos_draw();
 	video.end_framebuffer(video.get_default_fb());
 }
 
@@ -554,4 +565,4 @@ void cr_deinit() {
 	video.free_vertex_buffer(app.tri_vb);
 	video.free_index_buffer(app.tri_ib);
 }
-//#endif
+#endif

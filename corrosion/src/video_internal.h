@@ -267,6 +267,7 @@ struct gl_video_context {
 	struct video_gl_pipeline* bound_pipeline;
 	const struct video_gl_vertex_buffer* bound_vb;
 	const struct video_gl_index_buffer*  bound_ib;
+	const struct video_gl_framebuffer*   bound_fb;
 
 	u32 draw_call_count;
 };
@@ -313,6 +314,8 @@ struct video_gl_shader {
 struct video_gl_vertex_buffer {
 	u32 flags;
 	u32 id;
+
+	u32 mode;
 };
 
 struct video_gl_index_buffer {
@@ -325,4 +328,19 @@ struct video_gl_texture {
 	u32 id;
 
 	v2i size;
+};
+
+struct video_gl_framebuffer {
+	u32 id;
+
+	bool has_depth;
+
+	v2i size;
+
+	u32* colours;
+	usize colour_count;
+
+	u32 depth_attachment;
+
+	table(usize, u32) attachment_map; 
 };
