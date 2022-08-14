@@ -13,6 +13,7 @@
 #pragma pack(push, 1)
 struct shader_header {
 	char header[2];
+	u16 bind_table_count;
 	u64 v_offset;
 	u64 f_offset;
 	u64 v_size;
@@ -21,6 +22,7 @@ struct shader_header {
 	u64 f_gl_offset;
 	u64 v_gl_size;
 	u64 f_gl_size;
+	u64 bind_table_offset;
 };
 #pragma pack(pop)
 
@@ -280,6 +282,7 @@ struct video_gl_descriptor {
 
 struct video_gl_descriptor_set {
 	table(u64, struct video_gl_descriptor) descriptors;
+	usize count;
 };
 
 struct video_gl_pipeline {
@@ -296,8 +299,15 @@ struct video_gl_pipeline {
 	vector(u32) to_enable;
 };
 
+struct video_gl_desc_id {
+	u32 set;
+	u32 binding;
+};
+
 struct video_gl_shader {
 	u32 program;
+
+	table(u64, u32) bind_map;
 };
 
 struct video_gl_vertex_buffer {

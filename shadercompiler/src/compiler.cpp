@@ -26,6 +26,7 @@ struct PrepOut {
 #pragma pack(push, 1)
 struct ShaderHeader {
 	char header[2];
+	u16 bind_table_count;
 	u64 v_offset;
 	u64 f_offset;
 	u64 v_size;
@@ -34,9 +35,33 @@ struct ShaderHeader {
 	u64 f_gl_offset;
 	u64 v_gl_size;
 	u64 f_gl_size;
+	u64 bind_table_offset;
 };
 #pragma pack(pop)
 
+struct Desc {
+	spirv_cross::CompilerGLSL& compiler;
+	u32 binding;
+	u64 id;
+};
+
+struct DescSet {
+	u32 count = 0;
+
+	std::vector<Desc> bindings;
+};
+
+struct DescID {
+	u32 set;
+	u32 binding;
+};
+
+/* Maps an ID optained from hashing a DescID to actual shader bindings, for OpenGL. */
+std::unordered_map<u64, u32> set_bindings;
+std::unordered_map<u32, DescSet> sets;
+
+
+u32 current_binding = 0;
 
 std::vector<std::string> included;
 
@@ -199,9 +224,7 @@ loop_end:
 	return true;
 }
 
-static std::string compile_for_opengl(const std::vector<u32> data) {
-	spirv_cross::CompilerGLSL compiler(data);
-
+static void compile_for_opengl(spirv_cross::CompilerGLSL& compiler) {
 	spirv_cross::CompilerGLSL::Options options;
 
 	options.version = 320;
@@ -216,14 +239,21 @@ static std::string compile_for_opengl(const std::vector<u32> data) {
 		u32 set = compiler.get_decoration(resource.id, spv::DecorationDescriptorSet);
 		u32 binding = compiler.get_decoration(resource.id, spv::DecorationBinding);
 
+		sets[set].count++;
+		sets[set].bindings.push_back(Desc { compiler, binding, resource.id });
+
 		compiler.unset_decoration(resource.id, spv::DecorationDescriptorSet);
-
-		/* TODO: Properly modify the binding. */
-
-		compiler.set_decoration(resource.id, spv::DecorationBinding, binding);
 	}
 
-	return compiler.compile();
+	for (auto& resource : resources.uniform_buffers) {
+		u32 set = compiler.get_decoration(resource.id, spv::DecorationDescriptorSet);
+		u32 binding = compiler.get_decoration(resource.id, spv::DecorationBinding);
+
+		sets[set].count++;
+		sets[set].bindings.push_back(Desc { compiler, binding, resource.id });
+
+		compiler.unset_decoration(resource.id, spv::DecorationDescriptorSet);
+	}
 }
 
 i32 main(i32 argc, const char** argv) {
@@ -279,8 +309,29 @@ i32 main(i32 argc, const char** argv) {
 		std::vector<u32> vert_data(vertex_mod.cbegin(), vertex_mod.cend());
 		std::vector<u32> frag_data(fragment_mod.cbegin(), fragment_mod.cend());
 
-		std::string vert_opengl_src = compile_for_opengl(vert_data);
-		std::string frag_opengl_src = compile_for_opengl(frag_data);
+		spirv_cross::CompilerGLSL v_compiler(vert_data);
+		spirv_cross::CompilerGLSL f_compiler(frag_data);
+
+		compile_for_opengl(v_compiler);
+		compile_for_opengl(f_compiler);
+
+		for (auto& sp : sets) {
+			auto id = sp.first;
+			auto& set = sp.second;
+
+			for (auto& desc : set.bindings) {
+				u32 binding = current_binding++;
+
+				desc.compiler.set_decoration(desc.id, spv::DecorationBinding, binding);
+
+				DescID did{ id, desc.binding };
+
+				set_bindings[elf_hash(reinterpret_cast<u8*>(&did), sizeof did)] = binding;
+			}
+		}
+		
+		std::string vert_opengl_src = v_compiler.compile();
+		std::string frag_opengl_src = f_compiler.compile();
 
 		FILE* outfile = fopen(argv[2], "wb");
 		if (!outfile) {
@@ -291,6 +342,12 @@ i32 main(i32 argc, const char** argv) {
 		ShaderHeader header{};
 		header.header[0] = 'C';
 		header.header[1] = 'S';
+
+		header.bind_table_count = 0;
+		for (const auto& sbp : set_bindings) {
+			header.bind_table_count++;
+		}
+
 		header.v_size = vert_data.size() * sizeof(u32);
 		header.f_size = frag_data.size() * sizeof(u32);
 		header.v_offset = sizeof header;
@@ -299,6 +356,7 @@ i32 main(i32 argc, const char** argv) {
 		header.f_gl_size = frag_opengl_src.size() + 1;
 		header.v_gl_offset = header.f_offset + header.f_size;
 		header.f_gl_offset = header.v_gl_offset + header.v_gl_size;
+		header.bind_table_offset = header.f_gl_offset + header.f_gl_size;
 
 		fwrite(&header, 1, sizeof header, outfile);
 		fwrite(&vert_data[0], 1, header.v_size, outfile);
@@ -308,6 +366,12 @@ i32 main(i32 argc, const char** argv) {
 		fwrite("\0", 1, 1, outfile);
 		fwrite(frag_opengl_src.c_str(), 1, frag_opengl_src.size(), outfile);
 		fwrite("\0", 1, 1, outfile);
+
+		/* Write the binding table, for the OpenGL backend. */
+		for (const auto& sbp : set_bindings) {
+			fwrite(&sbp.first, 1, sizeof sbp.first, outfile);
+			fwrite(&sbp.second, 1, sizeof sbp.second, outfile);
+		}
 
 		fclose(outfile);
 	} else {

@@ -160,6 +160,7 @@ struct pipeline* video_gl_new_pipeline(u32 flags, const struct shader* shader, c
 		u64 set_key = hash_string(set->name);
 
 		struct video_gl_descriptor_set target_set = { 0 };
+		target_set.count = set->count;
 
 		for (usize j = 0; j < set->count; j++) {
 			struct pipeline_descriptor* desc = &set->descriptors[j];
@@ -247,7 +248,7 @@ void video_gl_free_pipeline(struct pipeline* pipeline_) {
 }
 
 void video_gl_begin_pipeline(const struct pipeline* pipeline_) {
-	const struct video_gl_pipeline* pipeline = (const struct video_gl_pipeline*)pipeline_;
+	struct video_gl_pipeline* pipeline = (struct video_gl_pipeline*)pipeline_;
 
 	gctx.bound_pipeline = (void*)pipeline;
 
@@ -321,8 +322,6 @@ void video_gl_update_pipeline_uniform(struct pipeline* pipeline_, const char* se
 void video_gl_bind_pipeline_descriptor_set(struct pipeline* pipeline_, const char* set, usize target) {
 	struct video_gl_pipeline* pipeline = (struct video_gl_pipeline*)pipeline_;
 
-	/* TODO: Remap the bindings to take `target' into account. */
-
 	struct video_gl_descriptor_set* desc_set = table_get(pipeline->descriptor_sets, hash_string(set));
 	if (!desc_set) {
 		error("%s: No such descriptor set.", set);
@@ -332,15 +331,26 @@ void video_gl_bind_pipeline_descriptor_set(struct pipeline* pipeline_, const cha
 	for (u64* i = table_first(desc_set->descriptors); i; i = table_next(desc_set->descriptors, *i)) {
 		struct video_gl_descriptor* desc = table_get(desc_set->descriptors, *i);
 
+		struct video_gl_desc_id id = { (u32)target, (u32)desc->binding };
+		u64 id_hash = elf_hash((u8*)&id, sizeof id);
+
+		u32* binding_ptr = table_get(((struct video_gl_shader*)pipeline->shader)->bind_map, id_hash);
+		if (!binding_ptr) {
+			error("No descriptor with binding #%u on set #%u", desc->binding, (u32)target);
+			continue;
+		}
+
+		u32 binding = *binding_ptr;
+
 		switch (desc->resource.type) {
 			case pipeline_resource_texture: {
 				const struct video_gl_texture* texture = (const struct video_gl_texture*)desc->resource.texture;
 
-				check_gl(glActiveTexture(GL_TEXTURE0 + desc->binding));
+				check_gl(glActiveTexture(GL_TEXTURE0 + binding));
 				check_gl(glBindTexture(GL_TEXTURE_2D, texture->id));
 			} break;
 			case pipeline_resource_uniform_buffer: {
-				check_gl(glBindBufferBase(GL_UNIFORM_BUFFER, desc->binding, desc->ub_id));
+				check_gl(glBindBufferBase(GL_UNIFORM_BUFFER, binding, desc->ub_id));
 			} break;
 		}
 	}
@@ -532,7 +542,8 @@ static u32 init_shader_section(u32 section, const char* src) {
 	return shader;
 }
 
-static void init_shader(struct video_gl_shader* shader, const char* vert_src, const char* frag_src) {
+static void init_shader(struct video_gl_shader* shader, const char* vert_src, const char* frag_src,
+	const struct shader_header* header, const u8* data) {
 	u32 vert = init_shader_section(GL_VERTEX_SHADER, vert_src);
 	u32 frag = init_shader_section(GL_FRAGMENT_SHADER, frag_src);
 
@@ -552,10 +563,19 @@ static void init_shader(struct video_gl_shader* shader, const char* vert_src, co
 
 	check_gl(glDeleteShader(vert));
 	check_gl(glDeleteShader(frag));
+
+	for (u16 i = 0; i < header->bind_table_count; i++) {
+		u64 key = *(u64*)(data + header->bind_table_offset + ((sizeof(u32) + sizeof(u64)) * (u64)i));
+		u32 val = *(u32*)(((u64*)(data + header->bind_table_offset + ((sizeof(u32) + sizeof(u64)) * (u64)i))) + 1);
+
+		table_set(shader->bind_map, key, val);
+	}
 }
 
 static void deinit_shader(struct video_gl_shader* shader) {
 	check_gl(glDeleteProgram(shader->program));
+
+	free_table(shader->bind_map);
 }
 
 struct shader* video_gl_new_shader(const u8* data, usize data_size) {
@@ -568,7 +588,7 @@ struct shader* video_gl_new_shader(const u8* data, usize data_size) {
 		return null;
 	}
 
-	init_shader(shader, data + header->v_gl_offset, data + header->f_gl_offset);
+	init_shader(shader, data + header->v_gl_offset, data + header->f_gl_offset, header, data);
 
 	return (struct shader*)shader;
 }
@@ -588,7 +608,7 @@ static void shader_on_load(const char* filename, u8* raw, usize raw_size, void* 
 		return;
 	}
 
-	init_shader(payload, raw + header->v_gl_offset, raw + header->f_gl_offset);
+	init_shader(payload, raw + header->v_gl_offset, raw + header->f_gl_offset, header, raw);
 }
 
 static void shader_on_unload(void* payload, usize payload_size) {
