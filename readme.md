@@ -2,11 +2,17 @@
 
 Framework for Vulkan.
 
+## Notes
+ - Uses the dynamic rendering extension.
+ - WIP OpenGL ES backend. Currently it isn't functional at all, but most of the groundwork is there.
+
 ## Build Instructions
 
 ### Prerequisites
- - A graphics processor that supports at least Vulkan 1.0.
- - Vulkan SDK, including `glslc` working and added to path.
+ - A graphics processor that supports at least Vulkan 1.2 and the following extensions:
+       - VK_KHR_dynamic_rendering
+       - VK_KHR_swapchain
+ - Vulkan SDK, including shaderc and SPIRV-Cross.
  - Vulkan validation layers (optional but highly recommended).
  - On GNU/Linux:
 	 - X11 (Wayland might be supported in the future as well, but don't count on it).
