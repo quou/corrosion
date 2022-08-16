@@ -28,7 +28,7 @@ struct app_config cr_config() {
 	return (struct app_config) {
 		.name = "Sandbox",
 		.video_config = (struct video_config) {
-			.api = video_api_vulkan,
+			.api = video_api_opengl,
 #ifdef debug
 			.enable_validation = true,
 #else
@@ -353,11 +353,29 @@ void cr_deinit() {
 #if 0
 struct vertex {
 	v2f position;
+	v2f uv;
 };
 
 struct {
 	struct pipeline* pipeline;
 	struct vertex_buffer* tri_vb;
+	struct index_buffer* tri_ib;
+
+	struct texture* texture;
+
+	struct {
+		m4f transform;
+	} v_config;
+
+	struct {
+		v3f colour;
+	} f_config;
+
+	struct {
+		v3f colour;
+	} f_config_blue;
+
+	f64 time;
 } app;
 
 struct app_config cr_config() {
@@ -383,8 +401,10 @@ struct app_config cr_config() {
 void cr_init() {
 	const struct shader* shader = load_shader("shaders/test.csh");
 
+	app.texture = load_texture("res/chad.jpg", texture_flags_filter_linear);
+
 	app.pipeline = video.new_pipeline(
-		pipeline_flags_draw_tris,
+		pipeline_flags_draw_tris | pipeline_flags_cull_back_face,
 		shader,
 		video.get_default_fb(),
 		(struct pipeline_attribute_bindings) {
@@ -397,9 +417,15 @@ void cr_init() {
 								.location = 0,
 								.offset = offsetof(struct vertex, position),
 								.type = pipeline_attribute_vec2
+							},
+							{
+								.name = "uv",
+								.location = 1,
+								.offset = offsetof(struct vertex, uv),
+								.type = pipeline_attribute_vec2
 							}
 						},
-						.count = 1
+						.count = 2
 					},
 					.stride = sizeof(struct vertex),
 					.rate = pipeline_attribute_rate_per_vertex,
@@ -409,30 +435,134 @@ void cr_init() {
 			.count = 1
 		},
 		(struct pipeline_descriptor_sets) {
-			.count = 0
+			.sets = (struct pipeline_descriptor_set[]) {
+				{
+					.descriptors = (struct pipeline_descriptor[]) {
+						{
+							.name = "image",
+							.binding = 0,
+							.stage = pipeline_stage_fragment,
+							.resource = {
+								.type = pipeline_resource_texture,
+								.texture = app.texture
+							}
+						},
+					},
+					.count = 1,
+					.name = "primary"
+				},
+				{
+					.descriptors = (struct pipeline_descriptor[]) {
+						{
+							.name = "VertexConfig",
+							.binding = 0,
+							.stage = pipeline_stage_vertex,
+							.resource = {
+								.type = pipeline_resource_uniform_buffer,
+								.uniform.size = sizeof app.v_config
+							}
+						}
+					},
+					.count = 1,
+					.name = "ubdata"
+
+				},
+				{
+					.descriptors = (struct pipeline_descriptor[]) {
+						{
+							.name = "FragmentConfig",
+							.binding = 0,
+							.stage = pipeline_stage_fragment,
+							.resource = {
+								.type = pipeline_resource_uniform_buffer,
+								.uniform.size = sizeof app.f_config
+							}
+						}
+					},
+					.count = 1,
+					.name = "fubdata"
+
+				},
+				{
+					.descriptors = (struct pipeline_descriptor[]) {
+						{
+							.name = "FragmentConfig",
+							.binding = 0,
+							.stage = pipeline_stage_fragment,
+							.resource = {
+								.type = pipeline_resource_uniform_buffer,
+								.uniform.size = sizeof app.f_config
+							}
+						}
+					},
+					.count = 1,
+					.name = "fubdata_blue"
+
+				}
+			},
+			.count = 4
 		}
 	);
 
 	struct vertex verts[] = {
-		{ { 0.0f, 0.5f } },
-		{ { -0.5f, -0.5f } },
-		{ { 0.5f,  -0.5f } }
+		{ { -0.5f,  0.5f }, { 1.0f, 0.0f } },
+		{ { -0.5f, -0.5f }, { 1.0f, 1.0f } },
+		{ {  0.5f, -0.5f }, { 0.0f, 1.0f } },
+		{ {  0.5f,  0.5f }, { 0.0f, 0.0f } }
+	};
+
+	u16 indices[] = {
+		0, 1, 2,
+		0, 2, 3
 	};
 
 	app.tri_vb = video.new_vertex_buffer(verts, sizeof verts, vertex_buffer_flags_none);
+	app.tri_ib = video.new_index_buffer(indices, sizeof indices, index_buffer_flags_u16);
 }
 
 void cr_update(f64 ts) {
+	app.time += ts;
+
+	app.v_config.transform = m4f_rotation(euler(make_v3f(0.0f, 0.0f, (f32)app.time * 10.0f)));
+	app.f_config.colour = make_rgb(0xff0000);
+	app.f_config_blue.colour = make_rgb(0x0000ff);
+
+	gizmo_camera(&(struct camera) {
+		.fov = 70.0f,
+		.near_plane = 0.1f,
+		.far_plane = 100.0f
+	});
+
+	gizmo_colour(make_rgba(0x00ffff, 255));
+	gizmo_box(make_v3f(1.0f, -1.0f, 3.0f), make_v3f(1.0f, 1.0f, 1.0f), euler(make_v3f(0.0f, 25.0f, 0.0f)));
+
+	video.update_pipeline_uniform(app.pipeline, "ubdata", "VertexConfig", &app.v_config);
+	video.update_pipeline_uniform(app.pipeline, "fubdata", "FragmentConfig", &app.f_config);
+	video.update_pipeline_uniform(app.pipeline, "fubdata_blue", "FragmentConfig", &app.f_config_blue);
+
 	video.begin_framebuffer(video.get_default_fb());
 		video.begin_pipeline(app.pipeline);
+			video.bind_pipeline_descriptor_set(app.pipeline, "primary", 0);
+			video.bind_pipeline_descriptor_set(app.pipeline, "ubdata", 1);
+
+			if (key_pressed(key_space)) {
+				video.bind_pipeline_descriptor_set(app.pipeline, "fubdata_blue", 2);
+			} else {
+				video.bind_pipeline_descriptor_set(app.pipeline, "fubdata", 2);
+			}
+
 			video.bind_vertex_buffer(app.tri_vb, 0);
-			video.draw(3, 0, 1);
+			video.bind_index_buffer(app.tri_ib);
+			video.draw_indexed(6, 0, 1);
 		video.end_pipeline(app.pipeline);
+
+		gizmos_draw();
 	video.end_framebuffer(video.get_default_fb());
 }
 
 void cr_deinit() {
 	video.free_pipeline(app.pipeline);
 	video.free_vertex_buffer(app.tri_vb);
+	video.free_index_buffer(app.tri_ib);
 }
 #endif

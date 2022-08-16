@@ -54,7 +54,7 @@ debug: | $(deps) $(target)
 memcheck: | $(deps) $(target)
 	@echo ==
 	$(silent) cd ../../../sbox; \
-	valgrind --leak-check=full ./../projects/gmake/sbox/$(target)
+	valgrind --leak-check=no ./../projects/gmake/sbox/$(target)
 
 sources = $(wildcard $(srcdir)/*.c $(srcdir)/*/*.c)
 objects = $(sources:$(srcdir)/%.c=$(objdir)/%.o)

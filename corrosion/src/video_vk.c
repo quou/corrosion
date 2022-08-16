@@ -1671,6 +1671,8 @@ static void init_pipeline(struct video_vk_pipeline* pipeline, u32 flags, const s
 	pipeline->uniforms = core_calloc(pipeline->uniform_count, sizeof(struct video_vk_impl_uniform_buffer));
 	set_layouts = core_calloc(descriptor_sets->count, sizeof(VkDescriptorSetLayout));
 
+	usize uniform_counter = 0;
+
 	for (usize i = 0; i < descriptor_sets->count; i++) {
 		const struct pipeline_descriptor_set* set = descriptor_sets->sets + i;
 		struct video_vk_impl_descriptor_set* v_set = pipeline->desc_sets + i;
@@ -1743,7 +1745,7 @@ static void init_pipeline(struct video_vk_pipeline* pipeline, u32 flags, const s
 			usize uniform_idx = 0;
 
 			if (desc->resource.type == pipeline_resource_uniform_buffer) {
-				uniform_idx = ui++;
+				uniform_idx = uniform_counter++;
 
 				pipeline->uniforms[uniform_idx].size = desc->resource.uniform.size;
 			}
@@ -1898,11 +1900,11 @@ static void deinit_pipeline(struct video_vk_pipeline* pipeline) {
 
 	if (pipeline->uniforms) {
 		for (usize i = 0; i < pipeline->uniform_count; i++) {
-			for (usize ii = 0; ii < max_frames_in_flight; ii++) {
-				vmaUnmapMemory(vctx.allocator, pipeline->uniforms[i].memories[ii]);
+			for (usize j = 0; j < max_frames_in_flight; j++) {
+				vmaUnmapMemory(vctx.allocator, pipeline->uniforms[i].memories[j]);
 				vmaDestroyBuffer(vctx.allocator,
-					pipeline->uniforms[i].buffers[ii],
-					pipeline->uniforms[i].memories[ii]);
+					pipeline->uniforms[i].buffers[j],
+					pipeline->uniforms[i].memories[j]);
 			}
 		}
 

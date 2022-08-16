@@ -13,6 +13,7 @@
 #pragma pack(push, 1)
 struct shader_header {
 	char header[2];
+	u16 bind_table_count;
 	u64 v_offset;
 	u64 f_offset;
 	u64 v_size;
@@ -21,6 +22,7 @@ struct shader_header {
 	u64 f_gl_offset;
 	u64 v_gl_size;
 	u64 f_gl_size;
+	u64 bind_table_offset;
 };
 #pragma pack(pop)
 
@@ -263,14 +265,32 @@ struct gl_video_context {
 	struct framebuffer* default_fb;
 
 	struct video_gl_pipeline* bound_pipeline;
+	const struct video_gl_vertex_buffer* bound_vb;
+	const struct video_gl_index_buffer*  bound_ib;
+	const struct video_gl_framebuffer*   bound_fb;
 
 	u32 draw_call_count;
+};
+
+struct video_gl_descriptor {
+	u32 binding;
+	u32 stage;
+	struct pipeline_resource resource;
+
+	u32 ub_id;
+	usize ub_size;
+};
+
+struct video_gl_descriptor_set {
+	table(u64, struct video_gl_descriptor) descriptors;
+	usize count;
 };
 
 struct video_gl_pipeline {
 	u32 flags;
 
 	table(u32, struct pipeline_attribute_binding) attribute_bindings;
+	table(u64, struct video_gl_descriptor_set) descriptor_sets;
 
 	const struct video_gl_shader* shader;
 
@@ -280,16 +300,47 @@ struct video_gl_pipeline {
 	vector(u32) to_enable;
 };
 
+struct video_gl_desc_id {
+	u32 set;
+	u32 binding;
+};
+
 struct video_gl_shader {
 	u32 program;
+
+	table(u64, u32) bind_map;
 };
 
 struct video_gl_vertex_buffer {
 	u32 flags;
 	u32 id;
+
+	u32 mode;
 };
 
 struct video_gl_index_buffer {
 	u32 flags;
 	u32 id;
+};
+
+struct video_gl_texture {
+	u32 flags;
+	u32 id;
+
+	v2i size;
+};
+
+struct video_gl_framebuffer {
+	u32 id;
+
+	bool has_depth;
+
+	v2i size;
+
+	u32* colours;
+	usize colour_count;
+
+	u32 depth_attachment;
+
+	table(usize, u32) attachment_map; 
 };
