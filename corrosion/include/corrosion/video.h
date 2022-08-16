@@ -45,18 +45,18 @@ enum {
 	pipeline_flags_depth_test        = 1 << 1,
 	pipeline_flags_cull_back_face    = 1 << 2,
 	pipeline_flags_cull_front_face   = 1 << 3,
-	pipeline_flags_wo_clockwise      = 1 << 4,
-	pipeline_flags_wo_anti_clockwise = 1 << 5,
-	pipeline_flags_blend             = 1 << 6,
-	pipeline_flags_dynamic_scissor   = 1 << 7,
-	pipeline_flags_draw_lines        = 1 << 8,
-	pipeline_flags_draw_line_strip   = 1 << 9,
-	pipeline_flags_draw_tris         = 1 << 10
+	pipeline_flags_blend             = 1 << 4,
+	pipeline_flags_dynamic_scissor   = 1 << 5,
+	pipeline_flags_draw_lines        = 1 << 6,
+	pipeline_flags_draw_line_strip   = 1 << 7,
+	pipeline_flags_draw_tris         = 1 << 8,
+	pipeline_flags_compute           = 1 << 9
 };
 
 enum {
 	pipeline_stage_vertex,
-	pipeline_stage_fragment
+	pipeline_stage_fragment,
+	pipeline_stage_compute
 };
 
 enum {
@@ -98,7 +98,8 @@ struct pipeline_attribute_bindings {
 enum {
 	pipeline_resource_uniform_buffer,
 	pipeline_resource_framebuffer,
-	pipeline_resource_texture
+	pipeline_resource_texture,
+	pipeline_resource_storage
 };
 
 struct pipeline_resource {
@@ -110,6 +111,7 @@ struct pipeline_resource {
 		} uniform, dynamic_uniform;
 
 		const struct texture* texture;
+		const struct storage* storage;
 
 		struct {
 			struct framebuffer* ptr;
@@ -163,6 +165,17 @@ struct camera {
 	f32 far_plane;
 };
 
+enum {
+	storage_flags_none           = 1 << 0,
+	storage_flags_cpu_writable   = 1 << 1,
+	storage_flags_cpu_readable   = 1 << 2
+};
+
+enum {
+	storage_update_now = 0,
+	storage_update_frame
+};
+
 m4f get_camera_view(const struct camera* camera);
 m4f get_camera_projection(const struct camera* camera, f32 aspect);
 
@@ -171,6 +184,7 @@ struct vertex_buffer;
 struct index_buffer;
 struct shader;
 struct texture;
+struct storage;
 
 struct video {
 	u32 api;
@@ -195,14 +209,25 @@ struct video {
 	/* Pipeline. */
 	struct pipeline* (*new_pipeline)(u32 flags, const struct shader* shader, const struct framebuffer* framebuffer,
 		struct pipeline_attribute_bindings attrib_bindings, struct pipeline_descriptor_sets descriptor_sets);
+	struct pipeline* (*new_compute_pipeline)(u32 flags, const struct shader* shader, struct pipeline_descriptor_sets descriptor_sets);
 	void (*free_pipeline)(struct pipeline* pipeline);
 	void (*begin_pipeline)(const struct pipeline* pipeline);
 	void (*end_pipeline)(const struct pipeline* pipeline);
+	void (*invoke_compute)(const struct pipeline* pipeline, v3u group_count);
 	void (*recreate_pipeline)(struct pipeline* pipeline);
 	void (*update_pipeline_uniform)(struct pipeline* pipeline, const char* set, const char* descriptor, const void* data);
 	void (*bind_pipeline_descriptor_set)(struct pipeline* pipeline, const char* set, usize target);
 	void (*pipeline_add_descriptor_set)(struct pipeline* pipeline, const struct pipeline_descriptor_set* set);
 	void (*pipeline_change_shader)(struct pipeline* pipeline, const struct shader* shader);
+
+	/* Storage. */
+	struct storage* (*new_storage)(u32 flags, usize size, void* initial_data);
+	void (*update_storage)(struct storage* storage, u32 mode, void* data);
+	void (*update_storage_region)(struct storage* storage, u32 mode, void* data, usize offset, usize size);
+	void (*copy_storage)(u32 mode, struct storage* dst, usize dst_offset, const struct storage* src, usize src_offset, usize size);
+	void (*storage_make_readable)(struct storage* storage);
+	void (*storage_make_writable)(struct storage* storage);
+	void (*free_storage)(struct storage* storage);
 
 	/* Vertex buffer. */
 	struct vertex_buffer* (*new_vertex_buffer)(void* verts, usize size, u32 flags);

@@ -332,6 +332,11 @@ struct pipeline* video_gl_new_pipeline(u32 flags, const struct shader* shader, c
 	return (struct pipeline*)pipeline;
 }
 
+struct pipeline* video_gl_new_compute_pipeline(u32 flags, const struct shader* shader, struct pipeline_descriptor_sets descriptor_sets) {
+	abort_with("Not implemented.");
+	return null;
+}
+
 void video_gl_free_pipeline(struct pipeline* pipeline_) {
 	struct video_gl_pipeline* pipeline = (struct video_gl_pipeline*)pipeline_;
 
@@ -420,6 +425,10 @@ void video_gl_end_pipeline(const struct pipeline* pipeline_) {
 	for (usize i = 0; i < vector_count(pipeline->to_enable); i++) {
 		check_gl(glDisable(pipeline->to_enable[i]));
 	}
+}
+
+void video_gl_invoke_compute(const struct pipeline* pipeline, v3u count) {
+	abort_with("Not implemented.");
 }
 
 void video_gl_recreate_pipeline(struct pipeline* pipeline) {
@@ -535,6 +544,35 @@ void video_gl_pipeline_change_shader(struct pipeline* pipeline_, const struct sh
 	struct video_gl_pipeline* pipeline = (struct video_gl_pipeline*)pipeline_;
 
 	pipeline->shader = (const struct video_gl_shader*)shader;
+}
+
+struct storage* video_gl_new_storage(u32 flags, usize size, void* initial_data) {
+	abort_with("Not implemented.");
+	return null;
+}
+
+void video_gl_update_storage(struct storage* storage, u32 mode, void* data) {
+	abort_with("Not implemented.");
+}
+
+void video_gl_update_storage_region(struct storage* storage, u32 mode, void* data, usize offset, usize size) {
+	abort_with("Not implemented.");
+}
+
+void video_gl_free_storage(struct storage* storage) {
+	abort_with("Not implemented.");
+}
+
+void video_gl_copy_storage(u32 mode, struct storage* dst, usize dst_offset, const struct storage* src, usize src_offset, usize size) {
+	abort_with("Not implemented.");
+}
+
+void video_gl_storage_make_readable(struct storage* storage) {
+	abort_with("Not implemented.");
+}
+
+void video_gl_storage_make_writable(struct storage* storage) {
+	abort_with("Not implemented.");
 }
 
 struct vertex_buffer* video_gl_new_vertex_buffer(void* verts, usize size, u32 flags) {
@@ -694,27 +732,33 @@ static u32 init_shader_section(u32 section, const char* src) {
 	return shader;
 }
 
-static void init_shader(struct video_gl_shader* shader, const char* vert_src, const char* frag_src,
-	const struct shader_header* header, const u8* data) {
-	u32 vert = init_shader_section(GL_VERTEX_SHADER, vert_src);
-	u32 frag = init_shader_section(GL_FRAGMENT_SHADER, frag_src);
+static void init_shader(struct video_gl_shader* shader, const struct shader_header* header, const u8* data) {
+	if (header->is_compute) {
+		abort_with("Not implemented");
+	} else {
+		const char* vert_src = (const char*)data + header->raster_header.v_gl_offset;
+		const char* frag_src = (const char*)data + header->raster_header.f_gl_offset;
 
-	check_gl(shader->program = glCreateProgram());
-	check_gl(glAttachShader(shader->program, vert));
-	check_gl(glAttachShader(shader->program, frag));
-	check_gl(glLinkProgram(shader->program));
+		u32 vert = init_shader_section(GL_VERTEX_SHADER, vert_src);
+		u32 frag = init_shader_section(GL_FRAGMENT_SHADER, frag_src);
 
-	i32 success;
+		check_gl(shader->program = glCreateProgram());
+		check_gl(glAttachShader(shader->program, vert));
+		check_gl(glAttachShader(shader->program, frag));
+		check_gl(glLinkProgram(shader->program));
 
-	check_gl(glGetProgramiv(shader->program, GL_LINK_STATUS, &success));
-	if (!success) {
-		char info_log[1024];
-		check_gl(glGetProgramInfoLog(shader->program, sizeof info_log, null, info_log));
-		error("Failed to link shader: %s", info_log);
+		i32 success;
+
+		check_gl(glGetProgramiv(shader->program, GL_LINK_STATUS, &success));
+		if (!success) {
+			char info_log[1024];
+			check_gl(glGetProgramInfoLog(shader->program, sizeof info_log, null, info_log));
+			error("Failed to link shader: %s", info_log);
+		}
+
+		check_gl(glDeleteShader(vert));
+		check_gl(glDeleteShader(frag));
 	}
-
-	check_gl(glDeleteShader(vert));
-	check_gl(glDeleteShader(frag));
 
 	for (u16 i = 0; i < header->bind_table_count; i++) {
 		u64 key = *(u64*)(data + header->bind_table_offset + ((sizeof(u32) + sizeof(u64)) * (u64)i));
@@ -735,12 +779,12 @@ struct shader* video_gl_new_shader(const u8* data, usize data_size) {
 
 	struct shader_header* header = (struct shader_header*)data;
 
-	if (memcmp("CS", header->header, 2) != 0) {
+	if (memcmp("CSH", header->header, 3) != 0) {
 		error("Invalid shader data.");
 		return null;
 	}
 
-	init_shader(shader, data + header->v_gl_offset, data + header->f_gl_offset, header, data);
+	init_shader(shader, header, data);
 
 	return (struct shader*)shader;
 }
@@ -755,12 +799,12 @@ static void shader_on_load(const char* filename, u8* raw, usize raw_size, void* 
 
 	memset(payload, 0, payload_size);
 
-	if (memcmp("CS", header->header, 2) != 0) {
+	if (memcmp("CSH", header->header, 2) != 0) {
 		error("%s is not a valid shader resource.", filename);
 		return;
 	}
 
-	init_shader(payload, raw + header->v_gl_offset, raw + header->f_gl_offset, header, raw);
+	init_shader(payload, header, raw);
 }
 
 static void shader_on_unload(void* payload, usize payload_size) {

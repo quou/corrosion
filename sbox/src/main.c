@@ -22,13 +22,24 @@ struct {
 	f32 r;
 
 	f64 fps_timer;
+
+	struct shader* compute_shader;
+	struct pipeline* compute_pipeline;
+
+	struct storage* com_in;
+	struct storage* com_out;
+
+	struct {
+		u32 number_count;
+	} compute_config;
+	f32 numbers[256];
 } app;
 
 struct app_config cr_config() {
 	return (struct app_config) {
 		.name = "Sandbox",
 		.video_config = (struct video_config) {
-			.api = video_api_opengl,
+			.api = video_api_vulkan,
 #ifdef debug
 			.enable_validation = true,
 #else
@@ -53,12 +64,63 @@ void cr_init() {
 	app.texturea = load_texture("res/chad.jpg", texture_flags_filter_linear);
 	app.textureb = load_texture("res/test.png", texture_flags_filter_linear);
 
+	for (usize i = 0; i < 256; i++) {
+		app.numbers[i] = 40.0f;
+	}
+
 	app.dejavusans = load_font("res/DejaVuSans.ttf", 24.0f);
 
 	app.ui = new_ui(video.get_default_fb());
 
 	struct ui_stylesheet* stylesheet = res_load("stylesheet", "res/uistyle.dt", null);
 	ui_stylesheet(app.ui, stylesheet);
+
+	app.com_in  = video.new_storage(storage_flags_none,         sizeof app.numbers, app.numbers);
+	app.com_out = video.new_storage(storage_flags_cpu_readable, sizeof app.numbers, null);
+
+	app.compute_shader = load_shader("shaders/computetest.csh");
+	app.compute_pipeline = video.new_compute_pipeline(pipeline_flags_none, app.compute_shader,
+		(struct pipeline_descriptor_sets) {
+			.sets = (struct pipeline_descriptor_set[]) {
+				{
+					.name = "primary",
+					.descriptors = (struct pipeline_descriptor[]) {
+						{
+							.name     = "config",
+							.binding  = 0,
+							.stage    = pipeline_stage_compute,
+							.resource = {
+								.type         = pipeline_resource_uniform_buffer,
+								.uniform.size = sizeof app.compute_config
+							}
+						},
+						{
+							.name  = "in_buf",
+							.binding = 1,
+							.stage = pipeline_stage_compute,
+							.resource = {
+								.type = pipeline_resource_storage,
+								.storage = app.com_in
+							}
+						},
+						{
+							.name  = "out_buf",
+							.binding = 2,
+							.stage = pipeline_stage_compute,
+							.resource = {
+								.type = pipeline_resource_storage,
+								.storage = app.com_out
+							}
+						},
+					},
+					.count = 3,
+				}
+			},
+			.count = 1
+		});
+	
+	app.compute_config.number_count = 256;
+	memset(app.numbers, 0, sizeof app.numbers);
 
 	const struct shader* invert_shader = load_shader("shaders/invert.csh");
 
@@ -291,6 +353,18 @@ void cr_update(f64 ts) {
 
 	ui_end(app.ui);
 
+	video.update_pipeline_uniform(app.compute_pipeline, "primary", "config", &app.compute_config);
+
+	video.begin_pipeline(app.compute_pipeline);
+		video.bind_pipeline_descriptor_set(app.compute_pipeline, "primary", 0);
+
+		video.storage_make_writable(app.com_out);
+
+		video.invoke_compute(app.compute_pipeline, make_v3u(256, 1, 1));
+
+		video.storage_make_readable(app.com_out);
+	video.end_pipeline(app.compute_pipeline);
+
 	video.begin_framebuffer(app.fb);
 		simple_renderer_clip(app.renderer, make_v4i(0, 0, window_size.x, window_size.y));
 		simple_renderer_push(app.renderer, &(struct simple_renderer_quad) {
@@ -339,8 +413,12 @@ void cr_update(f64 ts) {
 void cr_deinit() {
 	free_ui(app.ui);
 
+	video.free_storage(app.com_in);
+	video.free_storage(app.com_out);
+
 	video.free_framebuffer(app.fb);
 	video.free_pipeline(app.invert_pip);
+	video.free_pipeline(app.compute_pipeline);
 	video.free_vertex_buffer(app.tri_vb);
 
 	free_simple_renderer(app.renderer);

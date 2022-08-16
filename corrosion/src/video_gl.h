@@ -22,14 +22,24 @@ struct framebuffer* video_gl_get_default_fb();
 
 struct pipeline* video_gl_new_pipeline(u32 flags, const struct shader* shader, const struct framebuffer* framebuffer,
 	struct pipeline_attribute_bindings attrib_bindings, struct pipeline_descriptor_sets descriptor_sets);
+struct pipeline* video_gl_new_compute_pipeline(u32 flags, const struct shader* shader, struct pipeline_descriptor_sets descriptor_sets);
 void video_gl_free_pipeline(struct pipeline* pipeline);
 void video_gl_begin_pipeline(const struct pipeline* pipeline);
 void video_gl_end_pipeline(const struct pipeline* pipeline);
+void video_gl_invoke_compute(const struct pipeline* pipeline, v3u count);
 void video_gl_recreate_pipeline(struct pipeline* pipeline);
 void video_gl_update_pipeline_uniform(struct pipeline* pipeline, const char* set, const char* descriptor, const void* data);
 void video_gl_bind_pipeline_descriptor_set(struct pipeline* pipeline, const char* set, usize target);
 void video_gl_pipeline_add_descriptor_set(struct pipeline* pipeline, const struct pipeline_descriptor_set* set);
 void video_gl_pipeline_change_shader(struct pipeline* pipeline, const struct shader* shader);
+
+struct storage* video_gl_new_storage(u32 flags, usize size, void* initial_data);
+void video_gl_update_storage(struct storage* storage, u32 mode, void* data);
+void video_gl_update_storage_region(struct storage* storage, u32 mode, void* data, usize offset, usize size);
+void video_gl_copy_storage(u32 mode, struct storage* dst, usize dst_offset, const struct storage* src, usize src_offset, usize size);
+void video_gl_storage_make_readable(struct storage* storage);
+void video_gl_storage_make_writable(struct storage* storage);
+void video_gl_free_storage(struct storage* storage);
 
 void video_gl_register_resources();
 
@@ -54,9 +64,6 @@ void video_gl_texture_copy(struct texture* dst, v2i dst_offset, const struct tex
 
 struct shader* video_gl_new_shader(const u8* data, usize data_size);
 void video_gl_free_shader(struct shader* shader);
-
-m4f video_gl_ortho(f32 l, f32 r, f32 b, f32 t, f32 n, f32 f);
-m4f video_gl_persp(f32 fov, f32 aspect, f32 near, f32 far);
 
 u32 video_gl_get_draw_call_count();
 

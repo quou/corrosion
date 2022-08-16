@@ -11,9 +11,7 @@
 #define max_frames_in_flight 3
 
 #pragma pack(push, 1)
-struct shader_header {
-	char header[2];
-	u16 bind_table_count;
+struct shader_raster_header {
 	u64 v_offset;
 	u64 f_offset;
 	u64 v_size;
@@ -22,7 +20,25 @@ struct shader_header {
 	u64 f_gl_offset;
 	u64 v_gl_size;
 	u64 f_gl_size;
+};
+
+struct shader_compute_header {
+	u64 offset;
+	u64 size;
+	u64 gl_offset;
+	u64 gl_size;
+};
+
+struct shader_header {
+	char header[3];
+	u8 is_compute;
+	u64 bind_table_count;
 	u64 bind_table_offset;
+
+	union {
+		struct shader_raster_header raster_header;
+		struct shader_compute_header compute_header;
+	};
 };
 #pragma pack(pop)
 
@@ -167,6 +183,15 @@ struct video_vk_framebuffer {
 	struct video_vk_framebuffer* prev;
 };
 
+struct video_vk_storage {
+	VkBuffer buffers[max_frames_in_flight];
+	VmaAllocation memories[max_frames_in_flight];
+
+	usize size;
+
+	u32 flags;
+};
+
 struct video_vk_impl_uniform_buffer {
 	VkBuffer buffers[max_frames_in_flight];
 	VmaAllocation memories[max_frames_in_flight];
@@ -185,6 +210,7 @@ struct video_vk_impl_descriptor_set {
 struct video_vk_pipeline {
 	usize sampler_count;
 	usize uniform_count;
+	usize storage_count;
 
 	usize descriptor_set_count;
 
@@ -231,6 +257,9 @@ struct vk_video_context* get_vk_video_context();
 struct video_vk_shader {
 	VkShaderModule vertex;
 	VkShaderModule fragment;
+	VkShaderModule compute;
+
+	bool is_compute;
 };
 
 struct video_vk_texture {

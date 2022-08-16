@@ -1460,7 +1460,255 @@ static void copy_buffer_to_image(VkBuffer buffer, VkImage image, v2i size) {
 		});
 
 	end_temp_command_buffer(command_buffer);
-}  
+}
+
+static VkDescriptorSetLayout* init_pipeline_descriptors(struct video_vk_pipeline* pipeline, const struct pipeline_descriptor_sets* descriptor_sets) {
+	VkDescriptorSetLayout* set_layouts = null;
+
+	/* Count descriptors of different types for descriptor pool creation. */
+	pipeline->sampler_count = 0;
+	pipeline->uniform_count = 0;
+	pipeline->storage_count = 0;
+	for (usize i = 0; i < descriptor_sets->count; i++) {
+		const struct pipeline_descriptor_set* set = descriptor_sets->sets + i;
+
+		for (usize ii = 0; ii < set->count; ii++) {
+			const struct pipeline_descriptor* desc = set->descriptors + ii;
+
+			switch (desc->resource.type) {
+				case pipeline_resource_uniform_buffer:
+					pipeline->uniform_count++;
+					break;
+				case pipeline_resource_texture:
+				case pipeline_resource_framebuffer:
+					pipeline->sampler_count++;
+					break;
+				case pipeline_resource_storage:
+					pipeline->storage_count++;
+					break;
+				default:
+					abort_with("Invalid resource pointer type on descriptor.");
+					break;
+			}
+		}
+	}
+
+	/* Create the descriptor pool. */
+	VkDescriptorPoolSize pool_sizes[3];
+	usize pool_size_count = 0;
+	if (pipeline->uniform_count > 0) {
+		usize idx = pool_size_count++;
+
+		pool_sizes[idx].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		pool_sizes[idx].descriptorCount = max_frames_in_flight * (u32)pipeline->uniform_count;
+	}
+
+	if (pipeline->sampler_count > 0) {
+		usize idx = pool_size_count++;
+
+		pool_sizes[idx].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		pool_sizes[idx].descriptorCount = max_frames_in_flight * (u32)pipeline->sampler_count;
+	}
+
+	if (pipeline->storage_count > 0) {
+		usize idx = pool_size_count++;
+
+		pool_sizes[idx].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+		pool_sizes[idx].descriptorCount = max_frames_in_flight * (u32)pipeline->storage_count;
+	}
+
+	if (vkCreateDescriptorPool(vctx.device, &(VkDescriptorPoolCreateInfo) {
+			.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+			.poolSizeCount = (u32)pool_size_count,
+			.pPoolSizes = pool_sizes,
+			.maxSets = max_frames_in_flight * (u32)descriptor_sets->count
+		}, null, &pipeline->descriptor_pool) != VK_SUCCESS) {
+		abort_with("Failed to create descriptor pool.");
+	}
+
+	pipeline->desc_sets = core_calloc(descriptor_sets->count, sizeof(struct video_vk_impl_descriptor_set));
+	pipeline->uniforms = core_calloc(pipeline->uniform_count, sizeof(struct video_vk_impl_uniform_buffer));
+	set_layouts = core_calloc(descriptor_sets->count, sizeof(VkDescriptorSetLayout));
+
+	usize uniform_counter = 0;
+
+	for (usize i = 0; i < descriptor_sets->count; i++) {
+		const struct pipeline_descriptor_set* set = descriptor_sets->sets + i;
+		struct video_vk_impl_descriptor_set* v_set = pipeline->desc_sets + i;
+
+		table_set(pipeline->set_table, hash_string(set->name), v_set);
+
+		VkDescriptorSetLayoutBinding* layout_bindings = core_calloc(set->count, sizeof(VkDescriptorSetLayoutBinding));
+
+		for (usize ii = 0; ii < set->count; ii++) {
+			const struct pipeline_descriptor* desc = set->descriptors + ii;
+			VkDescriptorSetLayoutBinding* lb = layout_bindings + ii;
+
+			switch (desc->resource.type) {
+				case pipeline_resource_uniform_buffer:
+					lb->descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+					break;
+				case pipeline_resource_texture:
+				case pipeline_resource_framebuffer:
+					lb->descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+					break;
+				case pipeline_resource_storage:
+					lb->descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+					break;
+				default:
+					abort_with("Invalid descriptor resource pointer type.");
+					break;
+			}
+
+			lb->binding = desc->binding;
+			lb->descriptorCount = 1;
+			lb->stageFlags = 
+				desc->stage == pipeline_stage_compute ? VK_SHADER_STAGE_COMPUTE_BIT : 
+				desc->stage == pipeline_stage_vertex  ? VK_SHADER_STAGE_VERTEX_BIT :
+				VK_SHADER_STAGE_FRAGMENT_BIT;
+		}
+
+		if (vkCreateDescriptorSetLayout(vctx.device, &(VkDescriptorSetLayoutCreateInfo) {
+				.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+				.bindingCount = (u32)set->count,
+				.pBindings = layout_bindings
+			}, null, &v_set->layout) != VK_SUCCESS) {
+			abort_with("Failed to create descriptor set layout.");
+		}
+
+		set_layouts[i] = v_set->layout;
+
+		/* Each descriptor set for each frame in flight uses
+		 * the same descriptor set layout. */
+		VkDescriptorSetLayout layouts[max_frames_in_flight];
+		for (usize ii = 0; ii < max_frames_in_flight; ii++) {
+			layouts[ii] = v_set->layout;
+		}
+
+		if (vkAllocateDescriptorSets(vctx.device, &(VkDescriptorSetAllocateInfo) {
+				.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+				.descriptorPool = pipeline->descriptor_pool,
+				.descriptorSetCount = max_frames_in_flight,
+				.pSetLayouts = layouts
+			}, v_set->sets) != VK_SUCCESS) {
+			abort_with("Failed to allocate descriptor sets.");
+		}
+
+		VkDescriptorImageInfo* image_infos = core_calloc(max_frames_in_flight, sizeof(VkDescriptorImageInfo));
+		usize image_info_count = 0;
+
+		usize buffer_type_count = 2;
+
+		VkDescriptorBufferInfo* buffer_infos = core_calloc(max_frames_in_flight * buffer_type_count, sizeof(VkDescriptorBufferInfo));
+		usize buffer_info_count = 0;
+
+		/* Write the descriptor set and create uniform buffers. */
+		for (usize ii = 0, ui = 0; ii < set->count; ii++) {
+			VkWriteDescriptorSet desc_writes[max_frames_in_flight] = { 0 };
+
+			const struct pipeline_descriptor* desc = set->descriptors + ii;
+
+			usize uniform_idx = 0;
+
+			if (desc->resource.type == pipeline_resource_uniform_buffer) {
+				uniform_idx = uniform_counter++;
+
+				pipeline->uniforms[uniform_idx].size = desc->resource.uniform.size;
+			}
+
+			table_set(v_set->uniforms, hash_string(desc->name), pipeline->uniforms + uniform_idx);
+
+			image_info_count = 0;
+			buffer_info_count = 0;
+
+			for (usize j = 0; j < max_frames_in_flight; j++) {
+				struct VkWriteDescriptorSet* write = desc_writes + j;
+
+				write->sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+				write->dstSet = v_set->sets[j];
+				write->dstBinding = desc->binding;
+				write->dstArrayElement = 0;
+				write->descriptorCount = 1;
+
+				switch (desc->resource.type) {
+					case pipeline_resource_uniform_buffer: {
+						new_buffer(pad_ub_size(desc->resource.uniform.size),
+							VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+							VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
+							VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,
+							pipeline->uniforms[uniform_idx].buffers + j,
+							pipeline->uniforms[uniform_idx].memories + j);
+
+						vmaMapMemory(vctx.allocator,
+							pipeline->uniforms[uniform_idx].memories[j],
+							&pipeline->uniforms[uniform_idx].datas[j]);
+
+						VkDescriptorBufferInfo* buffer_info = buffer_infos + (buffer_info_count++);
+						buffer_info->buffer = pipeline->uniforms[uniform_idx].buffers[j];
+						buffer_info->offset = 0;
+						buffer_info->range = pad_ub_size(pipeline->uniforms[uniform_idx].size);
+
+						write->descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+						write->pBufferInfo = buffer_info;
+					} break;
+					case pipeline_resource_framebuffer: {
+						struct video_vk_framebuffer* framebuffer = (struct video_vk_framebuffer*)desc->resource.framebuffer.ptr;
+						const struct video_vk_framebuffer_attachment** attachment_ptr = table_get(framebuffer->attachment_map,
+							desc->resource.framebuffer.attachment);
+
+						if (!attachment_ptr) {
+							abort_with("Invalid framebuffer attachment index.");
+						}
+
+						const struct video_vk_framebuffer_attachment* attachment = *attachment_ptr;
+
+						VkDescriptorImageInfo* image_info = image_infos + (image_info_count++);
+
+						image_info->imageView = attachment->image_views[j];
+						image_info->sampler = framebuffer->sampler;
+						image_info->imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+						write->descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+						write->pImageInfo = image_info;
+					} break;
+					case pipeline_resource_texture: {
+						const struct video_vk_texture* texture = (const struct video_vk_texture*)desc->resource.texture;
+
+						VkDescriptorImageInfo* image_info = image_infos + (image_info_count++);
+
+						image_info->imageView = texture->view;
+						image_info->sampler = texture->sampler;
+						image_info->imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+						write->descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+						write->pImageInfo = image_info;
+					} break;
+					case pipeline_resource_storage: {
+						const struct video_vk_storage* storage = (const struct video_vk_storage*)desc->resource.storage;
+
+						VkDescriptorBufferInfo* buffer_info = buffer_infos + (buffer_info_count++);
+
+						buffer_info->buffer = storage->buffers[j];
+						buffer_info->offset = 0;
+						buffer_info->range = storage->size;
+
+						write->descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+						write->pBufferInfo = buffer_info;
+					} break;
+					default: break;
+				}
+			}
+
+			vkUpdateDescriptorSets(vctx.device, max_frames_in_flight, desc_writes, 0, null);
+		}
+
+		core_free(image_infos);
+		core_free(buffer_infos);
+		core_free(layout_bindings);
+	}
+
+	return set_layouts;
+}
 
 static void init_pipeline(struct video_vk_pipeline* pipeline, u32 flags, const struct video_vk_shader* shader,
 	const struct video_vk_framebuffer* framebuffer,
@@ -1551,9 +1799,7 @@ static void init_pipeline(struct video_vk_pipeline* pipeline, u32 flags, const s
 			(flags & pipeline_flags_cull_back_face)  ? VK_CULL_MODE_BACK_BIT  :
 			(flags & pipeline_flags_cull_front_face) ? VK_CULL_MODE_FRONT_BIT :
 			VK_CULL_MODE_NONE,
-		.frontFace =
-			(flags & pipeline_flags_wo_clockwise) ? VK_FRONT_FACE_CLOCKWISE :
-			VK_FRONT_FACE_COUNTER_CLOCKWISE,
+		.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE,
 		.depthBiasEnable = VK_FALSE
 	};
 
@@ -1611,225 +1857,10 @@ static void init_pipeline(struct video_vk_pipeline* pipeline, u32 flags, const s
 		.pAttachments = colour_blend_attachments
 	};
 
-	VkDescriptorSetLayout* set_layouts = null;
-
-	if (descriptor_sets->count == 0) {
-		goto no_descriptors;
+	VkDescriptorSetLayout* set_layouts;
+	if (descriptor_sets->count != 0) {
+		set_layouts = init_pipeline_descriptors(pipeline, descriptor_sets);
 	}
-
-	/* Count descriptors of different types for descriptor pool creation. */
-	pipeline->sampler_count = 0;
-	pipeline->uniform_count = 0;
-	for (usize i = 0; i < descriptor_sets->count; i++) {
-		const struct pipeline_descriptor_set* set = descriptor_sets->sets + i;
-
-		for (usize ii = 0; ii < set->count; ii++) {
-			const struct pipeline_descriptor* desc = set->descriptors + ii;
-
-			switch (desc->resource.type) {
-				case pipeline_resource_uniform_buffer:
-					pipeline->uniform_count++;
-					break;
-				case pipeline_resource_texture:
-				case pipeline_resource_framebuffer:
-					pipeline->sampler_count++;
-					break;
-				default:
-					abort_with("Invalid resource pointer type on descriptor.");
-					break;
-			}
-		}
-	}
-
-	/* Create the descriptor pool. */
-	VkDescriptorPoolSize pool_sizes[2];
-	usize pool_size_count = 0;
-	if (pipeline->uniform_count > 0) {
-		usize idx = pool_size_count++;
-
-		pool_sizes[idx].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		pool_sizes[idx].descriptorCount = max_frames_in_flight * (u32)pipeline->uniform_count;
-	}
-
-	if (pipeline->sampler_count > 0) {
-		usize idx = pool_size_count++;
-
-		pool_sizes[idx].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-		pool_sizes[idx].descriptorCount = max_frames_in_flight * (u32)pipeline->sampler_count;
-	}
-
-	if (vkCreateDescriptorPool(vctx.device, &(VkDescriptorPoolCreateInfo) {
-			.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
-			.poolSizeCount = (u32)pool_size_count,
-			.pPoolSizes = pool_sizes,
-			.maxSets = max_frames_in_flight * (u32)descriptor_sets->count
-		}, null, &pipeline->descriptor_pool) != VK_SUCCESS) {
-		abort_with("Failed to create descriptor pool.");
-	}
-
-	pipeline->desc_sets = core_calloc(descriptor_sets->count, sizeof(struct video_vk_impl_descriptor_set));
-	pipeline->uniforms = core_calloc(pipeline->uniform_count, sizeof(struct video_vk_impl_uniform_buffer));
-	set_layouts = core_calloc(descriptor_sets->count, sizeof(VkDescriptorSetLayout));
-
-	usize uniform_counter = 0;
-
-	for (usize i = 0; i < descriptor_sets->count; i++) {
-		const struct pipeline_descriptor_set* set = descriptor_sets->sets + i;
-		struct video_vk_impl_descriptor_set* v_set = pipeline->desc_sets + i;
-
-		table_set(pipeline->set_table, hash_string(set->name), v_set);
-
-		VkDescriptorSetLayoutBinding* layout_bindings = core_calloc(set->count, sizeof(VkDescriptorSetLayoutBinding));
-
-		for (usize ii = 0; ii < set->count; ii++) {
-			const struct pipeline_descriptor* desc = set->descriptors + ii;
-			VkDescriptorSetLayoutBinding* lb = layout_bindings + ii;
-
-			switch (desc->resource.type) {
-				case pipeline_resource_uniform_buffer:
-					lb->descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-					break;
-				case pipeline_resource_texture:
-				case pipeline_resource_framebuffer:
-					lb->descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-					break;
-				default:
-					abort_with("Invalid descriptor resource pointer type.");
-					break;
-			}
-
-			lb->binding = desc->binding;
-			lb->descriptorCount = 1;
-			lb->stageFlags = desc->stage == pipeline_stage_vertex ?
-				VK_SHADER_STAGE_VERTEX_BIT :
-				VK_SHADER_STAGE_FRAGMENT_BIT;
-		}
-
-		if (vkCreateDescriptorSetLayout(vctx.device, &(VkDescriptorSetLayoutCreateInfo) {
-				.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-				.bindingCount = (u32)set->count,
-				.pBindings = layout_bindings
-			}, null, &v_set->layout) != VK_SUCCESS) {
-			abort_with("Failed to create descriptor set layout.");
-		}
-
-		set_layouts[i] = v_set->layout;
-
-		/* Each descriptor set for each frame in flight uses
-		 * the same descriptor set layout. */
-		VkDescriptorSetLayout layouts[max_frames_in_flight];
-		for (usize ii = 0; ii < max_frames_in_flight; ii++) {
-			layouts[ii] = v_set->layout;
-		}
-
-		if (vkAllocateDescriptorSets(vctx.device, &(VkDescriptorSetAllocateInfo) {
-				.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-				.descriptorPool = pipeline->descriptor_pool,
-				.descriptorSetCount = max_frames_in_flight,
-				.pSetLayouts = layouts
-			}, v_set->sets) != VK_SUCCESS) {
-			abort_with("Failed to allocate descriptor sets.");
-		}
-
-		VkDescriptorImageInfo* image_infos = core_calloc(max_frames_in_flight, sizeof(VkDescriptorImageInfo));
-		usize image_info_count = 0;
-		VkDescriptorBufferInfo* buffer_infos = core_calloc(max_frames_in_flight, sizeof(VkDescriptorImageInfo));
-		usize buffer_info_count = 0;
-
-		/* Write the descriptor set and create uniform buffers. */
-		for (usize ii = 0, ui = 0; ii < set->count; ii++) {
-			VkWriteDescriptorSet desc_writes[max_frames_in_flight] = { 0 };
-
-			const struct pipeline_descriptor* desc = set->descriptors + ii;
-
-			usize uniform_idx = 0;
-
-			if (desc->resource.type == pipeline_resource_uniform_buffer) {
-				uniform_idx = uniform_counter++;
-
-				pipeline->uniforms[uniform_idx].size = desc->resource.uniform.size;
-			}
-
-			table_set(v_set->uniforms, hash_string(desc->name), pipeline->uniforms + uniform_idx);
-
-			image_info_count = 0;
-			buffer_info_count = 0;
-
-			for (usize j = 0; j < max_frames_in_flight; j++) {
-				struct VkWriteDescriptorSet* write = desc_writes + j;
-
-				write->sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-				write->dstSet = v_set->sets[j];
-				write->dstBinding = desc->binding;
-				write->dstArrayElement = 0;
-				write->descriptorCount = 1;
-
-				switch (desc->resource.type) {
-					case pipeline_resource_uniform_buffer: {
-						new_buffer(pad_ub_size(desc->resource.uniform.size),
-							VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-							VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
-							VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,
-							pipeline->uniforms[uniform_idx].buffers + j,
-							pipeline->uniforms[uniform_idx].memories + j);
-
-						vmaMapMemory(vctx.allocator,
-							pipeline->uniforms[uniform_idx].memories[j],
-							&pipeline->uniforms[uniform_idx].datas[j]);
-
-						VkDescriptorBufferInfo* buffer_info = buffer_infos + (buffer_info_count++);
-						buffer_info->buffer = pipeline->uniforms[uniform_idx].buffers[j];
-						buffer_info->offset = 0;
-						buffer_info->range = pad_ub_size(pipeline->uniforms[uniform_idx].size);
-
-						write->descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-						write->pBufferInfo = buffer_info;
-					} break;
-					case pipeline_resource_framebuffer: {
-						struct video_vk_framebuffer* framebuffer = (struct video_vk_framebuffer*)desc->resource.framebuffer.ptr;
-						const struct video_vk_framebuffer_attachment** attachment_ptr = table_get(framebuffer->attachment_map,
-							desc->resource.framebuffer.attachment);
-
-						if (!attachment_ptr) {
-							abort_with("Invalid framebuffer attachment index.");
-						}
-
-						const struct video_vk_framebuffer_attachment* attachment = *attachment_ptr;
-
-						VkDescriptorImageInfo* image_info = image_infos + (image_info_count++);
-
-						image_info->imageView = attachment->image_views[j];
-						image_info->sampler = framebuffer->sampler;
-						image_info->imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-
-						write->descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-						write->pImageInfo = image_info;
-					} break;
-					case pipeline_resource_texture: {
-						const struct video_vk_texture* texture = (const struct video_vk_texture*)desc->resource.texture;
-
-						VkDescriptorImageInfo* image_info = image_infos + (image_info_count++);
-
-						image_info->imageView = texture->view;
-						image_info->sampler = texture->sampler;
-						image_info->imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-
-						write->descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-						write->pImageInfo = image_info;
-					} break;
-					default: break;
-				}
-			}
-
-			vkUpdateDescriptorSets(vctx.device, max_frames_in_flight, desc_writes, 0, null);
-		}
-
-		core_free(image_infos);
-		core_free(buffer_infos);
-		core_free(layout_bindings);
-	}
-
-no_descriptors:
 
 	if (vkCreatePipelineLayout(vctx.device, &(VkPipelineLayoutCreateInfo) {
 			.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
@@ -1865,7 +1896,6 @@ no_descriptors:
 			.pDynamicState = &dynamic_state,
 			.pDepthStencilState = &depth_stencil,
 			.layout = pipeline->layout,
-			.subpass = 0,
 			.pNext = &(VkPipelineRenderingCreateInfoKHR) {
 				.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR,
 				.colorAttachmentCount = framebuffer->colour_count,
@@ -1883,6 +1913,49 @@ no_descriptors:
 	if (descriptor_sets->count > 0) {
 		core_free(set_layouts);
 	}
+}
+
+static void init_compute_pipeline(struct video_vk_pipeline* pipeline, u32 flags, const struct video_vk_shader* shader,
+	struct pipeline_descriptor_sets* descriptor_sets) {
+
+	pipeline->desc_sets = null;
+	pipeline->uniforms  = null;
+
+	memset(&pipeline->set_table, 0, sizeof(pipeline->set_table));
+
+	pipeline->flags = flags;
+
+	pipeline->descriptor_set_count = descriptor_sets->count;
+
+	VkPipelineShaderStageCreateInfo stage = {
+		.sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+		.stage  = VK_SHADER_STAGE_COMPUTE_BIT,
+		.module = shader->compute,
+		.pName = "main"
+	};
+
+	VkDescriptorSetLayout* set_layouts;
+	if (descriptor_sets->count != 0) {
+		set_layouts = init_pipeline_descriptors(pipeline, descriptor_sets);
+	}
+
+	if (vkCreatePipelineLayout(vctx.device, &(VkPipelineLayoutCreateInfo) {
+			.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+			.setLayoutCount = (u32)descriptor_sets->count,
+			.pSetLayouts = set_layouts,
+		}, null, &pipeline->layout) != VK_SUCCESS) {
+		abort_with("Failed to create pipeline layout.");
+	}
+
+	if (vkCreateComputePipelines(vctx.device, VK_NULL_HANDLE, 1, &(VkComputePipelineCreateInfo) {
+			.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
+			.stage = stage,
+			.layout = pipeline->layout,
+		}, null, &pipeline->pipeline) != VK_SUCCESS) {
+		abort_with("Failed to create compute pipeline.");
+	}
+
+	core_free(set_layouts);
 }
 
 static void deinit_pipeline(struct video_vk_pipeline* pipeline) {
@@ -1968,36 +2041,48 @@ struct pipeline* video_vk_new_pipeline(u32 flags, const struct shader* shader, c
 		}
 	}
 
-	pipeline->bindings.count = attrib_bindings.count;
-	pipeline->bindings.bindings = core_calloc(attrib_bindings.count, sizeof *pipeline->bindings.bindings);
+	if (~flags & pipeline_flags_compute) {
+		pipeline->bindings.count = attrib_bindings.count;
+		pipeline->bindings.bindings = core_calloc(attrib_bindings.count, sizeof *pipeline->bindings.bindings);
 
-	for (usize i = 0; i < pipeline->bindings.count; i++) {
-		struct pipeline_attribute_binding* dst = (void*)(pipeline->bindings.bindings + i);
-		const struct pipeline_attribute_binding* src = attrib_bindings.bindings + i;
+		for (usize i = 0; i < pipeline->bindings.count; i++) {
+			struct pipeline_attribute_binding* dst = (void*)(pipeline->bindings.bindings + i);
+			const struct pipeline_attribute_binding* src = attrib_bindings.bindings + i;
 
-		dst->rate    = src->rate;
-		dst->stride  = src->stride;
-		dst->binding = src->binding;
-		dst->attributes.count = src->attributes.count;
-		dst->attributes.attributes = core_calloc(dst->attributes.count, sizeof(struct pipeline_attribute));
+			dst->rate    = src->rate;
+			dst->stride  = src->stride;
+			dst->binding = src->binding;
+			dst->attributes.count = src->attributes.count;
+			dst->attributes.attributes = core_calloc(dst->attributes.count, sizeof(struct pipeline_attribute));
 
-		for (usize j = 0; j < dst->attributes.count; j++) {
-			struct pipeline_attribute* attrib = (void*)(dst->attributes.attributes + j);
-			const struct pipeline_attribute* other = src->attributes.attributes + j;
+			for (usize j = 0; j < dst->attributes.count; j++) {
+				struct pipeline_attribute* attrib = (void*)(dst->attributes.attributes + j);
+				const struct pipeline_attribute* other = src->attributes.attributes + j;
 
-			attrib->name     = null;
-			attrib->location = other->location;
-			attrib->offset   = other->offset;
-			attrib->type     = other->type;
+				attrib->name     = null;
+				attrib->location = other->location;
+				attrib->offset   = other->offset;
+				attrib->type     = other->type;
+			}
 		}
 	}
 
 	list_push(vctx.pipelines, pipeline);
 
-	init_pipeline(pipeline, flags, (const struct video_vk_shader*)shader,
-		(const struct video_vk_framebuffer*)framebuffer, &attrib_bindings, &descriptor_sets);
+	if (flags & pipeline_flags_compute) {
+		init_compute_pipeline(pipeline, flags, (const struct video_vk_shader*)shader, &descriptor_sets);
+	} else {
+		init_pipeline(pipeline, flags, (const struct video_vk_shader*)shader,
+			(const struct video_vk_framebuffer*)framebuffer, &attrib_bindings, &descriptor_sets);
+	}
 
 	return (struct pipeline*)pipeline;
+}
+
+struct pipeline* video_vk_new_compute_pipeline(u32 flags, const struct shader* shader, struct pipeline_descriptor_sets descriptor_sets) {
+	return video_vk_new_pipeline(flags | pipeline_flags_compute, shader, null,
+		(struct pipeline_attribute_bindings) { .count = 0, .bindings = null },
+	descriptor_sets);
 }
 
 void video_vk_free_pipeline(struct pipeline* pipeline_) {
@@ -2029,36 +2114,57 @@ void video_vk_free_pipeline(struct pipeline* pipeline_) {
 
 	free_vector(pipeline->descriptor_sets);
 
-	for (usize i = 0; i < pipeline->bindings.count; i++) {
-		struct pipeline_attribute_binding* binding = (void*)(pipeline->bindings.bindings + i);
+	if (~pipeline->flags & pipeline_flags_compute) {
+		for (usize i = 0; i < pipeline->bindings.count; i++) {
+			struct pipeline_attribute_binding* binding = (void*)(pipeline->bindings.bindings + i);
 
-		core_free(binding->attributes.attributes);
+			core_free(binding->attributes.attributes);
+		}
+
+		core_free(pipeline->bindings.bindings);
 	}
-
-	core_free(pipeline->bindings.bindings);
 
 	core_free(pipeline);
 }
 
-void video_vk_begin_pipeline(const struct pipeline* pipeline) {
+void video_vk_begin_pipeline(const struct pipeline* pipeline_) {
+	const struct video_vk_pipeline* pipeline = (const struct video_vk_pipeline*)pipeline_;
+
+	VkPipelineBindPoint point = pipeline->flags & pipeline_flags_compute ?
+		VK_PIPELINE_BIND_POINT_COMPUTE : VK_PIPELINE_BIND_POINT_GRAPHICS;
+
 	vkCmdBindPipeline(vctx.command_buffers[vctx.current_frame],
-		VK_PIPELINE_BIND_POINT_GRAPHICS, ((const struct video_vk_pipeline*)pipeline)->pipeline);
+		point, pipeline->pipeline);
 }
 
 void video_vk_end_pipeline(const struct pipeline* pipeline) {
 
 }
 
+void video_vk_invoke_compute(const struct pipeline* pipeline, v3u group_count) {
+	vkCmdDispatch(vctx.command_buffers[vctx.current_frame], group_count.x, group_count.y, group_count.z);
+}
+
 void video_vk_recreate_pipeline(struct pipeline* pipeline_) {
 	struct video_vk_pipeline* pipeline = (struct video_vk_pipeline*)pipeline_;
 
 	deinit_pipeline(pipeline);
-	init_pipeline(pipeline, pipeline->flags, (const struct video_vk_shader*)pipeline->shader,
-		(const struct video_vk_framebuffer*)pipeline->framebuffer,
-		&pipeline->bindings, &(struct pipeline_descriptor_sets) {
-			.sets = pipeline->descriptor_sets,
-			.count = vector_count(pipeline->descriptor_sets)
-		});
+
+	if (pipeline->flags & pipeline_flags_compute) {
+		init_compute_pipeline(pipeline, pipeline->flags,
+			(const struct video_vk_shader*)pipeline->shader,
+			&(struct pipeline_descriptor_sets) {
+				.sets = pipeline->descriptor_sets,
+				.count = vector_count(pipeline->descriptor_sets)
+			});
+	} else {
+		init_pipeline(pipeline, pipeline->flags, (const struct video_vk_shader*)pipeline->shader,
+			(const struct video_vk_framebuffer*)pipeline->framebuffer,
+			&pipeline->bindings, &(struct pipeline_descriptor_sets) {
+				.sets = pipeline->descriptor_sets,
+				.count = vector_count(pipeline->descriptor_sets)
+			});
+	}
 }
 
 void video_vk_update_pipeline_uniform(struct pipeline* pipeline_, const char* set, const char* descriptor, const void* data) {
@@ -2099,7 +2205,10 @@ void video_vk_bind_pipeline_descriptor_set(struct pipeline* pipeline_, const cha
 
 	struct video_vk_impl_descriptor_set* desc_set = *set_ptr;
 
-	vkCmdBindDescriptorSets(vctx.command_buffers[vctx.current_frame], VK_PIPELINE_BIND_POINT_GRAPHICS,
+	VkPipelineBindPoint point = pipeline->flags & pipeline_flags_compute ?
+		VK_PIPELINE_BIND_POINT_COMPUTE : VK_PIPELINE_BIND_POINT_GRAPHICS;
+
+	vkCmdBindDescriptorSets(vctx.command_buffers[vctx.current_frame], point,
 		pipeline->layout, (u32)target, 1,
 		desc_set->sets + vctx.current_frame, 0, null);
 }
@@ -2124,6 +2233,156 @@ void video_vk_pipeline_change_shader(struct pipeline* pipeline_, const struct sh
 
 		video_vk_recreate_pipeline(pipeline_);
 	}
+}
+
+struct storage* video_vk_new_storage(u32 flags, usize size, void* initial_data) {
+	struct video_vk_storage* storage = core_calloc(1, sizeof *storage);
+
+	storage->flags = flags;
+	storage->size = size;
+
+	VkBufferUsageFlags usage =
+		VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
+		VK_BUFFER_USAGE_TRANSFER_SRC_BIT |
+		VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+	VkMemoryPropertyFlags props = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+	VmaAllocationCreateFlags a_flags = 0;
+
+	if (flags & storage_flags_cpu_readable || flags & storage_flags_cpu_writable) {
+		props = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+		a_flags |= VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;
+
+		for (usize i = 0; i < max_frames_in_flight; i++) {
+			new_buffer(size, usage, props, a_flags, &storage->buffers[i], &storage->memories[i]);
+
+			if (initial_data) {
+				void* data;
+				vmaMapMemory(vctx.allocator, storage->memories[i], &data);
+				memcpy(data, initial_data, size);
+				vmaUnmapMemory(vctx.allocator, storage->memories[i]);
+			}
+		}
+	} else {
+		for (usize i = 0; i < max_frames_in_flight; i++) {
+			new_buffer(size, usage, props, a_flags, &storage->buffers[i], &storage->memories[i]);
+
+			if (initial_data) {
+				VkBuffer stage;
+				VmaAllocation stage_memory;
+
+				new_buffer(size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+					VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+					VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,
+					&stage, &stage_memory);
+
+				void* data;
+				vmaMapMemory(vctx.allocator, stage_memory, &data);
+				memcpy(data, initial_data, size);
+				vmaUnmapMemory(vctx.allocator, stage_memory);
+
+				copy_buffer(storage->buffers[i], stage, size);
+
+				vmaDestroyBuffer(vctx.allocator, stage, stage_memory);
+			}
+		}
+	}
+
+	return (struct storage*)storage;
+}
+
+void video_vk_update_storage(struct storage* storage_, u32 mode, void* data) {
+	struct video_vk_storage* storage = (struct video_vk_storage*)storage_;
+
+	abort_with("Not implemented.");
+}
+
+void video_vk_update_storage_region(struct storage* storage_, u32 mode, void* data, usize offset, usize size) {
+	struct video_vk_storage* storage = (struct video_vk_storage*)storage_;
+
+	abort_with("Not implemented.");
+}
+
+void video_vk_copy_storage(u32 mode, struct storage* dst_, usize dst_offset, const struct storage* src_, usize src_offset, usize size) {
+	struct video_vk_storage* dst = (struct video_vk_storage*)dst_;
+	struct video_vk_storage* src = (struct video_vk_storage*)src_;
+
+	if (mode == storage_update_now) {
+		vkDeviceWaitIdle(vctx.device);
+
+		VkCommandBuffer command_buffer = begin_temp_command_buffer();
+
+		for (usize i = 0; i < max_frames_in_flight; i++) {
+			vkCmdCopyBuffer(command_buffer, src->buffers[i], dst->buffers[i], 1, &(VkBufferCopy) {
+				.size = size,
+				.srcOffset = src_offset,
+				.dstOffset = dst_offset
+			});
+		}
+
+		end_temp_command_buffer(command_buffer);
+
+		vkDeviceWaitIdle(vctx.device);
+	} else {
+		usize idx = vctx.current_frame;
+
+		vkCmdCopyBuffer(vctx.command_buffers[idx], src->buffers[idx], dst->buffers[idx], 1, &(VkBufferCopy) {
+			.size = size,
+			.srcOffset = src_offset,
+			.dstOffset = dst_offset
+		});
+	}
+}
+
+void video_vk_storage_make_readable(struct storage* storage_) {
+	struct video_vk_storage* storage = (struct video_vk_storage*)storage_;
+
+	usize idx = vctx.current_frame;
+
+	vkCmdPipelineBarrier(vctx.command_buffers[idx], VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT,
+		0, 0, null, 1,
+		&(VkBufferMemoryBarrier) {
+			.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+			.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT,
+			.dstAccessMask = VK_ACCESS_SHADER_READ_BIT,
+			.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+			.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+			.buffer = storage->buffers[idx],
+			.offset = 0,
+			.size = storage->size
+		},
+		0, null);
+}
+
+void video_vk_storage_make_writable(struct storage* storage_) {
+	struct video_vk_storage* storage = (struct video_vk_storage*)storage_;
+
+	usize idx = vctx.current_frame;
+
+	vkCmdPipelineBarrier(vctx.command_buffers[idx], VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT,
+		0, 0, null, 1,
+		&(VkBufferMemoryBarrier) {
+			.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+			.srcAccessMask = VK_ACCESS_SHADER_READ_BIT,
+			.dstAccessMask = VK_ACCESS_SHADER_WRITE_BIT,
+			.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+			.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+			.buffer = storage->buffers[idx],
+			.offset = 0,
+			.size = storage->size
+		},
+		0, null);
+}
+
+void video_vk_free_storage(struct storage* storage_) {
+	struct video_vk_storage* storage = (struct video_vk_storage*)storage_;
+
+	vkDeviceWaitIdle(vctx.device);
+
+	for (usize i = 0; i < max_frames_in_flight; i++) {
+		vmaDestroyBuffer(vctx.allocator, storage->buffers[i], storage->memories[i]);
+	}
+
+	core_free(storage);
 }
 
 struct vertex_buffer* video_vk_new_vertex_buffer(void* verts, usize size, u32 flags) {
@@ -2316,14 +2575,24 @@ static VkShaderModule new_shader_module(const u8* buf, usize buf_size) {
 	return m;
 }
 
-static void init_shader(struct video_vk_shader* shader, const u8* v_buf, usize v_buf_size, const u8* f_buf, usize f_buf_size) {
-	shader->vertex   = new_shader_module(v_buf, v_buf_size);
-	shader->fragment = new_shader_module(f_buf, f_buf_size);
+static void init_shader(struct video_vk_shader* shader, const struct shader_header* header, const u8* data) {
+	shader->is_compute = header->is_compute;
+
+	if (header->is_compute) {
+		shader->compute = new_shader_module(data + header->compute_header.offset, header->compute_header.size);
+	} else {
+		shader->vertex   = new_shader_module(data + header->raster_header.v_offset, header->raster_header.v_size);
+		shader->fragment = new_shader_module(data + header->raster_header.f_offset, header->raster_header.f_size);
+	}
 }
 
 static void deinit_shader(struct video_vk_shader* shader) {
-	vkDestroyShaderModule(vctx.device, shader->vertex,   null);
-	vkDestroyShaderModule(vctx.device, shader->fragment, null);
+	if (shader->is_compute) {
+		vkDestroyShaderModule(vctx.device, shader->compute, null);
+	} else {
+		vkDestroyShaderModule(vctx.device, shader->vertex,   null);
+		vkDestroyShaderModule(vctx.device, shader->fragment, null);
+	}
 }
 
 struct shader* video_vk_new_shader(const u8* data, usize data_size) {
@@ -2331,12 +2600,12 @@ struct shader* video_vk_new_shader(const u8* data, usize data_size) {
 
 	struct shader_header* header = (struct shader_header*)data;
 
-	if (memcmp("CS", header->header, 2) != 0) {
+	if (memcmp("CSH", header->header, 3) != 0) {
 		error("Invalid shader data.");
 		return null;
 	}
 
-	init_shader(shader, data + header->v_offset, (usize)header->v_size, data + header->f_offset, (usize)header->f_size);
+	init_shader(shader, header, data);
 
 	return (struct shader*)shader;
 }
@@ -2537,12 +2806,12 @@ static void shader_on_load(const char* filename, u8* raw, usize raw_size, void* 
 
 	memset(payload, 0, payload_size);
 
-	if (memcmp("CS", header->header, 2) != 0) {
+	if (memcmp("CSH", header->header, 3) != 0) {
 		error("%s is not a valid shader resource.", filename);
 		return;
 	}
 
-	init_shader(payload, raw + header->v_offset, (usize)header->v_size, raw + header->f_offset, (usize)header->f_size);
+	init_shader(payload, header, raw);
 }
 
 static void shader_on_unload(void* payload, usize payload_size) {

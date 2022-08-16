@@ -24,9 +24,7 @@ struct PrepOut {
 };
 
 #pragma pack(push, 1)
-struct ShaderHeader {
-	char header[2];
-	u16 bind_table_count;
+struct ShaderRasterHeader {
 	u64 v_offset;
 	u64 f_offset;
 	u64 v_size;
@@ -35,7 +33,25 @@ struct ShaderHeader {
 	u64 f_gl_offset;
 	u64 v_gl_size;
 	u64 f_gl_size;
+};
+
+struct ShaderComputeHeader {
+	u64 offset;
+	u64 size;
+	u64 gl_offset;
+	u64 gl_size;
+};
+
+struct ShaderHeader {
+	char header[3];
+	u8 is_compute;
+	u64 bind_table_count;
 	u64 bind_table_offset;
+
+	union {
+		ShaderRasterHeader raster_header;
+		ShaderComputeHeader compute_header;
+	};
 };
 #pragma pack(pop)
 
@@ -68,6 +84,23 @@ std::vector<std::string> included;
 static std::string convert_filename(const std::string& path, const std::string& name) {
 	usize slash = path.find_last_of("/");
 	return path.substr(0, slash + 1) + name;
+}
+
+static void compute_set_bindings() {
+	for (auto& sp : sets) {
+		auto id = sp.first;
+		auto& set = sp.second;
+
+		for (auto& desc : set.bindings) {
+			u32 binding = current_binding++;
+
+			desc.compiler.set_decoration(desc.id, spv::DecorationBinding, binding);
+
+			DescID did{ id, desc.binding };
+
+			set_bindings[elf_hash(reinterpret_cast<u8*>(&did), sizeof did)] = binding;
+		}
+	}
 }
 
 static bool include_file(const std::string& filepath, std::string& out) {
@@ -138,7 +171,8 @@ static bool preprocess(const char* filepath, PrepOut& out) {
 
 		if (line.find("#compute") == 0) {
 			out.is_compute = true;
-			out.comp_src += std::to_string(c + 1) + "\n";
+			out.comp_src += version + "\n";
+			out.comp_src += "#line " + std::to_string(c + 1) + "\n";
 			goto loop_end;
 		} else if (!out.is_compute && line.find("#begin") == 0) {
 			if (line.find("vertex") != std::string::npos) {
@@ -315,20 +349,7 @@ i32 main(i32 argc, const char** argv) {
 		compile_for_opengl(v_compiler);
 		compile_for_opengl(f_compiler);
 
-		for (auto& sp : sets) {
-			auto id = sp.first;
-			auto& set = sp.second;
-
-			for (auto& desc : set.bindings) {
-				u32 binding = current_binding++;
-
-				desc.compiler.set_decoration(desc.id, spv::DecorationBinding, binding);
-
-				DescID did{ id, desc.binding };
-
-				set_bindings[elf_hash(reinterpret_cast<u8*>(&did), sizeof did)] = binding;
-			}
-		}
+		compute_set_bindings();
 		
 		std::string vert_opengl_src = v_compiler.compile();
 		std::string frag_opengl_src = f_compiler.compile();
@@ -342,25 +363,31 @@ i32 main(i32 argc, const char** argv) {
 		ShaderHeader header{};
 		header.header[0] = 'C';
 		header.header[1] = 'S';
+		header.header[2] = 'H';
 
 		header.bind_table_count = 0;
 		for (const auto& sbp : set_bindings) {
 			header.bind_table_count++;
 		}
 
-		header.v_size = vert_data.size() * sizeof(u32);
-		header.f_size = frag_data.size() * sizeof(u32);
-		header.v_offset = sizeof header;
-		header.f_offset = header.v_offset + header.v_size;
-		header.v_gl_size = vert_opengl_src.size() + 1;
-		header.f_gl_size = frag_opengl_src.size() + 1;
-		header.v_gl_offset = header.f_offset + header.f_size;
-		header.f_gl_offset = header.v_gl_offset + header.v_gl_size;
-		header.bind_table_offset = header.f_gl_offset + header.f_gl_size;
+		header.is_compute = 0;
+
+		ShaderRasterHeader& r_header = header.raster_header;
+
+		r_header.v_size = vert_data.size() * sizeof(u32);
+		r_header.f_size = frag_data.size() * sizeof(u32);
+		r_header.v_offset = sizeof header;
+		r_header.f_offset = r_header.v_offset + r_header.v_size;
+		r_header.v_gl_size = vert_opengl_src.size() + 1;
+		r_header.f_gl_size = frag_opengl_src.size() + 1;
+		r_header.v_gl_offset = r_header.f_offset + r_header.f_size;
+		r_header.f_gl_offset = r_header.v_gl_offset + r_header.v_gl_size;
+
+		header.bind_table_offset = r_header.f_gl_offset + r_header.f_gl_size;
 
 		fwrite(&header, 1, sizeof header, outfile);
-		fwrite(&vert_data[0], 1, header.v_size, outfile);
-		fwrite(&frag_data[0], 1, header.f_size, outfile);
+		fwrite(&vert_data[0], 1, r_header.v_size, outfile);
+		fwrite(&frag_data[0], 1, r_header.f_size, outfile);
 
 		fwrite(vert_opengl_src.c_str(), 1, vert_opengl_src.size(), outfile);
 		fwrite("\0", 1, 1, outfile);
@@ -379,7 +406,6 @@ i32 main(i32 argc, const char** argv) {
 			compiler.CompileGlslToSpv(prep.comp_src.c_str(), shaderc_glsl_compute_shader, argv[1], "main", options);
 		if (compute_mod.GetCompilationStatus() != shaderc_compilation_status_success) {
 			std::stringstream ss(compute_mod.GetErrorMessage());
-
 			std::string error_line;
 			while (std::getline(ss, error_line)) {
 				error("%s", error_line.c_str());
@@ -388,7 +414,49 @@ i32 main(i32 argc, const char** argv) {
 			return 1;
 		}
 
-		abort_with("Compute shader compilation not yet implemented.");
+		std::vector<u32> com_data(compute_mod.cbegin(), compute_mod.cend());
+
+		spirv_cross::CompilerGLSL gl_compiler(com_data);
+
+		compile_for_opengl(gl_compiler);
+
+		compute_set_bindings();
+
+		auto gl_src = gl_compiler.compile();
+
+		FILE* outfile = fopen(argv[2], "wb");
+
+		ShaderHeader header;
+		header.header[0] = 'C';
+		header.header[1] = 'S';
+		header.header[2] = 'H';
+
+		header.bind_table_count = 0;
+		for (const auto& sbp : set_bindings) {
+			header.bind_table_count++;
+		}
+
+		header.is_compute = 1;
+
+		ShaderComputeHeader& c_header = header.compute_header;
+
+		c_header.size = com_data.size() * sizeof(u32);
+		c_header.offset = sizeof header;
+		c_header.gl_size = gl_src.size() + 1;
+		c_header.gl_offset = c_header.offset + c_header.size;
+
+		header.bind_table_offset = c_header.gl_offset + c_header.gl_size;
+
+		fwrite(&header, 1, sizeof header, outfile);
+		fwrite(&com_data[0], 1, com_data.size() * sizeof(u32), outfile);
+		fwrite(gl_src.c_str(), 1, gl_src.size() + 1, outfile);
+
+		for (const auto& sbp : set_bindings) {
+			fwrite(&sbp.first, 1, sizeof sbp.first, outfile);
+			fwrite(&sbp.second, 1, sizeof sbp.second, outfile);
+		}
+
+		fclose(outfile);
 	}
 
 	return 0;

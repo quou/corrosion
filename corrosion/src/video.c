@@ -340,14 +340,24 @@ static void find_procs(u32 api, bool enable_validation) {
 	video.end_framebuffer      = get_v_proc(end_framebuffer);
 
 	video.new_pipeline                 = get_api_proc(new_pipeline);
+	video.new_compute_pipeline         = get_api_proc(new_compute_pipeline);
 	video.free_pipeline                = get_api_proc(free_pipeline);
 	video.begin_pipeline               = get_api_proc(begin_pipeline);
 	video.end_pipeline                 = get_api_proc(end_pipeline);
+	video.invoke_compute               = get_api_proc(invoke_compute);
 	video.recreate_pipeline            = get_api_proc(recreate_pipeline);
 	video.bind_pipeline_descriptor_set = get_api_proc(bind_pipeline_descriptor_set);
 	video.update_pipeline_uniform      = get_api_proc(update_pipeline_uniform);
 	video.pipeline_add_descriptor_set  = get_api_proc(pipeline_add_descriptor_set);
 	video.pipeline_change_shader       = get_api_proc(pipeline_change_shader);
+
+	video.new_storage           = get_api_proc(new_storage);
+	video.update_storage        = get_api_proc(update_storage);
+	video.update_storage_region = get_api_proc(update_storage_region);
+	video.copy_storage          = get_api_proc(copy_storage);
+	video.storage_make_readable = get_api_proc(storage_make_readable);
+	video.storage_make_writable = get_api_proc(storage_make_writable);
+	video.free_storage          = get_api_proc(free_storage);
 
 	video.new_vertex_buffer    = get_api_proc(new_vertex_buffer);
 	video.free_vertex_buffer   = get_api_proc(free_vertex_buffer);
