@@ -10,8 +10,8 @@ Framework for Vulkan.
 
 ### Prerequisites
  - A graphics processor that supports at least Vulkan 1.2 and the following extensions:
-  - VK_KHR_dynamic_rendering
-  - VK_KHR_swapchain
+ 	- VK_KHR_dynamic_rendering
+ 	- VK_KHR_swapchain
  - Vulkan SDK, including shaderc and SPIRV-Cross.
  - Vulkan validation layers (optional but highly recommended).
  - On GNU/Linux:
