@@ -26,7 +26,6 @@ struct pipeline* video_gl_new_compute_pipeline(u32 flags, const struct shader* s
 void video_gl_free_pipeline(struct pipeline* pipeline);
 void video_gl_begin_pipeline(const struct pipeline* pipeline);
 void video_gl_end_pipeline(const struct pipeline* pipeline);
-void video_gl_invoke_compute(const struct pipeline* pipeline, v3u count);
 void video_gl_recreate_pipeline(struct pipeline* pipeline);
 void video_gl_update_pipeline_uniform(struct pipeline* pipeline, const char* set, const char* descriptor, const void* data);
 void video_gl_bind_pipeline_descriptor_set(struct pipeline* pipeline, const char* set, usize target);
@@ -37,9 +36,9 @@ struct storage* video_gl_new_storage(u32 flags, usize size, void* initial_data);
 void video_gl_update_storage(struct storage* storage, u32 mode, void* data);
 void video_gl_update_storage_region(struct storage* storage, u32 mode, void* data, usize offset, usize size);
 void video_gl_copy_storage(u32 mode, struct storage* dst, usize dst_offset, const struct storage* src, usize src_offset, usize size);
-void video_gl_storage_make_readable(struct storage* storage);
-void video_gl_storage_make_writable(struct storage* storage);
+void video_gl_storage_barrier(struct storage* storage, u32 state);
 void video_gl_free_storage(struct storage* storage);
+void video_gl_invoke_compute(v3u count);
 
 void video_gl_register_resources();
 

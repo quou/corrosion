@@ -44,6 +44,7 @@ struct shader_header {
 
 struct queue_families {
 	i32 graphics;
+	i32 compute;
 	i32 present;
 };
 
@@ -78,6 +79,7 @@ struct vk_video_context {
 	VkDevice device;
 
 	VkQueue graphics_queue;
+	VkQueue compute_queue;
 	VkQueue present_queue;
 
 	VmaAllocator allocator;
@@ -92,8 +94,11 @@ struct vk_video_context {
 	VkImageView* swapchain_image_views;
 
 	VkCommandPool command_pool;
+	VkCommandPool com_cmd_pool;
 	VkCommandBuffer command_buffers[max_frames_in_flight];
+	VkCommandBuffer com_cmd_buffers[max_frames_in_flight];
 
+	VkSemaphore compute_finish_semaphores[max_frames_in_flight];
 	VkSemaphore image_avail_semaphores[max_frames_in_flight];
 	VkSemaphore render_finish_semaphores[max_frames_in_flight];
 	VkFence in_flight_fences[max_frames_in_flight];
@@ -109,6 +114,7 @@ struct vk_video_context {
 	bool enable_vsync;
 
 	u32 current_frame;
+	u32 prev_frame;
 	u32 image_id;
 
 	usize min_uniform_buffer_offset_alignment;
@@ -223,6 +229,8 @@ struct video_vk_pipeline {
 
 	VkPipelineLayout layout;
 	VkPipeline pipeline;
+
+	VkCommandBuffer* command_buffers;
 
 	u32 flags;
 	const struct shader* shader;

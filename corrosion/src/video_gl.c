@@ -427,7 +427,7 @@ void video_gl_end_pipeline(const struct pipeline* pipeline_) {
 	}
 }
 
-void video_gl_invoke_compute(const struct pipeline* pipeline, v3u count) {
+void video_gl_invoke_compute(v3u count) {
 	abort_with("Not implemented.");
 }
 
@@ -567,12 +567,8 @@ void video_gl_copy_storage(u32 mode, struct storage* dst, usize dst_offset, cons
 	abort_with("Not implemented.");
 }
 
-void video_gl_storage_make_readable(struct storage* storage) {
-	abort_with("Not implemented.");
-}
+void video_gl_storage_barrier(struct storage* storage, u32 state) {
 
-void video_gl_storage_make_writable(struct storage* storage) {
-	abort_with("Not implemented.");
 }
 
 struct vertex_buffer* video_gl_new_vertex_buffer(void* verts, usize size, u32 flags) {

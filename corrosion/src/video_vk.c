@@ -7,6 +7,17 @@
 #include "video_vk.h"
 #include "window_internal.h"
 
+/* == Vulkan backend implemention ==
+ *
+ * Requires Vulkan 1.2.
+ *
+ * Uses the VK_KHR_dynamic_rendering extension. Attachment sync is sub-optimal, that is,
+ * it's pretty much forced to be synchronous, much like an OpenGL framebuffer.
+ *
+ * A buffer of "commands" (Not to be confused with a Vulkan command buffer :D), is used
+ * to ensure updates to uniform, index and vertex buffers only get applied to the correct
+ * frames, and not to each frame in flight at once, which ~~may~~ will cause visual bugs. */
+
 static void add_memcpy_cmd(struct update_queue* buf, void* target, const void* data, usize size) {
 	usize cmd_size = sizeof(struct update_cmd_memcpy) + size;
 
@@ -162,7 +173,7 @@ void deinit_swapchain_capabilities(struct swapchain_capabilities* scc) {
 }
 
 static struct queue_families get_queue_families(VkPhysicalDevice device) {
-	struct queue_families r = { -1, -1 };
+	struct queue_families r = { -1, -1, -1 };
 
 	u32 family_count = 0;
 
@@ -172,8 +183,12 @@ static struct queue_families get_queue_families(VkPhysicalDevice device) {
 	vkGetPhysicalDeviceQueueFamilyProperties(device, &family_count, families);
 
 	for (u32 i = 0; i < family_count; i++) {
-		if (families[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) {
+		if (r.graphics == -1 && families[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) {
 			r.graphics = (i32)i;
+		}
+
+		if (r.compute == -1 && families[i].queueFlags & VK_QUEUE_COMPUTE_BIT) {
+			r.compute = (i32)i;
 		}
 
 		VkBool32 supports_presentation = false;
@@ -276,7 +291,7 @@ static VKAPI_ATTR VkBool32 debug_callback(VkDebugUtilsMessageSeverityFlagBitsEXT
 		}
 	}
 
-	return false;
+	return true;
 }
 
 static VkPhysicalDevice first_suitable_device() {
@@ -334,13 +349,13 @@ static usize pad_ub_size(usize size) {
 	return size;
 }
 
-static VkCommandBuffer begin_temp_command_buffer() {
+static VkCommandBuffer begin_temp_command_buffer(VkCommandPool pool) {
 	VkCommandBuffer buffer;
 
 	vkAllocateCommandBuffers(vctx.device, &(VkCommandBufferAllocateInfo) {	
 		.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
 		.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-		.commandPool = vctx.command_pool,
+		.commandPool = pool,
 		.commandBufferCount = 1
 	}, &buffer);
 
@@ -352,7 +367,7 @@ static VkCommandBuffer begin_temp_command_buffer() {
 	return buffer;
 }
 
-static void end_temp_command_buffer(VkCommandBuffer buffer) {
+static void end_temp_command_buffer(VkCommandBuffer buffer, VkCommandPool pool, VkQueue queue) {
 	vkEndCommandBuffer(buffer);
 
 	vkQueueSubmit(vctx.graphics_queue, 1, &(VkSubmitInfo) {
@@ -360,13 +375,13 @@ static void end_temp_command_buffer(VkCommandBuffer buffer) {
 		.commandBufferCount = 1,
 		.pCommandBuffers = &buffer
 	}, VK_NULL_HANDLE);
-	vkQueueWaitIdle(vctx.graphics_queue);
+	vkQueueWaitIdle(queue);
 
-	vkFreeCommandBuffers(vctx.device, vctx.command_pool, 1, &buffer);
+	vkFreeCommandBuffers(vctx.device, pool, 1, &buffer);
 }
 
 static void change_image_layout(VkImage image, VkFormat format, VkImageLayout src_layout, VkImageLayout dst_layout, bool is_depth) {
-	VkCommandBuffer command_buffer = begin_temp_command_buffer();
+	VkCommandBuffer command_buffer = begin_temp_command_buffer(vctx.command_pool);
 
 	VkImageMemoryBarrier barrier = {
 		.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
@@ -426,7 +441,7 @@ static void change_image_layout(VkImage image, VkFormat format, VkImageLayout sr
 
 	vkCmdPipelineBarrier(command_buffer, src_stage, dst_stage, 0, 0, null, 0, null, 1, &barrier);
 
-	end_temp_command_buffer(command_buffer);
+	end_temp_command_buffer(command_buffer, vctx.command_pool, vctx.graphics_queue);
 }
 
 static VkImageView new_image_view(VkImage image, VkFormat format, VkImageAspectFlags flags) {
@@ -606,6 +621,7 @@ no_validation:
 
 	vkGetDeviceQueue(vctx.device, (u32)vctx.qfs.graphics, 0, &vctx.graphics_queue);
 	vkGetDeviceQueue(vctx.device, (u32)vctx.qfs.present,  0, &vctx.present_queue);
+	vkGetDeviceQueue(vctx.device, (u32)vctx.qfs.compute,  0, &vctx.compute_queue);
 
 	free_vector(queue_infos);
 	free_vector(unique_queue_families);
@@ -628,12 +644,20 @@ no_validation:
 
 	init_swapchain(VK_NULL_HANDLE);
 
-	/* Create the command pool. */
+	/* Create the command pools. */
 	if (vkCreateCommandPool(vctx.device, &(VkCommandPoolCreateInfo) {
 			.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
 			.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
 			.queueFamilyIndex = (u32)vctx.qfs.graphics
 		}, null, &vctx.command_pool) != VK_SUCCESS) {
+		abort_with("Failed to create command pool.");
+	}
+
+	if (vkCreateCommandPool(vctx.device, &(VkCommandPoolCreateInfo) {
+			.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+			.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
+			.queueFamilyIndex = (u32)vctx.qfs.compute
+		}, null, &vctx.com_cmd_pool) != VK_SUCCESS) {
 		abort_with("Failed to create command pool.");
 	}
 
@@ -644,6 +668,15 @@ no_validation:
 			.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
 			.commandBufferCount = max_frames_in_flight
 		}, vctx.command_buffers) != VK_SUCCESS) {
+		abort_with("Failed to allocate command buffers.");
+	}
+
+	if (vkAllocateCommandBuffers(vctx.device, &(VkCommandBufferAllocateInfo) {
+			.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+			.commandPool = vctx.com_cmd_pool,
+			.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+			.commandBufferCount = max_frames_in_flight
+		}, vctx.com_cmd_buffers) != VK_SUCCESS) {
 		abort_with("Failed to allocate command buffers.");
 	}
 
@@ -659,8 +692,9 @@ no_validation:
 
 	for (u32 i = 0; i < max_frames_in_flight; i++) {
 		if (
-			vkCreateSemaphore(vctx.device, &semaphore_info, null, &vctx.image_avail_semaphores[i])   != VK_SUCCESS ||
-			vkCreateSemaphore(vctx.device, &semaphore_info, null, &vctx.render_finish_semaphores[i]) != VK_SUCCESS ||
+			vkCreateSemaphore(vctx.device, &semaphore_info, null, &vctx.image_avail_semaphores[i])    != VK_SUCCESS ||
+			vkCreateSemaphore(vctx.device, &semaphore_info, null, &vctx.render_finish_semaphores[i])  != VK_SUCCESS ||
+			vkCreateSemaphore(vctx.device, &semaphore_info, null, &vctx.compute_finish_semaphores[i]) != VK_SUCCESS ||
 			vkCreateFence(vctx.device, &fence_info, null, &vctx.in_flight_fences[i])) {
 			abort_with("Failed to create synchronisation objects.");
 		}
@@ -709,6 +743,7 @@ void video_vk_deinit() {
 	for (u32 i = 0; i < max_frames_in_flight; i++) {
 		vkDestroySemaphore(vctx.device, vctx.image_avail_semaphores[i], null);
 		vkDestroySemaphore(vctx.device, vctx.render_finish_semaphores[i], null);
+		vkDestroySemaphore(vctx.device, vctx.compute_finish_semaphores[i], null);
 		vkDestroyFence(vctx.device, vctx.in_flight_fences[i], null);
 		
 		if (vctx.update_queues[i].capacity > 0) {
@@ -717,6 +752,7 @@ void video_vk_deinit() {
 	}
 
 	vkDestroyCommandPool(vctx.device, vctx.command_pool, null);
+	vkDestroyCommandPool(vctx.device, vctx.com_cmd_pool, null);
 
 	deinit_swapchain(true);
 
@@ -761,15 +797,25 @@ frame_begin:
 	if (vkBeginCommandBuffer(vctx.command_buffers[vctx.current_frame], &(VkCommandBufferBeginInfo) {
 			.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO
 		}) != VK_SUCCESS) {
-		warning("Failed to begin the command buffer");
-		return;
+		abort_with("Failed to begin the command buffer");
+	}
+
+	vkResetCommandBuffer(vctx.com_cmd_buffers[vctx.current_frame], 0);
+
+	if (vkBeginCommandBuffer(vctx.com_cmd_buffers[vctx.current_frame], &(VkCommandBufferBeginInfo) {
+			.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO
+		}) != VK_SUCCESS) {
+		abort_with("Failed to begin the command buffer");
 	}
 }
 
 void video_vk_end() {
 	if (vkEndCommandBuffer(vctx.command_buffers[vctx.current_frame]) != VK_SUCCESS) {
-		warning("Failed to end the command buffer.");
-		return;
+		abort_with("Failed to end the command buffer.");
+	}
+
+	if (vkEndCommandBuffer(vctx.com_cmd_buffers[vctx.current_frame]) != VK_SUCCESS) {
+		abort_with("Failed to end the command buffer.");
 	}
 
 	/* Update everything in the update queue and flush it. */
@@ -790,14 +836,33 @@ void video_vk_end() {
 
 	update_queue->count = 0;
 
+	/* Submit the compute command buffer. */
+	if (vkQueueSubmit(vctx.compute_queue, 1, &(VkSubmitInfo) {
+			.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+			.commandBufferCount = 1,
+			.pCommandBuffers = (VkCommandBuffer[]) {
+				vctx.com_cmd_buffers[vctx.current_frame]
+			},
+			.signalSemaphoreCount = 1,
+			.pSignalSemaphores = (VkSemaphore[]) {
+				vctx.compute_finish_semaphores[vctx.current_frame]
+			}
+		}, VK_NULL_HANDLE) != VK_SUCCESS) {
+		abort_with("Failed to submit compute command buffer.");
+	}
+
+	/* Submit the draw command buffer. It waits on the compute
+	 * comman buffer to complete. */
 	if (vkQueueSubmit(vctx.graphics_queue, 1, &(VkSubmitInfo) {
 			.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
-			.waitSemaphoreCount = 1,
+			.waitSemaphoreCount = 2,
 			.pWaitSemaphores = (VkSemaphore[]) {
-				vctx.image_avail_semaphores[vctx.current_frame]
+				vctx.image_avail_semaphores[vctx.current_frame],
+				vctx.compute_finish_semaphores[vctx.current_frame]
 			},
 			.pWaitDstStageMask = (VkPipelineStageFlags[]) {
-				VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
+				VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+				VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT
 			},
 			.commandBufferCount = 1,
 			.pCommandBuffers = (VkCommandBuffer[]) {
@@ -808,8 +873,7 @@ void video_vk_end() {
 				vctx.render_finish_semaphores[vctx.current_frame]
 			}
 		}, vctx.in_flight_fences[vctx.current_frame]) != VK_SUCCESS) {
-		warning("Failed to submit draw command buffer.");
-		return;
+		abort_with("Failed to submit draw command buffer.");
 	}
 
 	vkQueuePresentKHR(vctx.present_queue, &(VkPresentInfoKHR) {
@@ -846,6 +910,7 @@ void video_vk_end() {
 
 	vector_clear(vctx.free_queue);
 
+	vctx.prev_frame = vctx.current_frame;
 	vctx.current_frame = (vctx.current_frame + 1) % max_frames_in_flight;
 }
 
@@ -1438,19 +1503,19 @@ static void new_buffer(usize size, VkBufferUsageFlags usage, VkMemoryPropertyFla
 	}
 }
 
-static void copy_buffer(VkBuffer dst, VkBuffer src, VkDeviceSize size) {
-	VkCommandBuffer command_buffer = begin_temp_command_buffer();
+static void copy_buffer(VkBuffer dst, VkBuffer src, VkDeviceSize size, VkCommandPool pool, VkQueue queue) {
+	VkCommandBuffer command_buffer = begin_temp_command_buffer(pool);
 
 	VkBufferCopy copy = {
 		.size = size
 	};
 	vkCmdCopyBuffer(command_buffer, src, dst, 1, &copy);
 
-	end_temp_command_buffer(command_buffer);
+	end_temp_command_buffer(command_buffer, pool, queue);
 }
 
-static void copy_buffer_to_image(VkBuffer buffer, VkImage image, v2i size) {
-	VkCommandBuffer command_buffer = begin_temp_command_buffer();
+static void copy_buffer_to_image(VkBuffer buffer, VkImage image, v2i size, VkCommandPool pool, VkQueue queue) {
+	VkCommandBuffer command_buffer = begin_temp_command_buffer(vctx.command_pool);
 
 	vkCmdCopyBufferToImage(command_buffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1,
 		&(VkBufferImageCopy) {
@@ -1459,7 +1524,7 @@ static void copy_buffer_to_image(VkBuffer buffer, VkImage image, v2i size) {
 			.imageExtent = { (u32)size.x, (u32)size.y, 1 }
 		});
 
-	end_temp_command_buffer(command_buffer);
+	end_temp_command_buffer(command_buffer, pool, queue);
 }
 
 static VkDescriptorSetLayout* init_pipeline_descriptors(struct video_vk_pipeline* pipeline, const struct pipeline_descriptor_sets* descriptor_sets) {
@@ -1720,6 +1785,8 @@ static void init_pipeline(struct video_vk_pipeline* pipeline, u32 flags, const s
 
 	pipeline->flags = flags;
 
+	pipeline->command_buffers = vctx.command_buffers;
+
 	pipeline->descriptor_set_count = descriptor_sets->count;
 
 	VkPipelineShaderStageCreateInfo stages[] = {
@@ -1924,6 +1991,8 @@ static void init_compute_pipeline(struct video_vk_pipeline* pipeline, u32 flags,
 	memset(&pipeline->set_table, 0, sizeof(pipeline->set_table));
 
 	pipeline->flags = flags;
+
+	pipeline->command_buffers = vctx.com_cmd_buffers;
 
 	pipeline->descriptor_set_count = descriptor_sets->count;
 
@@ -2130,19 +2199,20 @@ void video_vk_free_pipeline(struct pipeline* pipeline_) {
 void video_vk_begin_pipeline(const struct pipeline* pipeline_) {
 	const struct video_vk_pipeline* pipeline = (const struct video_vk_pipeline*)pipeline_;
 
-	VkPipelineBindPoint point = pipeline->flags & pipeline_flags_compute ?
+	bool is_compute = pipeline->flags & pipeline_flags_compute;
+
+	VkPipelineBindPoint point = is_compute ?
 		VK_PIPELINE_BIND_POINT_COMPUTE : VK_PIPELINE_BIND_POINT_GRAPHICS;
 
-	vkCmdBindPipeline(vctx.command_buffers[vctx.current_frame],
-		point, pipeline->pipeline);
+	vkCmdBindPipeline(pipeline->command_buffers[vctx.current_frame], point, pipeline->pipeline);
 }
 
 void video_vk_end_pipeline(const struct pipeline* pipeline) {
 
 }
 
-void video_vk_invoke_compute(const struct pipeline* pipeline, v3u group_count) {
-	vkCmdDispatch(vctx.command_buffers[vctx.current_frame], group_count.x, group_count.y, group_count.z);
+void video_vk_invoke_compute(v3u group_count) {
+	vkCmdDispatch(vctx.com_cmd_buffers[vctx.current_frame], group_count.x, group_count.y, group_count.z);
 }
 
 void video_vk_recreate_pipeline(struct pipeline* pipeline_) {
@@ -2208,7 +2278,7 @@ void video_vk_bind_pipeline_descriptor_set(struct pipeline* pipeline_, const cha
 	VkPipelineBindPoint point = pipeline->flags & pipeline_flags_compute ?
 		VK_PIPELINE_BIND_POINT_COMPUTE : VK_PIPELINE_BIND_POINT_GRAPHICS;
 
-	vkCmdBindDescriptorSets(vctx.command_buffers[vctx.current_frame], point,
+	vkCmdBindDescriptorSets(pipeline->command_buffers[vctx.current_frame], point,
 		pipeline->layout, (u32)target, 1,
 		desc_set->sets + vctx.current_frame, 0, null);
 }
@@ -2280,7 +2350,7 @@ struct storage* video_vk_new_storage(u32 flags, usize size, void* initial_data) 
 				memcpy(data, initial_data, size);
 				vmaUnmapMemory(vctx.allocator, stage_memory);
 
-				copy_buffer(storage->buffers[i], stage, size);
+				copy_buffer(storage->buffers[i], stage, size, vctx.com_cmd_pool, vctx.compute_queue);
 
 				vmaDestroyBuffer(vctx.allocator, stage, stage_memory);
 			}
@@ -2307,9 +2377,9 @@ void video_vk_copy_storage(u32 mode, struct storage* dst_, usize dst_offset, con
 	struct video_vk_storage* src = (struct video_vk_storage*)src_;
 
 	if (mode == storage_update_now) {
-		vkDeviceWaitIdle(vctx.device);
+		vkQueueWaitIdle(vctx.compute_queue);
 
-		VkCommandBuffer command_buffer = begin_temp_command_buffer();
+		VkCommandBuffer command_buffer = begin_temp_command_buffer(vctx.com_cmd_pool);
 
 		for (usize i = 0; i < max_frames_in_flight; i++) {
 			vkCmdCopyBuffer(command_buffer, src->buffers[i], dst->buffers[i], 1, &(VkBufferCopy) {
@@ -2319,13 +2389,11 @@ void video_vk_copy_storage(u32 mode, struct storage* dst_, usize dst_offset, con
 			});
 		}
 
-		end_temp_command_buffer(command_buffer);
-
-		vkDeviceWaitIdle(vctx.device);
+		end_temp_command_buffer(command_buffer, vctx.com_cmd_pool, vctx.compute_queue);
 	} else {
 		usize idx = vctx.current_frame;
 
-		vkCmdCopyBuffer(vctx.command_buffers[idx], src->buffers[idx], dst->buffers[idx], 1, &(VkBufferCopy) {
+		vkCmdCopyBuffer(vctx.com_cmd_buffers[idx], src->buffers[idx], dst->buffers[idx], 1, &(VkBufferCopy) {
 			.size = size,
 			.srcOffset = src_offset,
 			.dstOffset = dst_offset
@@ -2333,44 +2401,8 @@ void video_vk_copy_storage(u32 mode, struct storage* dst_, usize dst_offset, con
 	}
 }
 
-void video_vk_storage_make_readable(struct storage* storage_) {
-	struct video_vk_storage* storage = (struct video_vk_storage*)storage_;
+void video_vk_storage_barrier(struct storage* storage_, u32 state) {
 
-	usize idx = vctx.current_frame;
-
-	vkCmdPipelineBarrier(vctx.command_buffers[idx], VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT,
-		0, 0, null, 1,
-		&(VkBufferMemoryBarrier) {
-			.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
-			.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT,
-			.dstAccessMask = VK_ACCESS_SHADER_READ_BIT,
-			.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-			.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-			.buffer = storage->buffers[idx],
-			.offset = 0,
-			.size = storage->size
-		},
-		0, null);
-}
-
-void video_vk_storage_make_writable(struct storage* storage_) {
-	struct video_vk_storage* storage = (struct video_vk_storage*)storage_;
-
-	usize idx = vctx.current_frame;
-
-	vkCmdPipelineBarrier(vctx.command_buffers[idx], VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT,
-		0, 0, null, 1,
-		&(VkBufferMemoryBarrier) {
-			.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
-			.srcAccessMask = VK_ACCESS_SHADER_READ_BIT,
-			.dstAccessMask = VK_ACCESS_SHADER_WRITE_BIT,
-			.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-			.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-			.buffer = storage->buffers[idx],
-			.offset = 0,
-			.size = storage->size
-		},
-		0, null);
 }
 
 void video_vk_free_storage(struct storage* storage_) {
@@ -2424,7 +2456,7 @@ struct vertex_buffer* video_vk_new_vertex_buffer(void* verts, usize size, u32 fl
 
 		new_buffer(size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
 			0, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &vb->buffer, &vb->memory);
-		copy_buffer(vb->buffer, stage, size);
+		copy_buffer(vb->buffer, stage, size, vctx.command_pool, vctx.graphics_queue);
 
 		vmaDestroyBuffer(vctx.allocator, stage, stage_memory);
 	}
@@ -2470,7 +2502,7 @@ void video_vk_copy_vertex_buffer(struct vertex_buffer* dst_, usize dst_offset, c
 	VkBuffer src = ((struct video_vk_vertex_buffer*)src_)->buffer;
 	VkBuffer dst = ((struct video_vk_vertex_buffer*)dst_)->buffer;
 
-	VkCommandBuffer cb = begin_temp_command_buffer();
+	VkCommandBuffer cb = begin_temp_command_buffer(vctx.command_pool);
 
 	VkBufferCopy copy = {
 		.srcOffset = (VkDeviceSize)src_offset,
@@ -2479,7 +2511,7 @@ void video_vk_copy_vertex_buffer(struct vertex_buffer* dst_, usize dst_offset, c
 	};
 	vkCmdCopyBuffer(cb, src, dst, 1, &copy);
 
-	end_temp_command_buffer(cb);
+	end_temp_command_buffer(cb, vctx.command_pool, vctx.graphics_queue);
 }
 
 struct index_buffer* video_vk_new_index_buffer(void* elements, usize count, u32 flags) {
@@ -2511,7 +2543,7 @@ struct index_buffer* video_vk_new_index_buffer(void* elements, usize count, u32 
 
 	new_buffer(size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
 		0, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &ib->buffer, &ib->memory);
-	copy_buffer(ib->buffer, stage, size);
+	copy_buffer(ib->buffer, stage, size, vctx.command_pool, vctx.graphics_queue);
 
 	vmaDestroyBuffer(vctx.allocator, stage, stage_memory);
 
@@ -2651,7 +2683,7 @@ static void init_texture(struct video_vk_texture* texture, const struct image* i
 		&texture->image, &texture->memory, VK_IMAGE_LAYOUT_UNDEFINED, false);
 	
 	change_image_layout(texture->image, format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, false);
-	copy_buffer_to_image(stage, texture->image, image->size);
+	copy_buffer_to_image(stage, texture->image, image->size, vctx.command_pool, vctx.graphics_queue);
 	change_image_layout(texture->image, format, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, false);
 
 	vmaDestroyBuffer(vctx.allocator, stage, stage_memory);
@@ -2716,7 +2748,7 @@ void video_vk_texture_copy(struct texture* dst_, v2i dst_offset, const struct te
 	struct video_vk_texture* dst = (struct video_vk_texture*)dst_;
 	const struct video_vk_texture* src = (const struct video_vk_texture*)src_;
 
-	VkCommandBuffer command_buffer = begin_temp_command_buffer();
+	VkCommandBuffer command_buffer = begin_temp_command_buffer(vctx.command_pool);
 
 	/* Transition src to VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL. */
 	vkCmdPipelineBarrier(command_buffer,
@@ -2798,7 +2830,7 @@ void video_vk_texture_copy(struct texture* dst_, v2i dst_offset, const struct te
 			.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED
 		});
 
-	end_temp_command_buffer(command_buffer);
+	end_temp_command_buffer(command_buffer, vctx.command_pool, vctx.graphics_queue);
 }
 
 static void shader_on_load(const char* filename, u8* raw, usize raw_size, void* payload, usize payload_size, void* udata) {

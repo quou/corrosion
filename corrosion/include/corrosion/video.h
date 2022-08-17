@@ -213,21 +213,20 @@ struct video {
 	void (*free_pipeline)(struct pipeline* pipeline);
 	void (*begin_pipeline)(const struct pipeline* pipeline);
 	void (*end_pipeline)(const struct pipeline* pipeline);
-	void (*invoke_compute)(const struct pipeline* pipeline, v3u group_count);
 	void (*recreate_pipeline)(struct pipeline* pipeline);
 	void (*update_pipeline_uniform)(struct pipeline* pipeline, const char* set, const char* descriptor, const void* data);
 	void (*bind_pipeline_descriptor_set)(struct pipeline* pipeline, const char* set, usize target);
 	void (*pipeline_add_descriptor_set)(struct pipeline* pipeline, const struct pipeline_descriptor_set* set);
 	void (*pipeline_change_shader)(struct pipeline* pipeline, const struct shader* shader);
 
-	/* Storage. */
+	/* Compute. */
 	struct storage* (*new_storage)(u32 flags, usize size, void* initial_data);
 	void (*update_storage)(struct storage* storage, u32 mode, void* data);
 	void (*update_storage_region)(struct storage* storage, u32 mode, void* data, usize offset, usize size);
 	void (*copy_storage)(u32 mode, struct storage* dst, usize dst_offset, const struct storage* src, usize src_offset, usize size);
-	void (*storage_make_readable)(struct storage* storage);
-	void (*storage_make_writable)(struct storage* storage);
+	void (*storage_barrier)(struct storage* storage, u32 state);
 	void (*free_storage)(struct storage* storage);
+	void (*invoke_compute)(v3u group_count);
 
 	/* Vertex buffer. */
 	struct vertex_buffer* (*new_vertex_buffer)(void* verts, usize size, u32 flags);

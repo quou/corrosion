@@ -358,11 +358,7 @@ void cr_update(f64 ts) {
 	video.begin_pipeline(app.compute_pipeline);
 		video.bind_pipeline_descriptor_set(app.compute_pipeline, "primary", 0);
 
-		video.storage_make_writable(app.com_out);
-
-		video.invoke_compute(app.compute_pipeline, make_v3u(256, 1, 1));
-
-		video.storage_make_readable(app.com_out);
+		video.invoke_compute(make_v3u(256, 1, 1));
 	video.end_pipeline(app.compute_pipeline);
 
 	video.begin_framebuffer(app.fb);
