@@ -3,6 +3,10 @@
 
 #include "common.h"
 
+/* This program is responsible for compiling all of the files in the Built-In Resources
+ * (BIR) directory into a file named "bir.h". It dumps the binary of all of the files
+ * as hex into a C array in the aforementioned header. */
+
 static const char* out_file = "corrosion/src/bir.h";
 static const char* dir = "corrosion/bir";
 static const char* files[] = {

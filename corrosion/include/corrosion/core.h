@@ -32,6 +32,9 @@ void vwarning(const char* fmt, va_list args);
 #define pad(s_) \
 	u8 cat(padding_, __LINE__)[s_]
 
+/* In debug mode, allocations are tracked and memory leaks are reported.
+ * This slows down the allocations, however, and uses extra memory, so it's
+ * disabled in other configurations. */
 #ifdef debug
 
 struct alloc_code_info {

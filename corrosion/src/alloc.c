@@ -5,6 +5,14 @@
 #ifdef debug
 usize memory_usage = 0;
 
+/* Memory allocator for use in debug mode that checks for memory leaks.
+ *
+ * This works by storing and "alloc_info" struct behind the allocation
+ * and adding that struct to a linked list each time a block is allocated,
+ * with the struct being removed from the list on each deallocation.
+ * The leak_check function traverses the list and anything that's still
+ * in the list is reported as leaked memory. */
+
 struct alloc_info {
 	const char* file;
 	u32 line;

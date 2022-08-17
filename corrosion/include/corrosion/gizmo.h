@@ -7,6 +7,11 @@
 void gizmos_init();
 void gizmos_deinit();
 
+/* TODO: Movement gizmos.
+ * TODO: Sphere gizmo.
+ * TODO: Sprite gizmo.
+ */
+
 void gizmo_camera(const struct camera* camera);
 void gizmo_colour(v4f colour);
 void gizmo_line(v3f begin, v3f end);
