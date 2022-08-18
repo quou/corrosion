@@ -6,7 +6,7 @@
 #include <corrosion/cr.h>
 
 #define dispatch_size 256
-#define max_particles dispatch_size * 4096
+#define max_particles dispatch_size * 1024
 
 struct particle {
 	v2f pos;
@@ -125,6 +125,7 @@ void cr_init() {
 				{
 					.descriptors = (struct pipeline_descriptor[]) {
 						{
+
 							.name = "Config",
 							.binding = 0,
 							.stage = pipeline_stage_vertex,
