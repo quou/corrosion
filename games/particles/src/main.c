@@ -6,7 +6,7 @@
 #include <corrosion/cr.h>
 
 #define dispatch_size 256
-#define max_particles dispatch_size * 2048
+#define max_particles dispatch_size * 4096
 
 struct particle {
 	v2f pos;
@@ -24,8 +24,7 @@ struct {
 	struct pipeline* draw_pipeline;
 	struct pipeline* update_pipeline;
 
-	struct storage* particle_infos;
-	struct storage* particle_positions;
+	struct storage* particles;
 
 	f64 fps_buf_up_time;
 	char fps_buf[256];
@@ -51,7 +50,8 @@ struct app_config cr_config() {
 #else
 			.enable_validation = false,
 #endif
-			.clear_colour = make_rgba(0x000000, 255)
+			.clear_colour = make_rgba(0x000000, 255),
+			.enable_vsync = true
 		},
 		.window_config = (struct window_config) {
 			.title = "Compute Particles",
@@ -75,7 +75,6 @@ void cr_init() {
 	const struct shader* update_shader   = load_shader("shaders/update.csh");
 	const struct shader* particle_shader = load_shader("shaders/particle.csh");
 
-	struct particle_info* infos = core_calloc(max_particles, sizeof *infos);
 	struct particle* initial_particles = core_calloc(max_particles, sizeof *initial_particles);
 
 	v2i ws = get_window_size();
@@ -83,13 +82,11 @@ void cr_init() {
 	for (usize i = 0; i < max_particles; i++) {
 		initial_particles[i].pos = make_v2f((f32)ws.x * 0.5f, (f32)ws.y * 0.5f);
 		initial_particles[i].vel = make_v2f(map(rand_flt(), 0.0f, 1.0f, -1000.0f, 1000.0f), map(rand_flt(), 0.0f, 1.0f, -1000.0f, 1000.0f));
-		infos[i].colour = make_v4f(rand_flt(), rand_flt(), rand_flt(), rand_flt());
+		initial_particles[i].colour = make_v4f(rand_flt(), rand_flt(), rand_flt(), rand_flt());
 	}
 
-	app.particle_infos     = video.new_storage(storage_flags_none,          max_particles * sizeof(struct particle_info), infos);
-	app.particle_positions = video.new_storage(storage_flags_vertex_buffer, max_particles * sizeof(struct particle),      initial_particles);
+	app.particles = video.new_storage(storage_flags_vertex_buffer, max_particles * sizeof(struct particle),      initial_particles);
 
-	core_free(infos);
 	core_free(initial_particles);
 
 	app.draw_pipeline = video.new_pipeline(
@@ -160,25 +157,16 @@ void cr_init() {
 							}
 						},
 						{
-							.name = "InputBuffer",
+							.name = "Buffer",
 							.binding = 1,
 							.stage = pipeline_stage_compute,
 							.resource = {
 								.type = pipeline_resource_storage,
-								.storage = app.particle_infos
-							}
-						},
-						{
-							.name = "OutBuffer",
-							.binding = 2,
-							.stage = pipeline_stage_compute,
-							.resource = {
-								.type = pipeline_resource_storage,
-								.storage = app.particle_positions
+								.storage = app.particles
 							}
 						}
 					},
-					.count = 3,
+					.count = 2,
 				}
 			},
 			.count = 1
@@ -214,18 +202,18 @@ void cr_update(f64 ts) {
 	video.begin_pipeline(app.update_pipeline);
 		video.bind_pipeline_descriptor_set(app.update_pipeline, "primary", 0);
 
-		video.storage_barrier(app.particle_positions, storage_state_compute_read_write);
+		video.storage_barrier(app.particles, storage_state_compute_read_write);
 
 		video.invoke_compute(make_v3u(dispatch_size, 1, 1));
 
-		video.storage_barrier(app.particle_positions, storage_state_vertex_read);
+		video.storage_barrier(app.particles, storage_state_vertex_read);
 	video.end_pipeline(app.update_pipeline);
 
 	video.begin_framebuffer(video.get_default_fb());
 		video.begin_pipeline(app.draw_pipeline);
 			video.bind_pipeline_descriptor_set(app.draw_pipeline, "primary", 0);
 
-			video.storage_bind_as(app.particle_positions, storage_bind_as_vertex_buffer, 0);
+			video.storage_bind_as(app.particles, storage_bind_as_vertex_buffer, 0);
 
 			video.draw(max_particles, 0, 1);
 		video.end_pipeline(app.draw_pipeline);
@@ -238,8 +226,7 @@ void cr_update(f64 ts) {
 void cr_deinit() {
 	video.free_pipeline(app.draw_pipeline);
 	video.free_pipeline(app.update_pipeline);
-	video.free_storage(app.particle_infos);
-	video.free_storage(app.particle_positions);
+	video.free_storage(app.particles);
 
 	free_ui(app.ui);
 

@@ -22,11 +22,7 @@ struct Particle {
 	vec4 colour;
 };
 
-layout (binding = 1) readonly buffer InputBuffer {
-	ParticleInfo infos[];
-};
-
-layout (binding = 2) buffer OutputBuffer {
+layout (binding = 1) buffer Buffer {
 	Particle particles[];
 };
 
@@ -49,5 +45,4 @@ void main() {
 
 	particles[id].pos = pos;
 	particles[id].vel = vel;
-	particles[id].colour = infos[id].colour;
 }
