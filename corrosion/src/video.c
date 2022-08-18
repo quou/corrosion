@@ -340,6 +340,7 @@ static void find_procs(u32 api, bool enable_validation) {
 	video.end_framebuffer      = get_v_proc(end_framebuffer);
 
 	video.new_pipeline                 = get_api_proc(new_pipeline);
+	video.new_pipeline_ex              = get_api_proc(new_pipeline_ex);
 	video.new_compute_pipeline         = get_api_proc(new_compute_pipeline);
 	video.free_pipeline                = get_api_proc(free_pipeline);
 	video.begin_pipeline               = get_api_proc(begin_pipeline);

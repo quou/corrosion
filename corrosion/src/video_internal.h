@@ -239,6 +239,8 @@ struct video_vk_pipeline {
 	struct pipeline_attribute_bindings bindings;
 	vector(struct pipeline_descriptor_set) descriptor_sets;
 
+	struct pipeline_config config;
+
 	struct video_vk_pipeline* next;
 	struct video_vk_pipeline* prev;
 };

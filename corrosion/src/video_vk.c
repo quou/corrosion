@@ -1777,7 +1777,8 @@ static VkDescriptorSetLayout* init_pipeline_descriptors(struct video_vk_pipeline
 
 static void init_pipeline(struct video_vk_pipeline* pipeline, u32 flags, const struct video_vk_shader* shader,
 	const struct video_vk_framebuffer* framebuffer,
-	const struct pipeline_attribute_bindings* attrib_bindings, const struct pipeline_descriptor_sets* descriptor_sets) {
+	const struct pipeline_attribute_bindings* attrib_bindings, const struct pipeline_descriptor_sets* descriptor_sets,
+	const struct pipeline_config* config) {
 	pipeline->desc_sets = null;
 	pipeline->uniforms  = null;
 
@@ -1826,6 +1827,8 @@ static void init_pipeline(struct video_vk_pipeline* pipeline, u32 flags, const s
 		topology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
 	} else if (flags & pipeline_flags_draw_line_strip) {
 		topology = VK_PRIMITIVE_TOPOLOGY_LINE_STRIP;
+	} else if (flags & pipeline_flags_draw_points) {
+		topology = VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
 	}
 
 	VkPipelineInputAssemblyStateCreateInfo input_assembly = {
@@ -1861,7 +1864,7 @@ static void init_pipeline(struct video_vk_pipeline* pipeline, u32 flags, const s
 		.depthClampEnable = VK_FALSE,
 		.rasterizerDiscardEnable = VK_FALSE,
 		.polygonMode = VK_POLYGON_MODE_FILL,
-		.lineWidth = 1.0f,
+		.lineWidth = config->line_width,
 		.cullMode =
 			(flags & pipeline_flags_cull_back_face)  ? VK_CULL_MODE_BACK_BIT  :
 			(flags & pipeline_flags_cull_front_face) ? VK_CULL_MODE_FRONT_BIT :
@@ -2091,7 +2094,18 @@ static void copy_pipeline_descriptor_set(struct pipeline_descriptor_set* dst, co
 
 struct pipeline* video_vk_new_pipeline(u32 flags, const struct shader* shader, const struct framebuffer* framebuffer,
 	struct pipeline_attribute_bindings attrib_bindings, struct pipeline_descriptor_sets descriptor_sets) {
+	struct pipeline_config default_config = {
+		.line_width = 1.0f
+	};
+
+	return video_vk_new_pipeline_ex(flags, shader, framebuffer, attrib_bindings, descriptor_sets, &default_config);
+}
+
+struct pipeline* video_vk_new_pipeline_ex(u32 flags, const struct shader* shader, const struct framebuffer* framebuffer,
+	struct pipeline_attribute_bindings attrib_bindings, struct pipeline_descriptor_sets descriptor_sets, const struct pipeline_config* config) {
 	struct video_vk_pipeline* pipeline = core_calloc(1, sizeof(struct video_vk_pipeline));
+
+	pipeline->config = *config;
 
 	pipeline->flags = flags;
 	pipeline->shader = shader;
@@ -2142,7 +2156,7 @@ struct pipeline* video_vk_new_pipeline(u32 flags, const struct shader* shader, c
 		init_compute_pipeline(pipeline, flags, (const struct video_vk_shader*)shader, &descriptor_sets);
 	} else {
 		init_pipeline(pipeline, flags, (const struct video_vk_shader*)shader,
-			(const struct video_vk_framebuffer*)framebuffer, &attrib_bindings, &descriptor_sets);
+			(const struct video_vk_framebuffer*)framebuffer, &attrib_bindings, &descriptor_sets, config);
 	}
 
 	return (struct pipeline*)pipeline;
@@ -2233,7 +2247,7 @@ void video_vk_recreate_pipeline(struct pipeline* pipeline_) {
 			&pipeline->bindings, &(struct pipeline_descriptor_sets) {
 				.sets = pipeline->descriptor_sets,
 				.count = vector_count(pipeline->descriptor_sets)
-			});
+			}, &pipeline->config);
 	}
 }
 

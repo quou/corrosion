@@ -50,7 +50,8 @@ enum {
 	pipeline_flags_draw_lines        = 1 << 6,
 	pipeline_flags_draw_line_strip   = 1 << 7,
 	pipeline_flags_draw_tris         = 1 << 8,
-	pipeline_flags_compute           = 1 << 9
+	pipeline_flags_draw_points       = 1 << 9,
+	pipeline_flags_compute           = 1 << 10
 };
 
 enum {
@@ -64,6 +65,10 @@ enum {
 	pipeline_attribute_vec2,
 	pipeline_attribute_vec3,
 	pipeline_attribute_vec4,
+};
+
+struct pipeline_config {
+	f32 line_width;
 };
 
 struct pipeline_attribute {
@@ -219,6 +224,8 @@ struct video {
 	/* Pipeline. */
 	struct pipeline* (*new_pipeline)(u32 flags, const struct shader* shader, const struct framebuffer* framebuffer,
 		struct pipeline_attribute_bindings attrib_bindings, struct pipeline_descriptor_sets descriptor_sets);
+	struct pipeline* (*new_pipeline_ex)(u32 flags, const struct shader* shader, const struct framebuffer* framebuffer,
+		struct pipeline_attribute_bindings attrib_bindings, struct pipeline_descriptor_sets descriptor_sets, const struct pipeline_config* config);
 	struct pipeline* (*new_compute_pipeline)(u32 flags, const struct shader* shader, struct pipeline_descriptor_sets descriptor_sets);
 	void (*free_pipeline)(struct pipeline* pipeline);
 	void (*begin_pipeline)(const struct pipeline* pipeline);
