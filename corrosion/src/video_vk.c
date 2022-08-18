@@ -2336,31 +2336,72 @@ void video_vk_update_storage_region(struct storage* storage_, u32 mode, void* da
 	abort_with("Not implemented.");
 }
 
-void video_vk_copy_storage(u32 mode, struct storage* dst_, usize dst_offset, const struct storage* src_, usize src_offset, usize size) {
+void video_vk_copy_storage(struct storage* dst_, usize dst_offset, const struct storage* src_, usize src_offset, usize size) {
 	struct video_vk_storage* dst = (struct video_vk_storage*)dst_;
 	struct video_vk_storage* src = (struct video_vk_storage*)src_;
 
-	if (mode == storage_update_now) {
-		vkQueueWaitIdle(vctx.graphics_compute_queue);
+	VkCommandBuffer cb = begin_temp_command_buffer(vctx.command_pool);
 
-		VkCommandBuffer command_buffer = begin_temp_command_buffer(vctx.command_pool);
+	vkCmdPipelineBarrier(cb,
+		VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT,
+		VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT,
+		0, 0, null, 1, &(VkBufferMemoryBarrier) {
+			.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+			.srcAccessMask = VK_ACCESS_SHADER_READ_BIT,
+			.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT,
+			.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+			.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+			.buffer = src->buffer,
+			.size = size
+	}, 0, null);
 
-		vkCmdCopyBuffer(command_buffer, src->buffer, dst->buffer, 1, &(VkBufferCopy) {
-			.size = size,
-			.srcOffset = src_offset,
-			.dstOffset = dst_offset
-		});
+	vkCmdPipelineBarrier(cb,
+		VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT,
+		VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT,
+		0, 0, null, 1, &(VkBufferMemoryBarrier) {
+			.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+			.srcAccessMask = VK_ACCESS_SHADER_READ_BIT,
+			.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+			.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+			.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+			.buffer = dst->buffer,
+			.size = size
+	}, 0, null);
 
-		end_temp_command_buffer(command_buffer, vctx.command_pool, vctx.graphics_compute_queue);
-	} else {
-		usize idx = vctx.current_frame;
+	vkCmdCopyBuffer(cb, src->buffer, dst->buffer, 1, &(VkBufferCopy) {
+		.size = size,
+		.srcOffset = src_offset,
+		.dstOffset = dst_offset
+	});
 
-		vkCmdCopyBuffer(vctx.command_buffers[idx], src->buffer, dst->buffer, 1, &(VkBufferCopy) {
-			.size = size,
-			.srcOffset = src_offset,
-			.dstOffset = dst_offset
-		});
-	}
+	vkCmdPipelineBarrier(cb,
+		VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT,
+		VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT,
+		0, 0, null, 1, &(VkBufferMemoryBarrier) {
+			.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+			.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT,
+			.dstAccessMask = VK_ACCESS_SHADER_READ_BIT,
+			.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+			.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+			.buffer = src->buffer,
+			.size = size
+	}, 0, null);
+
+	vkCmdPipelineBarrier(cb,
+		VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT,
+		VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT,
+		0, 0, null, 1, &(VkBufferMemoryBarrier) {
+			.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+			.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+			.dstAccessMask = VK_ACCESS_SHADER_READ_BIT,
+			.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+			.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+			.buffer = dst->buffer,
+			.size = size
+	}, 0, null);
+
+
+	end_temp_command_buffer(cb, vctx.command_pool, vctx.graphics_compute_queue);
 }
 
 void video_vk_storage_barrier(struct storage* storage_, u32 state) {
@@ -2565,12 +2606,64 @@ void video_vk_copy_vertex_buffer(struct vertex_buffer* dst_, usize dst_offset, c
 
 	VkCommandBuffer cb = begin_temp_command_buffer(vctx.command_pool);
 
+	vkCmdPipelineBarrier(cb,
+		VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT,
+		VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT,
+		0, 0, null, 1, &(VkBufferMemoryBarrier) {
+			.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+			.srcAccessMask = VK_ACCESS_SHADER_READ_BIT,
+			.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT,
+			.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+			.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+			.buffer = src,
+			.size = size
+	}, 0, null);
+
+	vkCmdPipelineBarrier(cb,
+		VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT,
+		VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT,
+		0, 0, null, 1, &(VkBufferMemoryBarrier) {
+			.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+			.srcAccessMask = VK_ACCESS_SHADER_READ_BIT,
+			.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+			.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+			.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+			.buffer = dst,
+			.size = size
+	}, 0, null);
+
 	VkBufferCopy copy = {
 		.srcOffset = (VkDeviceSize)src_offset,
 		.dstOffset = (VkDeviceSize)dst_offset,
 		.size      = (VkDeviceSize)size
 	};
 	vkCmdCopyBuffer(cb, src, dst, 1, &copy);
+
+	vkCmdPipelineBarrier(cb,
+		VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT,
+		VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT,
+		0, 0, null, 1, &(VkBufferMemoryBarrier) {
+			.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+			.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT,
+			.dstAccessMask = VK_ACCESS_SHADER_READ_BIT,
+			.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+			.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+			.buffer = src,
+			.size = size
+	}, 0, null);
+
+	vkCmdPipelineBarrier(cb,
+		VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT,
+		VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT,
+		0, 0, null, 1, &(VkBufferMemoryBarrier) {
+			.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+			.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+			.dstAccessMask = VK_ACCESS_SHADER_READ_BIT,
+			.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+			.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+			.buffer = dst,
+			.size = size
+	}, 0, null);
 
 	end_temp_command_buffer(cb, vctx.command_pool, vctx.graphics_compute_queue);
 }

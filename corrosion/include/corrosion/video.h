@@ -184,11 +184,6 @@ enum {
 };
 
 enum {
-	storage_update_now = 0,
-	storage_update_frame
-};
-
-enum {
 	storage_state_compute_read = 0,
 	storage_state_compute_write,
 	storage_state_compute_read_write,
@@ -248,7 +243,7 @@ struct video {
 	struct storage* (*new_storage)(u32 flags, usize size, void* initial_data);
 	void (*update_storage)(struct storage* storage, u32 mode, void* data);
 	void (*update_storage_region)(struct storage* storage, u32 mode, void* data, usize offset, usize size);
-	void (*copy_storage)(u32 mode, struct storage* dst, usize dst_offset, const struct storage* src, usize src_offset, usize size);
+	void (*copy_storage)(struct storage* dst, usize dst_offset, const struct storage* src, usize src_offset, usize size);
 	void (*storage_barrier)(struct storage* storage, u32 state);
 	void (*storage_bind_as)(const struct storage* storage, u32 as, u32 point);
 	void (*free_storage)(struct storage* storage);

@@ -37,7 +37,7 @@ void video_gl_pipeline_change_shader(struct pipeline* pipeline, const struct sha
 struct storage* video_gl_new_storage(u32 flags, usize size, void* initial_data);
 void video_gl_update_storage(struct storage* storage, u32 mode, void* data);
 void video_gl_update_storage_region(struct storage* storage, u32 mode, void* data, usize offset, usize size);
-void video_gl_copy_storage(u32 mode, struct storage* dst, usize dst_offset, const struct storage* src, usize src_offset, usize size);
+void video_gl_copy_storage(struct storage* dst, usize dst_offset, const struct storage* src, usize src_offset, usize size);
 void video_gl_storage_barrier(struct storage* storage, u32 state);
 void video_gl_storage_bind_as(const struct storage* storage, u32 as, u32 point);
 void video_gl_free_storage(struct storage* storage);

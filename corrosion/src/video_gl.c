@@ -568,7 +568,7 @@ void video_gl_free_storage(struct storage* storage) {
 	abort_with("Not implemented.");
 }
 
-void video_gl_copy_storage(u32 mode, struct storage* dst, usize dst_offset, const struct storage* src, usize src_offset, usize size) {
+void video_gl_copy_storage(struct storage* dst, usize dst_offset, const struct storage* src, usize src_offset, usize size) {
 	abort_with("Not implemented.");
 }
 
