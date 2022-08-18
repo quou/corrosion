@@ -176,6 +176,16 @@ enum {
 	storage_update_frame
 };
 
+enum {
+	storage_state_compute_read = 0,
+	storage_state_compute_write,
+	storage_state_fragment_read,
+	storage_state_fragment_write,
+	storage_state_vertex_read,
+	storage_state_vertex_write,
+	storage_state_dont_care,
+};
+
 m4f get_camera_view(const struct camera* camera);
 m4f get_camera_projection(const struct camera* camera, f32 aspect);
 

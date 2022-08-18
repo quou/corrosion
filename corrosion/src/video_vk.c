@@ -852,7 +852,7 @@ void video_vk_end() {
 	}
 
 	/* Submit the draw command buffer. It waits on the compute
-	 * comman buffer to complete. */
+	 * command buffer to complete. */
 	if (vkQueueSubmit(vctx.graphics_queue, 1, &(VkSubmitInfo) {
 			.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
 			.waitSemaphoreCount = 2,
@@ -2402,7 +2402,100 @@ void video_vk_copy_storage(u32 mode, struct storage* dst_, usize dst_offset, con
 }
 
 void video_vk_storage_barrier(struct storage* storage_, u32 state) {
+	struct video_vk_storage* storage = (struct video_vk_storage*)storage_;
 
+	VkAccessFlags src_access, dst_access;
+	u32 src_queue, dst_queue;
+	VkPipelineStageFlags src_stage, dst_stage;
+
+	switch (storage->state) {
+		case storage_state_compute_read:
+			src_queue  = vctx.qfs.compute;
+			src_access = VK_ACCESS_SHADER_READ_BIT;
+			src_stage  = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+			break;
+		case storage_state_compute_write:
+			src_queue  = vctx.qfs.compute;
+			src_access = VK_ACCESS_SHADER_WRITE_BIT;
+			src_stage  = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+			break;
+		case storage_state_fragment_read:
+			src_queue  = vctx.qfs.graphics;
+			src_access = VK_ACCESS_SHADER_READ_BIT;
+			src_stage  = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+			break;
+		case storage_state_vertex_read:
+			src_queue  = vctx.qfs.graphics;
+			src_access = VK_ACCESS_SHADER_READ_BIT;
+			src_stage  = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT;
+			break;
+		case storage_state_fragment_write:
+			src_queue  = vctx.qfs.graphics;
+			src_access = VK_ACCESS_SHADER_WRITE_BIT;
+			src_stage  = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+			break;
+		case storage_state_vertex_write:
+			src_queue  = vctx.qfs.graphics;
+			src_access = VK_ACCESS_SHADER_WRITE_BIT;
+			src_stage  = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT;
+			break;
+		case storage_state_dont_care:
+			src_queue  = VK_QUEUE_FAMILY_IGNORED;
+			src_access = VK_ACCESS_SHADER_READ_BIT;
+			src_stage  = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+			break;
+	}
+
+	switch (storage->state) {
+		case storage_state_compute_read:
+			dst_queue  = vctx.qfs.compute;
+			dst_access = VK_ACCESS_SHADER_READ_BIT;
+			dst_stage  = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+			break;
+		case storage_state_compute_write:
+			dst_queue  = vctx.qfs.compute;
+			dst_access = VK_ACCESS_SHADER_WRITE_BIT;
+			dst_stage  = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+			break;
+		case storage_state_fragment_read:
+			dst_queue  = vctx.qfs.graphics;
+			dst_access = VK_ACCESS_SHADER_READ_BIT;
+			dst_stage  = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+			break;
+		case storage_state_vertex_read:
+			dst_queue  = vctx.qfs.graphics;
+			dst_access = VK_ACCESS_SHADER_READ_BIT;
+			dst_stage  = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT;
+			break;
+		case storage_state_fragment_write:
+			dst_queue  = vctx.qfs.graphics;
+			dst_access = VK_ACCESS_SHADER_WRITE_BIT;
+			dst_stage  = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+			break;
+		case storage_state_vertex_write:
+			dst_queue  = vctx.qfs.graphics;
+			dst_access = VK_ACCESS_SHADER_WRITE_BIT;
+			dst_stage  = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT;
+			break;
+		case storage_state_dont_care:
+			dst_queue  = VK_QUEUE_FAMILY_IGNORED;
+			dst_access = VK_ACCESS_SHADER_READ_BIT;
+			dst_stage  = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+	}
+
+	vkCmdPipelineBarrier(vctx.com_cmd_buffers[vctx.current_frame],
+		src_stage, dst_stage,
+		0, 0, null, 1, &(VkBufferMemoryBarrier) {
+			.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+			.srcAccessMask = src_access,
+			.dstAccessMask = dst_access,
+			.srcQueueFamilyIndex = src_queue,
+			.dstQueueFamilyIndex = dst_queue,
+			.buffer = storage->buffers[vctx.current_frame],
+			.size = storage->size
+		}, 0, null);
+	
+	storage->state = state;
 }
 
 void video_vk_free_storage(struct storage* storage_) {

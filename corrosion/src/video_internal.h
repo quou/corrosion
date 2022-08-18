@@ -196,6 +196,7 @@ struct video_vk_storage {
 	usize size;
 
 	u32 flags;
+	u32 state;
 };
 
 struct video_vk_impl_uniform_buffer {
