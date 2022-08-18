@@ -6,7 +6,7 @@ ifndef verbose
   silent = @
 endif
 
-projects = shadercompiler corrosion sbox shooter bloom
+projects = shadercompiler corrosion sbox shooter bloom particles
 runnables =           \
     run_sbox          \
     debug_sbox        \
@@ -17,6 +17,9 @@ runnables =           \
     run_bloom         \
     debug_bloom       \
     memcheck_bloom    \
+    run_particles     \
+    debug_particles   \
+    memcheck_particles\
 
 .PHONY: all clean $(projects) $(runnables)
 
@@ -51,6 +54,10 @@ bloom: corrosion
 	@echo == Building $@ ==
 	$(silent) make --no-print-directory -C games/$@ config=$(config)
 
+particles: corrosion
+	@echo == Building $@ ==
+	$(silent) make --no-print-directory -C games/$@ config=$(config)
+
 run_shooter: shooter
 	$(silent) make --no-print-directory -C games/shooter run
 
@@ -69,9 +76,19 @@ debug_bloom: bloom
 memcheck_bloom: bloom
 	$(silent) make --no-print-directory -C games/bloom memcheck
 
+run_particles: particles
+	$(silent) make --no-print-directory -C games/particles run
+
+debug_particles: particles
+	$(silent) make --no-print-directory -C games/particles debug
+
+memcheck_particles: particles
+	$(silent) make --no-print-directory -C games/particles memcheck
+
 clean:
 	$(silent) make --no-print-directory -C corrosion clean
 	$(silent) make --no-print-directory -C shadercompiler clean
 	$(silent) make --no-print-directory -C sbox clean
 	$(silent) make --no-print-directory -C games/shooter clean
 	$(silent) make --no-print-directory -C games/bloom clean
+	$(silent) make --no-print-directory -C games/particles clean

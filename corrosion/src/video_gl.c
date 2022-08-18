@@ -573,7 +573,11 @@ void video_gl_copy_storage(u32 mode, struct storage* dst, usize dst_offset, cons
 }
 
 void video_gl_storage_barrier(struct storage* storage, u32 state) {
+	abort_with("Not implemented.");
+}
 
+void video_gl_storage_bind_as(const struct storage* storage, u32 as, u32 point) {
+	abort_with("Not implemented.");
 }
 
 struct vertex_buffer* video_gl_new_vertex_buffer(void* verts, usize size, u32 flags) {

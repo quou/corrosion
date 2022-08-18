@@ -173,7 +173,14 @@ struct camera {
 enum {
 	storage_flags_none           = 1 << 0,
 	storage_flags_cpu_writable   = 1 << 1,
-	storage_flags_cpu_readable   = 1 << 2
+	storage_flags_cpu_readable   = 1 << 2,
+	storage_flags_vertex_buffer  = 1 << 3,
+	storage_flags_index_buffer   = 1 << 4
+};
+
+enum {
+	storage_bind_as_vertex_buffer = 0,
+	storage_bind_as_index_buffer
 };
 
 enum {
@@ -184,6 +191,7 @@ enum {
 enum {
 	storage_state_compute_read = 0,
 	storage_state_compute_write,
+	storage_state_compute_read_write,
 	storage_state_fragment_read,
 	storage_state_fragment_write,
 	storage_state_vertex_read,
@@ -242,6 +250,7 @@ struct video {
 	void (*update_storage_region)(struct storage* storage, u32 mode, void* data, usize offset, usize size);
 	void (*copy_storage)(u32 mode, struct storage* dst, usize dst_offset, const struct storage* src, usize src_offset, usize size);
 	void (*storage_barrier)(struct storage* storage, u32 state);
+	void (*storage_bind_as)(const struct storage* storage, u32 as, u32 point);
 	void (*free_storage)(struct storage* storage);
 	void (*invoke_compute)(v3u group_count);
 

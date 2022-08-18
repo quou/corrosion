@@ -173,7 +173,7 @@ void deinit_swapchain_capabilities(struct swapchain_capabilities* scc) {
 }
 
 static struct queue_families get_queue_families(VkPhysicalDevice device) {
-	struct queue_families r = { -1, -1, -1 };
+	struct queue_families r = { -1, -1 };
 
 	u32 family_count = 0;
 
@@ -183,12 +183,8 @@ static struct queue_families get_queue_families(VkPhysicalDevice device) {
 	vkGetPhysicalDeviceQueueFamilyProperties(device, &family_count, families);
 
 	for (u32 i = 0; i < family_count; i++) {
-		if (r.graphics == -1 && families[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) {
-			r.graphics = (i32)i;
-		}
-
-		if (r.compute == -1 && families[i].queueFlags & VK_QUEUE_COMPUTE_BIT) {
-			r.compute = (i32)i;
+		if (families[i].queueFlags & VK_QUEUE_GRAPHICS_BIT && families[i].queueFlags & VK_QUEUE_COMPUTE_BIT) {
+			r.graphics_compute = (i32)i;
 		}
 
 		VkBool32 supports_presentation = false;
@@ -291,7 +287,7 @@ static VKAPI_ATTR VkBool32 debug_callback(VkDebugUtilsMessageSeverityFlagBitsEXT
 		}
 	}
 
-	return true;
+	return false;
 }
 
 static VkPhysicalDevice first_suitable_device() {
@@ -328,7 +324,7 @@ static VkPhysicalDevice first_suitable_device() {
 			(props.deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU ||
 			 props.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) &&
 			 extensions_good && swapchain_good &&
-			 vctx.qfs.graphics >= 0 && vctx.qfs.graphics >= 0) {
+			 vctx.qfs.graphics_compute >= 0 && vctx.qfs.present >= 0) {
 			info("Selected device: %s.", props.deviceName);
 			vctx.min_uniform_buffer_offset_alignment = props.limits.minUniformBufferOffsetAlignment;
 			core_free(devices);
@@ -370,7 +366,7 @@ static VkCommandBuffer begin_temp_command_buffer(VkCommandPool pool) {
 static void end_temp_command_buffer(VkCommandBuffer buffer, VkCommandPool pool, VkQueue queue) {
 	vkEndCommandBuffer(buffer);
 
-	vkQueueSubmit(vctx.graphics_queue, 1, &(VkSubmitInfo) {
+	vkQueueSubmit(vctx.graphics_compute_queue, 1, &(VkSubmitInfo) {
 		.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
 		.commandBufferCount = 1,
 		.pCommandBuffers = &buffer
@@ -441,7 +437,7 @@ static void change_image_layout(VkImage image, VkFormat format, VkImageLayout sr
 
 	vkCmdPipelineBarrier(command_buffer, src_stage, dst_stage, 0, 0, null, 0, null, 1, &barrier);
 
-	end_temp_command_buffer(command_buffer, vctx.command_pool, vctx.graphics_queue);
+	end_temp_command_buffer(command_buffer, vctx.command_pool, vctx.graphics_compute_queue);
 }
 
 static VkImageView new_image_view(VkImage image, VkFormat format, VkImageAspectFlags flags) {
@@ -585,8 +581,8 @@ no_validation:
 	vector(VkDeviceQueueCreateInfo) queue_infos = null;
 	vector(i32) unique_queue_families = null;
 
-	vector_push(unique_queue_families, vctx.qfs.graphics);
-	if (vctx.qfs.present != vctx.qfs.graphics) {
+	vector_push(unique_queue_families, vctx.qfs.graphics_compute);
+	if (vctx.qfs.present != vctx.qfs.graphics_compute) {
 		vector_push(unique_queue_families, vctx.qfs.present);
 	}
 
@@ -619,9 +615,8 @@ no_validation:
 		abort_with("Failed to create a Vulkan device.");
 	}
 
-	vkGetDeviceQueue(vctx.device, (u32)vctx.qfs.graphics, 0, &vctx.graphics_queue);
-	vkGetDeviceQueue(vctx.device, (u32)vctx.qfs.present,  0, &vctx.present_queue);
-	vkGetDeviceQueue(vctx.device, (u32)vctx.qfs.compute,  0, &vctx.compute_queue);
+	vkGetDeviceQueue(vctx.device, (u32)vctx.qfs.graphics_compute, 0, &vctx.graphics_compute_queue);
+	vkGetDeviceQueue(vctx.device, (u32)vctx.qfs.present,          0, &vctx.present_queue);
 
 	free_vector(queue_infos);
 	free_vector(unique_queue_families);
@@ -648,16 +643,8 @@ no_validation:
 	if (vkCreateCommandPool(vctx.device, &(VkCommandPoolCreateInfo) {
 			.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
 			.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
-			.queueFamilyIndex = (u32)vctx.qfs.graphics
+			.queueFamilyIndex = (u32)vctx.qfs.graphics_compute
 		}, null, &vctx.command_pool) != VK_SUCCESS) {
-		abort_with("Failed to create command pool.");
-	}
-
-	if (vkCreateCommandPool(vctx.device, &(VkCommandPoolCreateInfo) {
-			.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
-			.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
-			.queueFamilyIndex = (u32)vctx.qfs.compute
-		}, null, &vctx.com_cmd_pool) != VK_SUCCESS) {
 		abort_with("Failed to create command pool.");
 	}
 
@@ -668,15 +655,6 @@ no_validation:
 			.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
 			.commandBufferCount = max_frames_in_flight
 		}, vctx.command_buffers) != VK_SUCCESS) {
-		abort_with("Failed to allocate command buffers.");
-	}
-
-	if (vkAllocateCommandBuffers(vctx.device, &(VkCommandBufferAllocateInfo) {
-			.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-			.commandPool = vctx.com_cmd_pool,
-			.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-			.commandBufferCount = max_frames_in_flight
-		}, vctx.com_cmd_buffers) != VK_SUCCESS) {
 		abort_with("Failed to allocate command buffers.");
 	}
 
@@ -694,7 +672,6 @@ no_validation:
 		if (
 			vkCreateSemaphore(vctx.device, &semaphore_info, null, &vctx.image_avail_semaphores[i])    != VK_SUCCESS ||
 			vkCreateSemaphore(vctx.device, &semaphore_info, null, &vctx.render_finish_semaphores[i])  != VK_SUCCESS ||
-			vkCreateSemaphore(vctx.device, &semaphore_info, null, &vctx.compute_finish_semaphores[i]) != VK_SUCCESS ||
 			vkCreateFence(vctx.device, &fence_info, null, &vctx.in_flight_fences[i])) {
 			abort_with("Failed to create synchronisation objects.");
 		}
@@ -743,7 +720,6 @@ void video_vk_deinit() {
 	for (u32 i = 0; i < max_frames_in_flight; i++) {
 		vkDestroySemaphore(vctx.device, vctx.image_avail_semaphores[i], null);
 		vkDestroySemaphore(vctx.device, vctx.render_finish_semaphores[i], null);
-		vkDestroySemaphore(vctx.device, vctx.compute_finish_semaphores[i], null);
 		vkDestroyFence(vctx.device, vctx.in_flight_fences[i], null);
 		
 		if (vctx.update_queues[i].capacity > 0) {
@@ -752,7 +728,6 @@ void video_vk_deinit() {
 	}
 
 	vkDestroyCommandPool(vctx.device, vctx.command_pool, null);
-	vkDestroyCommandPool(vctx.device, vctx.com_cmd_pool, null);
 
 	deinit_swapchain(true);
 
@@ -799,22 +774,10 @@ frame_begin:
 		}) != VK_SUCCESS) {
 		abort_with("Failed to begin the command buffer");
 	}
-
-	vkResetCommandBuffer(vctx.com_cmd_buffers[vctx.current_frame], 0);
-
-	if (vkBeginCommandBuffer(vctx.com_cmd_buffers[vctx.current_frame], &(VkCommandBufferBeginInfo) {
-			.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO
-		}) != VK_SUCCESS) {
-		abort_with("Failed to begin the command buffer");
-	}
 }
 
 void video_vk_end() {
 	if (vkEndCommandBuffer(vctx.command_buffers[vctx.current_frame]) != VK_SUCCESS) {
-		abort_with("Failed to end the command buffer.");
-	}
-
-	if (vkEndCommandBuffer(vctx.com_cmd_buffers[vctx.current_frame]) != VK_SUCCESS) {
 		abort_with("Failed to end the command buffer.");
 	}
 
@@ -836,33 +799,16 @@ void video_vk_end() {
 
 	update_queue->count = 0;
 
-	/* Submit the compute command buffer. */
-	if (vkQueueSubmit(vctx.compute_queue, 1, &(VkSubmitInfo) {
-			.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
-			.commandBufferCount = 1,
-			.pCommandBuffers = (VkCommandBuffer[]) {
-				vctx.com_cmd_buffers[vctx.current_frame]
-			},
-			.signalSemaphoreCount = 1,
-			.pSignalSemaphores = (VkSemaphore[]) {
-				vctx.compute_finish_semaphores[vctx.current_frame]
-			}
-		}, VK_NULL_HANDLE) != VK_SUCCESS) {
-		abort_with("Failed to submit compute command buffer.");
-	}
-
 	/* Submit the draw command buffer. It waits on the compute
 	 * command buffer to complete. */
-	if (vkQueueSubmit(vctx.graphics_queue, 1, &(VkSubmitInfo) {
+	if (vkQueueSubmit(vctx.graphics_compute_queue, 1, &(VkSubmitInfo) {
 			.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
-			.waitSemaphoreCount = 2,
+			.waitSemaphoreCount = 1,
 			.pWaitSemaphores = (VkSemaphore[]) {
 				vctx.image_avail_semaphores[vctx.current_frame],
-				vctx.compute_finish_semaphores[vctx.current_frame]
 			},
 			.pWaitDstStageMask = (VkPipelineStageFlags[]) {
 				VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-				VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT
 			},
 			.commandBufferCount = 1,
 			.pCommandBuffers = (VkCommandBuffer[]) {
@@ -953,9 +899,9 @@ static void init_swapchain(VkSwapchainKHR old_swapchain) {
 		.oldSwapchain = old_swapchain
 	};
 
-	u32 queue_family_indices[2] = { vctx.qfs.graphics, vctx.qfs.present };
+	u32 queue_family_indices[2] = { vctx.qfs.graphics_compute, vctx.qfs.present };
 
-	if (vctx.qfs.graphics != vctx.qfs.present) {	
+	if (vctx.qfs.graphics_compute != vctx.qfs.present) {	
 		swap_info.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
 		swap_info.queueFamilyIndexCount = 2;
 		swap_info.pQueueFamilyIndices = queue_family_indices;
@@ -1753,7 +1699,7 @@ static VkDescriptorSetLayout* init_pipeline_descriptors(struct video_vk_pipeline
 
 						VkDescriptorBufferInfo* buffer_info = buffer_infos + (buffer_info_count++);
 
-						buffer_info->buffer = storage->buffers[j];
+						buffer_info->buffer = storage->buffer;
 						buffer_info->offset = 0;
 						buffer_info->range = storage->size;
 
@@ -1995,7 +1941,7 @@ static void init_compute_pipeline(struct video_vk_pipeline* pipeline, u32 flags,
 
 	pipeline->flags = flags;
 
-	pipeline->command_buffers = vctx.com_cmd_buffers;
+	pipeline->command_buffers = vctx.command_buffers;
 
 	pipeline->descriptor_set_count = descriptor_sets->count;
 
@@ -2226,7 +2172,7 @@ void video_vk_end_pipeline(const struct pipeline* pipeline) {
 }
 
 void video_vk_invoke_compute(v3u group_count) {
-	vkCmdDispatch(vctx.com_cmd_buffers[vctx.current_frame], group_count.x, group_count.y, group_count.z);
+	vkCmdDispatch(vctx.command_buffers[vctx.current_frame], group_count.x, group_count.y, group_count.z);
 }
 
 void video_vk_recreate_pipeline(struct pipeline* pipeline_) {
@@ -2332,42 +2278,46 @@ struct storage* video_vk_new_storage(u32 flags, usize size, void* initial_data) 
 	VkMemoryPropertyFlags props = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 	VmaAllocationCreateFlags a_flags = 0;
 
+	if (flags & storage_flags_vertex_buffer) {
+		usage |= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+	}
+
+	if (flags & storage_flags_index_buffer) {
+		usage |= VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+	}
+
 	if (flags & storage_flags_cpu_readable || flags & storage_flags_cpu_writable) {
 		props = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
 		a_flags |= VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;
 
-		for (usize i = 0; i < max_frames_in_flight; i++) {
-			new_buffer(size, usage, props, a_flags, &storage->buffers[i], &storage->memories[i]);
+		new_buffer(size, usage, props, a_flags, &storage->buffer, &storage->memory);
 
-			if (initial_data) {
-				void* data;
-				vmaMapMemory(vctx.allocator, storage->memories[i], &data);
-				memcpy(data, initial_data, size);
-				vmaUnmapMemory(vctx.allocator, storage->memories[i]);
-			}
+		if (initial_data) {
+			void* data;
+			vmaMapMemory(vctx.allocator, storage->memory, &data);
+			memcpy(data, initial_data, size);
+			vmaUnmapMemory(vctx.allocator, storage->memory);
 		}
 	} else {
-		for (usize i = 0; i < max_frames_in_flight; i++) {
-			new_buffer(size, usage, props, a_flags, &storage->buffers[i], &storage->memories[i]);
+		new_buffer(size, usage, props, a_flags, &storage->buffer, &storage->memory);
 
-			if (initial_data) {
-				VkBuffer stage;
-				VmaAllocation stage_memory;
+		if (initial_data) {
+			VkBuffer stage;
+			VmaAllocation stage_memory;
 
-				new_buffer(size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-					VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-					VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,
-					&stage, &stage_memory);
+			new_buffer(size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+				VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+				VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,
+				&stage, &stage_memory);
 
-				void* data;
-				vmaMapMemory(vctx.allocator, stage_memory, &data);
-				memcpy(data, initial_data, size);
-				vmaUnmapMemory(vctx.allocator, stage_memory);
+			void* data;
+			vmaMapMemory(vctx.allocator, stage_memory, &data);
+			memcpy(data, initial_data, size);
+			vmaUnmapMemory(vctx.allocator, stage_memory);
 
-				copy_buffer(storage->buffers[i], stage, size, vctx.com_cmd_pool, vctx.compute_queue);
+			copy_buffer(storage->buffer, stage, size, vctx.command_pool, vctx.graphics_compute_queue);
 
-				vmaDestroyBuffer(vctx.allocator, stage, stage_memory);
-			}
+			vmaDestroyBuffer(vctx.allocator, stage, stage_memory);
 		}
 	}
 
@@ -2391,23 +2341,21 @@ void video_vk_copy_storage(u32 mode, struct storage* dst_, usize dst_offset, con
 	struct video_vk_storage* src = (struct video_vk_storage*)src_;
 
 	if (mode == storage_update_now) {
-		vkQueueWaitIdle(vctx.compute_queue);
+		vkQueueWaitIdle(vctx.graphics_compute_queue);
 
-		VkCommandBuffer command_buffer = begin_temp_command_buffer(vctx.com_cmd_pool);
+		VkCommandBuffer command_buffer = begin_temp_command_buffer(vctx.command_pool);
 
-		for (usize i = 0; i < max_frames_in_flight; i++) {
-			vkCmdCopyBuffer(command_buffer, src->buffers[i], dst->buffers[i], 1, &(VkBufferCopy) {
-				.size = size,
-				.srcOffset = src_offset,
-				.dstOffset = dst_offset
-			});
-		}
+		vkCmdCopyBuffer(command_buffer, src->buffer, dst->buffer, 1, &(VkBufferCopy) {
+			.size = size,
+			.srcOffset = src_offset,
+			.dstOffset = dst_offset
+		});
 
-		end_temp_command_buffer(command_buffer, vctx.com_cmd_pool, vctx.compute_queue);
+		end_temp_command_buffer(command_buffer, vctx.command_pool, vctx.graphics_compute_queue);
 	} else {
 		usize idx = vctx.current_frame;
 
-		vkCmdCopyBuffer(vctx.com_cmd_buffers[idx], src->buffers[idx], dst->buffers[idx], 1, &(VkBufferCopy) {
+		vkCmdCopyBuffer(vctx.command_buffers[idx], src->buffer, dst->buffer, 1, &(VkBufferCopy) {
 			.size = size,
 			.srcOffset = src_offset,
 			.dstOffset = dst_offset
@@ -2424,37 +2372,34 @@ void video_vk_storage_barrier(struct storage* storage_, u32 state) {
 
 	switch (storage->state) {
 		case storage_state_compute_read:
-			src_queue  = vctx.qfs.compute;
 			src_access = VK_ACCESS_SHADER_READ_BIT;
 			src_stage  = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
 			break;
 		case storage_state_compute_write:
-			src_queue  = vctx.qfs.compute;
 			src_access = VK_ACCESS_SHADER_WRITE_BIT;
 			src_stage  = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
 			break;
+		case storage_state_compute_read_write:
+			src_access = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
+			src_stage  = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+			break;
 		case storage_state_fragment_read:
-			src_queue  = vctx.qfs.graphics;
 			src_access = VK_ACCESS_SHADER_READ_BIT;
 			src_stage  = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
 			break;
 		case storage_state_vertex_read:
-			src_queue  = vctx.qfs.graphics;
 			src_access = VK_ACCESS_SHADER_READ_BIT;
 			src_stage  = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT;
 			break;
 		case storage_state_fragment_write:
-			src_queue  = vctx.qfs.graphics;
 			src_access = VK_ACCESS_SHADER_WRITE_BIT;
 			src_stage  = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
 			break;
 		case storage_state_vertex_write:
-			src_queue  = vctx.qfs.graphics;
 			src_access = VK_ACCESS_SHADER_WRITE_BIT;
 			src_stage  = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT;
 			break;
 		case storage_state_dont_care:
-			src_queue  = VK_QUEUE_FAMILY_IGNORED;
 			src_access = VK_ACCESS_SHADER_READ_BIT;
 			src_stage  = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
 			break;
@@ -2462,54 +2407,65 @@ void video_vk_storage_barrier(struct storage* storage_, u32 state) {
 
 	switch (storage->state) {
 		case storage_state_compute_read:
-			dst_queue  = vctx.qfs.compute;
 			dst_access = VK_ACCESS_SHADER_READ_BIT;
 			dst_stage  = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
 			break;
 		case storage_state_compute_write:
-			dst_queue  = vctx.qfs.compute;
 			dst_access = VK_ACCESS_SHADER_WRITE_BIT;
 			dst_stage  = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
 			break;
+		case storage_state_compute_read_write:
+			dst_access = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
+			dst_stage  = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+			break;
 		case storage_state_fragment_read:
-			dst_queue  = vctx.qfs.graphics;
 			dst_access = VK_ACCESS_SHADER_READ_BIT;
 			dst_stage  = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
 			break;
 		case storage_state_vertex_read:
-			dst_queue  = vctx.qfs.graphics;
 			dst_access = VK_ACCESS_SHADER_READ_BIT;
 			dst_stage  = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT;
 			break;
 		case storage_state_fragment_write:
-			dst_queue  = vctx.qfs.graphics;
 			dst_access = VK_ACCESS_SHADER_WRITE_BIT;
 			dst_stage  = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
 			break;
 		case storage_state_vertex_write:
-			dst_queue  = vctx.qfs.graphics;
 			dst_access = VK_ACCESS_SHADER_WRITE_BIT;
 			dst_stage  = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT;
 			break;
 		case storage_state_dont_care:
-			dst_queue  = VK_QUEUE_FAMILY_IGNORED;
 			dst_access = VK_ACCESS_SHADER_READ_BIT;
 			dst_stage  = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
 	}
 
-	vkCmdPipelineBarrier(vctx.com_cmd_buffers[vctx.current_frame],
+	vkCmdPipelineBarrier(vctx.command_buffers[vctx.current_frame],
 		src_stage, dst_stage,
 		0, 0, null, 1, &(VkBufferMemoryBarrier) {
 			.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
 			.srcAccessMask = src_access,
 			.dstAccessMask = dst_access,
-			.srcQueueFamilyIndex = src_queue,
-			.dstQueueFamilyIndex = dst_queue,
-			.buffer = storage->buffers[vctx.current_frame],
+			.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+			.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+			.buffer = storage->buffer,
 			.size = storage->size
 		}, 0, null);
 	
 	storage->state = state;
+}
+
+void video_vk_storage_bind_as(const struct storage* storage_, u32 as, u32 point) {
+	const struct video_vk_storage* storage = (const struct video_vk_storage*)storage_;
+
+	switch (as) {
+		case storage_bind_as_vertex_buffer: {
+			VkDeviceSize offsets[] = { 0 };
+			vkCmdBindVertexBuffers(vctx.command_buffers[vctx.current_frame], point, 1, &storage->buffer, offsets);
+		} break;
+		case storage_bind_as_index_buffer:
+			abort_with("Not implemented.");
+			break;
+	}
 }
 
 void video_vk_free_storage(struct storage* storage_) {
@@ -2517,9 +2473,7 @@ void video_vk_free_storage(struct storage* storage_) {
 
 	vkDeviceWaitIdle(vctx.device);
 
-	for (usize i = 0; i < max_frames_in_flight; i++) {
-		vmaDestroyBuffer(vctx.allocator, storage->buffers[i], storage->memories[i]);
-	}
+	vmaDestroyBuffer(vctx.allocator, storage->buffer, storage->memory);
 
 	core_free(storage);
 }
@@ -2563,7 +2517,7 @@ struct vertex_buffer* video_vk_new_vertex_buffer(void* verts, usize size, u32 fl
 
 		new_buffer(size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
 			0, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &vb->buffer, &vb->memory);
-		copy_buffer(vb->buffer, stage, size, vctx.command_pool, vctx.graphics_queue);
+		copy_buffer(vb->buffer, stage, size, vctx.command_pool, vctx.graphics_compute_queue);
 
 		vmaDestroyBuffer(vctx.allocator, stage, stage_memory);
 	}
@@ -2618,7 +2572,7 @@ void video_vk_copy_vertex_buffer(struct vertex_buffer* dst_, usize dst_offset, c
 	};
 	vkCmdCopyBuffer(cb, src, dst, 1, &copy);
 
-	end_temp_command_buffer(cb, vctx.command_pool, vctx.graphics_queue);
+	end_temp_command_buffer(cb, vctx.command_pool, vctx.graphics_compute_queue);
 }
 
 struct index_buffer* video_vk_new_index_buffer(void* elements, usize count, u32 flags) {
@@ -2650,7 +2604,7 @@ struct index_buffer* video_vk_new_index_buffer(void* elements, usize count, u32 
 
 	new_buffer(size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
 		0, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &ib->buffer, &ib->memory);
-	copy_buffer(ib->buffer, stage, size, vctx.command_pool, vctx.graphics_queue);
+	copy_buffer(ib->buffer, stage, size, vctx.command_pool, vctx.graphics_compute_queue);
 
 	vmaDestroyBuffer(vctx.allocator, stage, stage_memory);
 
@@ -2790,7 +2744,7 @@ static void init_texture(struct video_vk_texture* texture, const struct image* i
 		&texture->image, &texture->memory, VK_IMAGE_LAYOUT_UNDEFINED, false);
 	
 	change_image_layout(texture->image, format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, false);
-	copy_buffer_to_image(stage, texture->image, image->size, vctx.command_pool, vctx.graphics_queue);
+	copy_buffer_to_image(stage, texture->image, image->size, vctx.command_pool, vctx.graphics_compute_queue);
 	change_image_layout(texture->image, format, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, false);
 
 	vmaDestroyBuffer(vctx.allocator, stage, stage_memory);
@@ -2937,7 +2891,7 @@ void video_vk_texture_copy(struct texture* dst_, v2i dst_offset, const struct te
 			.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED
 		});
 
-	end_temp_command_buffer(command_buffer, vctx.command_pool, vctx.graphics_queue);
+	end_temp_command_buffer(command_buffer, vctx.command_pool, vctx.graphics_compute_queue);
 }
 
 static void shader_on_load(const char* filename, u8* raw, usize raw_size, void* payload, usize payload_size, void* udata) {

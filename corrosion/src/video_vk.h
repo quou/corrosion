@@ -39,6 +39,7 @@ void video_vk_update_storage(struct storage* storage, u32 mode, void* data);
 void video_vk_update_storage_region(struct storage* storage, u32 mode, void* data, usize offset, usize size);
 void video_vk_copy_storage(u32 mode, struct storage* dst, usize dst_offset, const struct storage* src, usize src_offset, usize size);
 void video_vk_storage_barrier(struct storage* storage, u32 state);
+void video_vk_storage_bind_as(const struct storage* storage, u32 as, u32 point);
 void video_vk_free_storage(struct storage* storage);
 void video_vk_invoke_compute(v3u group_count);
 

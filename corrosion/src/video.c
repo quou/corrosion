@@ -357,6 +357,7 @@ static void find_procs(u32 api, bool enable_validation) {
 	video.update_storage_region = get_api_proc(update_storage_region);
 	video.copy_storage          = get_api_proc(copy_storage);
 	video.storage_barrier       = get_api_proc(storage_barrier);
+	video.storage_bind_as       = get_api_proc(storage_bind_as);
 	video.free_storage          = get_api_proc(free_storage);
 	video.invoke_compute        = get_api_proc(invoke_compute);
 

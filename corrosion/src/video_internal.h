@@ -43,8 +43,7 @@ struct shader_header {
 #pragma pack(pop)
 
 struct queue_families {
-	i32 graphics;
-	i32 compute;
+	i32 graphics_compute;
 	i32 present;
 };
 
@@ -78,8 +77,7 @@ struct vk_video_context {
 	VkPhysicalDevice pdevice;
 	VkDevice device;
 
-	VkQueue graphics_queue;
-	VkQueue compute_queue;
+	VkQueue graphics_compute_queue;
 	VkQueue present_queue;
 
 	VmaAllocator allocator;
@@ -94,11 +92,8 @@ struct vk_video_context {
 	VkImageView* swapchain_image_views;
 
 	VkCommandPool command_pool;
-	VkCommandPool com_cmd_pool;
 	VkCommandBuffer command_buffers[max_frames_in_flight];
-	VkCommandBuffer com_cmd_buffers[max_frames_in_flight];
 
-	VkSemaphore compute_finish_semaphores[max_frames_in_flight];
 	VkSemaphore image_avail_semaphores[max_frames_in_flight];
 	VkSemaphore render_finish_semaphores[max_frames_in_flight];
 	VkFence in_flight_fences[max_frames_in_flight];
@@ -190,8 +185,8 @@ struct video_vk_framebuffer {
 };
 
 struct video_vk_storage {
-	VkBuffer buffers[max_frames_in_flight];
-	VmaAllocation memories[max_frames_in_flight];
+	VkBuffer buffer;
+	VmaAllocation memory;
 
 	usize size;
 
