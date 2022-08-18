@@ -6,14 +6,14 @@ ifndef verbose
   silent = @
 endif
 
-projects = shadercompiler corrosion sbox shooter bloom particles
+projects = shadercompiler corrosion sbox 3d bloom particles
 runnables =           \
     run_sbox          \
     debug_sbox        \
     memcheck_sbox     \
-    run_shooter       \
-    debug_shooter     \
-    memcheck_shooter  \
+    run_3d       \
+    debug_3d     \
+    memcheck_3d  \
     run_bloom         \
     debug_bloom       \
     memcheck_bloom    \
@@ -46,49 +46,49 @@ debug_sbox: sbox
 memcheck_sbox: sbox
 	$(silent) make --no-print-directory -C sbox memcheck
 
-shooter: corrosion
+3d: corrosion
 	@echo == Building $@ ==
-	$(silent) make --no-print-directory -C games/$@ config=$(config)
+	$(silent) make --no-print-directory -C demos/$@ config=$(config)
 
 bloom: corrosion
 	@echo == Building $@ ==
-	$(silent) make --no-print-directory -C games/$@ config=$(config)
+	$(silent) make --no-print-directory -C demos/$@ config=$(config)
 
 particles: corrosion
 	@echo == Building $@ ==
-	$(silent) make --no-print-directory -C games/$@ config=$(config)
+	$(silent) make --no-print-directory -C demos/$@ config=$(config)
 
-run_shooter: shooter
-	$(silent) make --no-print-directory -C games/shooter run
+run_3d: 3d
+	$(silent) make --no-print-directory -C demos/3d run
 
-debug_shooter: shooter
-	$(silent) make --no-print-directory -C games/shooter debug
+debug_3d: 3d
+	$(silent) make --no-print-directory -C demos/3d debug
 
-memcheck_shooter: shooter
-	$(silent) make --no-print-directory -C games/shooter memcheck
+memcheck_3d: 3d
+	$(silent) make --no-print-directory -C demos/3d memcheck
 
 run_bloom: bloom
-	$(silent) make --no-print-directory -C games/bloom run
+	$(silent) make --no-print-directory -C demos/bloom run
 
 debug_bloom: bloom
-	$(silent) make --no-print-directory -C games/bloom debug
+	$(silent) make --no-print-directory -C demos/bloom debug
 
 memcheck_bloom: bloom
-	$(silent) make --no-print-directory -C games/bloom memcheck
+	$(silent) make --no-print-directory -C demos/bloom memcheck
 
 run_particles: particles
-	$(silent) make --no-print-directory -C games/particles run
+	$(silent) make --no-print-directory -C demos/particles run
 
 debug_particles: particles
-	$(silent) make --no-print-directory -C games/particles debug
+	$(silent) make --no-print-directory -C demos/particles debug
 
 memcheck_particles: particles
-	$(silent) make --no-print-directory -C games/particles memcheck
+	$(silent) make --no-print-directory -C demos/particles memcheck
 
 clean:
 	$(silent) make --no-print-directory -C corrosion clean
 	$(silent) make --no-print-directory -C shadercompiler clean
 	$(silent) make --no-print-directory -C sbox clean
-	$(silent) make --no-print-directory -C games/shooter clean
-	$(silent) make --no-print-directory -C games/bloom clean
-	$(silent) make --no-print-directory -C games/particles clean
+	$(silent) make --no-print-directory -C demos/3d clean
+	$(silent) make --no-print-directory -C demos/bloom clean
+	$(silent) make --no-print-directory -C demos/particles clean

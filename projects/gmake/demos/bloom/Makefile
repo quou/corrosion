@@ -13,7 +13,7 @@ cpp = g++
 includes = -I../../../../corrosion/include
 target_name = bloom
 deps =
-srcdir = ../../../../games/bloom/src
+srcdir = ../../../../demos/bloom/src
 libs = -lm -lX11 -lXi -lvulkan -lGL
 defines =
 
@@ -43,25 +43,25 @@ all: $(deps) $(target)
 
 run: | $(deps) $(target)
 	@echo ==
-	$(silent) cd ../../../../games/bloom; \
-	./../../projects/gmake/games/bloom/$(target)
+	$(silent) cd ../../../../demos/bloom; \
+	./../../projects/gmake/demos/bloom/$(target)
 
 debug: | $(deps) $(target)
 	@echo ==
-	$(silent) cd ../../../../games/bloom; \
-	gdb ./../../projects/gmake/games/bloom/$(target)
+	$(silent) cd ../../../../demos/bloom; \
+	gdb ./../../projects/gmake/demos/bloom/$(target)
 
 memcheck: | $(deps) $(target)
 	@echo ==
-	$(silent) cd ../../../../games/bloom; \
-	valgrind --leak-check=full ./../../projects/gmake/games/bloom/$(target)
+	$(silent) cd ../../../../demos/bloom; \
+	valgrind --leak-check=full ./../../projects/gmake/demos/bloom/$(target)
 
 sources = $(wildcard $(srcdir)/*.c $(srcdir)/*/*.c)
 objects = $(sources:$(srcdir)/%.c=$(objdir)/%.o)
 
 shaders = $(wildcard $(srcdir)/*.glsl $(srcdir)/*/*.glsl)
 
-shader_targetdir = ../../../../games/bloom/shaders/
+shader_targetdir = ../../../../demos/bloom/shaders/
 shader_targets = $(shaders:$(srcdir)%.glsl=$(shader_targetdir)%.csh)
 shader_compiler = ../../shadercompiler/bin/$(config)/shadercompiler
 

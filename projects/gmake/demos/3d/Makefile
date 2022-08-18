@@ -11,9 +11,9 @@ endif
 cc = gcc
 cpp = g++
 includes = -I../../../../corrosion/include
-target_name = particles
+target_name = 3d
 deps =
-srcdir = ../../../../games/particles/src
+srcdir = ../../../../demos/3d/src
 libs = -lm -lX11 -lXi -lvulkan -lGL
 defines =
 
@@ -43,25 +43,25 @@ all: $(deps) $(target)
 
 run: | $(deps) $(target)
 	@echo ==
-	$(silent) cd ../../../../games/particles; \
-	./../../projects/gmake/games/particles/$(target)
+	$(silent) cd ../../../../demos/3d; \
+	./../../projects/gmake/demos/3d/$(target)
 
 debug: | $(deps) $(target)
 	@echo ==
-	$(silent) cd ../../../../games/particles; \
-	gdb ./../../projects/gmake/games/particles/$(target)
+	$(silent) cd ../../../../demos/3d; \
+	gdb ./../../projects/gmake/demos/3d/$(target)
 
 memcheck: | $(deps) $(target)
 	@echo ==
-	$(silent) cd ../../../../games/particles; \
-	valgrind --leak-check=full ./../../projects/gmake/games/particles/$(target)
+	$(silent) cd ../../../../demos/3d; \
+	valgrind --leak-check=full ./../../projects/gmake/demos/3d/$(target)
 
 sources = $(wildcard $(srcdir)/*.c $(srcdir)/*/*.c)
 objects = $(sources:$(srcdir)/%.c=$(objdir)/%.o)
 
 shaders = $(wildcard $(srcdir)/*.glsl $(srcdir)/*/*.glsl)
 
-shader_targetdir = ../../../../games/particles/shaders/
+shader_targetdir = ../../../../demos/3d/shaders/
 shader_targets = $(shaders:$(srcdir)%.glsl=$(shader_targetdir)%.csh)
 shader_compiler = ../../shadercompiler/bin/$(config)/shadercompiler
 

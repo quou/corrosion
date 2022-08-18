@@ -56,22 +56,46 @@ void cr_init() {
 	app.renderer = new_renderer(video.get_default_fb());
 
 	app.world = new_world(app.renderer);
-	app.world->draw_debug = true;
+	app.world->draw_debug = false;
 
 	srand(time(null));
 
-	struct entity* floor = new_entity(app.world, eb_mesh | eb_staticbody);
-	floor->transform = m4f_mul(m4f_translation(make_v3f(0.0f, -1.0f, 0.0f)), m4f_scale(make_v3f(20.0f, 0.1f, 20.0f)));
-	floor->model = load_model("meshes/cube.fbx");
-	floor->material.diffuse = make_rgb(0xffffff);
-	floor->material.diffuse_map = load_texture("textures/wood_diffuse.png", texture_flags_filter_linear);
+	for (usize i = 0; i < 30000; i++) {
+		struct entity* obj = new_entity(app.world, eb_mesh | eb_spin);
+		obj->transform = m4f_translation(make_v3f(rand_flt() * 100.0f, rand_flt() * 100.0f, rand_flt() * 100.0f));
+		obj->transform = m4f_mul(obj->transform, m4f_rotation(euler(make_v3f(0.0f, rand_flt() * 360.0f, 0.0f))));
 
-	struct entity* light = new_entity(app.world, eb_light);
-	light->light.range = 20.0f;
-	light->light.intensity = 5.0f;
-	light->light.diffuse = make_rgb(0xffffff);
-	light->light.specular = make_rgb(0xffffff);
-	light->light.position = make_v3f(0.0f, 1.0f, 0.0f);
+		f32 v = rand_flt();
+
+		if (v > 0.6666f) {
+			obj->model = load_model("meshes/monkey.fbx");
+		} else if (v > 0.3333f) {
+			obj->model = load_model("meshes/sphere.fbx");
+		} else {
+			obj->model = load_model("meshes/torus.fbx");
+		}
+
+		v = rand_flt();
+		if (v > 0.6666f) {
+			obj->material.diffuse_map = load_texture("textures/bricks_diffuse.png", texture_flags_filter_linear);
+		} else if (v > 0.3333f) {
+			obj->material.diffuse_map = load_texture("textures/cobble_diffuse.png", texture_flags_filter_linear);
+		} else {
+			obj->material.diffuse_map = load_texture("textures/wood_diffuse.png", texture_flags_filter_linear);
+		}
+
+		obj->spin_speed = rand_flt() * 100.0f;
+		obj->material.diffuse = make_v3f(rand_flt() * 2.0f, rand_flt() * 2.0f, rand_flt() * 2.0f);
+	}
+
+	for (usize i = 0; i < 200; i++) {
+		struct entity* light = new_entity(app.world, eb_light);
+		light->light.range = 10.0f;
+		light->light.diffuse = make_rgb(0xffffff);
+		light->light.specular = make_rgb(0xffffff);
+		light->light.intensity = 1.0f;
+		light->light.position = make_v3f(rand_flt() * 100.0f, rand_flt() * 100.0f, rand_flt() * 100.0f);
+	}
 
 	app.camera_active = false;
 	app.first_move = true;

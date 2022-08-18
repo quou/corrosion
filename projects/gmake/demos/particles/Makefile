@@ -11,9 +11,9 @@ endif
 cc = gcc
 cpp = g++
 includes = -I../../../../corrosion/include
-target_name = shooter
+target_name = particles
 deps =
-srcdir = ../../../../games/shooter/src
+srcdir = ../../../../demos/particles/src
 libs = -lm -lX11 -lXi -lvulkan -lGL
 defines =
 
@@ -43,25 +43,25 @@ all: $(deps) $(target)
 
 run: | $(deps) $(target)
 	@echo ==
-	$(silent) cd ../../../../games/shooter; \
-	./../../projects/gmake/games/shooter/$(target)
+	$(silent) cd ../../../../demos/particles; \
+	./../../projects/gmake/demos/particles/$(target)
 
 debug: | $(deps) $(target)
 	@echo ==
-	$(silent) cd ../../../../games/shooter; \
-	gdb ./../../projects/gmake/games/shooter/$(target)
+	$(silent) cd ../../../../demos/particles; \
+	gdb ./../../projects/gmake/demos/particles/$(target)
 
 memcheck: | $(deps) $(target)
 	@echo ==
-	$(silent) cd ../../../../games/shooter; \
-	valgrind --leak-check=full ./../../projects/gmake/games/shooter/$(target)
+	$(silent) cd ../../../../demos/particles; \
+	valgrind --leak-check=full ./../../projects/gmake/demos/particles/$(target)
 
 sources = $(wildcard $(srcdir)/*.c $(srcdir)/*/*.c)
 objects = $(sources:$(srcdir)/%.c=$(objdir)/%.o)
 
 shaders = $(wildcard $(srcdir)/*.glsl $(srcdir)/*/*.glsl)
 
-shader_targetdir = ../../../../games/shooter/shaders/
+shader_targetdir = ../../../../demos/particles/shaders/
 shader_targets = $(shaders:$(srcdir)%.glsl=$(shader_targetdir)%.csh)
 shader_compiler = ../../shadercompiler/bin/$(config)/shadercompiler
 

@@ -66,9 +66,11 @@ void update_world(struct world* world, f64 ts) {
 						if (in_frustum(&mesh_bound, fplanes)) {
 							renderer_push(world->renderer, mesh, &e->material, t);
 
-							gizmo_box(
-								v3f_add(mesh_bound.min, v3f_scale(v3f_sub(mesh_bound.max, mesh_bound.min), 0.5f)),
-								v3f_sub(mesh_bound.max, mesh_bound.min), euler(make_v3f(0.0f, 0.0f, 0.0f)));
+							if (world->draw_debug) {
+								gizmo_box(
+									v3f_add(mesh_bound.min, v3f_scale(v3f_sub(mesh_bound.max, mesh_bound.min), 0.5f)),
+									v3f_sub(mesh_bound.max, mesh_bound.min), euler(make_v3f(0.0f, 0.0f, 0.0f)));
+							}
 						} else {
 							world->culled++;
 						}
