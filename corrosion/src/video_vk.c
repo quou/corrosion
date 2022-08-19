@@ -924,7 +924,7 @@ static void init_swapchain(VkSwapchainKHR old_swapchain) {
 
 	vctx.swapchain_image_views = core_alloc(sizeof(VkImage) * vctx.swapchain_image_count);
 
-	/* Create iamge views. */
+	/* Create image views. */
 	for (u32 i = 0; i < vctx.swapchain_image_count; i++) {
 		vctx.swapchain_image_views[i] = new_image_view(vctx.swapchain_images[i], vctx.swapchain_format, VK_IMAGE_ASPECT_COLOR_BIT);
 	}
@@ -1015,7 +1015,6 @@ static void init_vk_framebuffer(struct video_vk_framebuffer* fb,
 		}
 	}
 
-	fb->colours = core_calloc(fb->colour_count, sizeof *fb->colours);
 	fb->colour_infos = core_calloc(fb->colour_count, sizeof *fb->colour_infos);
 	fb->colour_formats = core_calloc(fb->colour_count, sizeof *fb->colour_formats);
 
@@ -1045,33 +1044,7 @@ static void init_vk_framebuffer(struct video_vk_framebuffer* fb,
 	}
 
 	if (fb->is_headless) {
-		/* Create images for the colour attachments. */
-		for (usize i = 0; i < fb->colour_count; i++) {
-			struct video_vk_framebuffer_attachment* attachment = &fb->colours[i];
-
-			for (usize ii = 0; ii < max_frames_in_flight; ii++) {
-				new_image(fb->size, attachment->format, VK_IMAGE_TILING_OPTIMAL,
-					VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-					VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-					&attachment->images[ii], &attachment->image_memories[ii],
-					VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, false);
-				attachment->image_views[ii] = new_image_view(attachment->images[ii],
-					attachment->format, VK_IMAGE_ASPECT_COLOR_BIT);
-			}
-		}
-
-		/* Create images for the depth attachment if required. */
-		if (fb->use_depth) {
-			VkFormat fmt = find_depth_format();
-
-			fb->depth.type = framebuffer_attachment_depth;
-
-			for (usize i = 0; i < max_frames_in_flight; i++) {
-				new_depth_resources(&fb->depth.images[i], &fb->depth.image_views[i],
-					&fb->depth.image_memories[i], fb->size, true);
-			}
-		}
-
+		/* Only one sampler is needed for all of the attachments. */
 		if (vkCreateSampler(vctx.device, &(VkSamplerCreateInfo) {
 				.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
 				.magFilter = VK_FILTER_NEAREST,
@@ -1088,11 +1061,42 @@ static void init_vk_framebuffer(struct video_vk_framebuffer* fb,
 			}, null, &fb->sampler) != VK_SUCCESS) {
 			abort_with("Failed to create texture sampler.");
 		}
-	} else {
-		/* Create depth resources for a swapchain framebuffer. */
-		if (fb->use_depth) {
-			new_depth_resources(&fb->depth_image, &fb->depth_image_view, &fb->depth_memory, fb->size, false);
+
+		/* Create images for the colour attachments. */
+		for (usize i = 0; i < fb->colour_count; i++) {
+			struct video_vk_framebuffer_attachment* attachment = &fb->colours[i];
+
+			new_image(fb->size, attachment->format, VK_IMAGE_TILING_OPTIMAL,
+				VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+				VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+				&attachment->texture->image, &attachment->texture->memory,
+				VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, false);
+			attachment->texture->view = new_image_view(attachment->texture->image,
+				attachment->format, VK_IMAGE_ASPECT_COLOR_BIT);
+
+			attachment->texture->size = fb->size;
+
+			/* Give the texture a reference to the sampler so that the
+			 * generic "texture" pipeline resource can be used to sample
+			 * the attachment from a shader. */
+			attachment->texture->sampler = fb->sampler;
 		}
+	}
+
+	/* Create the image for the depth attachment if required. */
+	if (fb->use_depth) {
+		VkFormat fmt = find_depth_format();
+
+		fb->depth.type = framebuffer_attachment_depth;
+
+		fb->depth.texture->size = fb->size;
+		
+		if (fb->is_headless) {
+			fb->depth.texture->sampler = fb->sampler;
+		}
+
+		new_depth_resources(&fb->depth.texture->image, &fb->depth.texture->view,
+			&fb->depth.texture->memory, fb->size, true);
 	}
 }
 
@@ -1101,28 +1105,18 @@ static void deinit_vk_framebuffer(struct video_vk_framebuffer* fb) {
 
 	if (fb->is_headless) {
 		for (usize i = 0; i < fb->colour_count; i++) {
-			for (usize j = 0; j < max_frames_in_flight; j++) {
-				vkDestroyImageView(vctx.device, fb->colours[i].image_views[j], null);
-				vmaDestroyImage(vctx.allocator, fb->colours[i].images[j], fb->colours[i].image_memories[j]);
-			}
-		}
-
-		if (fb->use_depth) {
-			for (usize i = 0; i < max_frames_in_flight; i++) {
-				vkDestroyImageView(vctx.device, fb->depth.image_views[i], null);
-				vmaDestroyImage(vctx.allocator, fb->depth.images[i], fb->depth.image_memories[i]);
-			}
+			vkDestroyImageView(vctx.device, fb->colours[i].texture->view, null);
+			vmaDestroyImage(vctx.allocator, fb->colours[i].texture->image, fb->colours[i].texture->memory);
 		}
 
 		vkDestroySampler(vctx.device, fb->sampler, null);
-	} else {
-		if (fb->use_depth) {
-			vkDestroyImageView(vctx.device, fb->depth_image_view, null);
-			vmaDestroyImage(vctx.allocator, fb->depth_image, fb->depth_memory);
-		}
 	}
 
-	core_free(fb->colours);
+	if (fb->use_depth) {
+		vkDestroyImageView(vctx.device, fb->depth.texture->view, null);
+		vmaDestroyImage(vctx.allocator, fb->depth.texture->image, fb->depth.texture->memory);
+	}
+
 	core_free(fb->colour_infos);
 	core_free(fb->colour_formats);
 
@@ -1135,6 +1129,26 @@ struct framebuffer* video_vk_new_framebuffer(u32 flags, v2i size, const struct f
 	fb->attachment_descs = core_alloc(attachment_count * sizeof(struct framebuffer_attachment_desc));
 	memcpy(fb->attachment_descs, attachments, attachment_count * sizeof(struct framebuffer_attachment_desc));
 	fb->attachment_count = attachment_count;
+
+	usize colour_count = 0;
+	bool has_depth = false;
+	for (usize i = 0; i < attachment_count; i++) {
+		if (attachments[i].type == framebuffer_attachment_colour) {
+			colour_count++;
+		} else if (attachments[i].type == framebuffer_attachment_depth) {
+			has_depth = true;
+		}
+	}
+
+	fb->colours = core_calloc(colour_count, sizeof *fb->colours);
+
+	for (usize i = 0; i < colour_count; i++) {
+		fb->colours[i].texture = core_calloc(1, sizeof(struct video_vk_texture));
+	}
+
+	if (has_depth) {
+		fb->depth.texture = core_calloc(1, sizeof *fb->depth.texture);
+	}
 
 	fb->flags = flags;
 
@@ -1157,6 +1171,16 @@ void video_vk_free_framebuffer(struct framebuffer* framebuffer) {
 	struct video_vk_framebuffer* fb = (struct video_vk_framebuffer*)framebuffer;
 
 	deinit_vk_framebuffer(fb);
+
+	for (usize i = 0; i < fb->colour_count; i++) {
+		core_free(fb->colours[i].texture);
+	}
+
+	core_free(fb->colours);
+
+	if (fb->use_depth) {
+		core_free(fb->depth.texture);
+	}
 
 	list_remove(vctx.framebuffers, fb);
 
@@ -1201,7 +1225,7 @@ void video_vk_begin_framebuffer(struct framebuffer* framebuffer) {
 			VkImageMemoryBarrier barrier = {
 				.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
 				.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-				.image = attachment->images[vctx.current_frame],
+				.image = attachment->texture->image,
 				.newLayout = new_layout,
 				.subresourceRange = { get_vk_frambuffer_attachment_aspect_flags(attachment), 0, 1, 0, 1},
 				.srcAccessMask = 0,
@@ -1238,7 +1262,7 @@ void video_vk_begin_framebuffer(struct framebuffer* framebuffer) {
 				0, 0, null, 0, null, 1, &(VkImageMemoryBarrier) {
 					.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
 					.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-					.image = fb->depth_image,
+					.image = fb->depth.texture->image,
 					.newLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
 					.subresourceRange = { VK_IMAGE_ASPECT_DEPTH_BIT, 0, 1, 0, 1},
 					.srcAccessMask = 0,
@@ -1263,7 +1287,7 @@ void video_vk_begin_framebuffer(struct framebuffer* framebuffer) {
 		};
 
 		if (fb->is_headless) {
-			info->imageView = fb->colours[i].image_views[vctx.current_frame];
+			info->imageView = fb->colours[i].texture->view;
 		} else {
 			info->imageView = vctx.swapchain_image_views[vctx.image_id];
 		}
@@ -1277,10 +1301,8 @@ void video_vk_begin_framebuffer(struct framebuffer* framebuffer) {
 		.clearValue.depthStencil = { 1.0f, 0 }
 	};
 
-	if (fb->is_headless) {
-		depth_info.imageView = fb->depth.image_views[vctx.current_frame];
-	} else {
-		depth_info.imageView = fb->depth_image_view;
+	if (fb->use_depth) {
+		depth_info.imageView = fb->depth.texture->view;
 	}
 
 	VkRenderingInfoKHR rendering_info = {
@@ -1341,7 +1363,7 @@ void video_vk_end_framebuffer(struct framebuffer* framebuffer) {
 			VkImageMemoryBarrier barrier = {
 				.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
 				.oldLayout = old_layout,
-				.image = attachment->images[vctx.current_frame],
+				.image = attachment->texture->image,
 				.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
 				.subresourceRange = { get_vk_frambuffer_attachment_aspect_flags(attachment), 0, 1, 0, 1},
 				.srcAccessMask = prev_access,
@@ -1377,6 +1399,15 @@ void video_vk_end_framebuffer(struct framebuffer* framebuffer) {
 
 struct framebuffer* video_vk_get_default_fb() {
 	return vctx.default_fb;
+}
+
+struct texture* video_vk_get_attachment(struct framebuffer* fb_, u32 index) {
+	struct video_vk_framebuffer* fb = (struct video_vk_framebuffer*)fb_;
+
+	struct video_vk_framebuffer_attachment** attachment_ptr = table_get(fb->attachment_map, index);
+	struct video_vk_framebuffer_attachment* attachment = *attachment_ptr;
+
+	return (struct texture*)attachment->texture;
 }
 
 static void attributes_to_vk_attributes(const struct pipeline_attribute_bindings* bindings,
@@ -1491,7 +1522,6 @@ static VkDescriptorSetLayout* init_pipeline_descriptors(struct video_vk_pipeline
 					pipeline->uniform_count++;
 					break;
 				case pipeline_resource_texture:
-				case pipeline_resource_framebuffer:
 					pipeline->sampler_count++;
 					break;
 				case pipeline_resource_storage:
@@ -1560,7 +1590,6 @@ static VkDescriptorSetLayout* init_pipeline_descriptors(struct video_vk_pipeline
 					lb->descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 					break;
 				case pipeline_resource_texture:
-				case pipeline_resource_framebuffer:
 					lb->descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 					break;
 				case pipeline_resource_storage:
@@ -1661,26 +1690,6 @@ static VkDescriptorSetLayout* init_pipeline_descriptors(struct video_vk_pipeline
 
 						write->descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 						write->pBufferInfo = buffer_info;
-					} break;
-					case pipeline_resource_framebuffer: {
-						struct video_vk_framebuffer* framebuffer = (struct video_vk_framebuffer*)desc->resource.framebuffer.ptr;
-						const struct video_vk_framebuffer_attachment** attachment_ptr = table_get(framebuffer->attachment_map,
-							desc->resource.framebuffer.attachment);
-
-						if (!attachment_ptr) {
-							abort_with("Invalid framebuffer attachment index.");
-						}
-
-						const struct video_vk_framebuffer_attachment* attachment = *attachment_ptr;
-
-						VkDescriptorImageInfo* image_info = image_infos + (image_info_count++);
-
-						image_info->imageView = attachment->image_views[j];
-						image_info->sampler = framebuffer->sampler;
-						image_info->imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-
-						write->descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-						write->pImageInfo = image_info;
 					} break;
 					case pipeline_resource_texture: {
 						const struct video_vk_texture* texture = (const struct video_vk_texture*)desc->resource.texture;

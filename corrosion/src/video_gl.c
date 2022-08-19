@@ -239,6 +239,11 @@ struct framebuffer* video_gl_get_default_fb() {
 	return gctx.default_fb;
 }
 
+struct texture* video_gl_get_attachment(struct framebuffer* fb, u32 index) {
+	abort_with("Not implemented.");
+	return null;
+}
+
 struct pipeline* video_gl_new_pipeline(u32 flags, const struct shader* shader, const struct framebuffer* framebuffer,
 	struct pipeline_attribute_bindings attrib_bindings, struct pipeline_descriptor_sets descriptor_sets) {
 	return video_gl_new_pipeline_ex(flags, shader, framebuffer, attrib_bindings, descriptor_sets, null);
@@ -491,14 +496,6 @@ void video_gl_bind_pipeline_descriptor_set(struct pipeline* pipeline_, const cha
 
 				check_gl(glActiveTexture(GL_TEXTURE0 + binding));
 				check_gl(glBindTexture(GL_TEXTURE_2D, texture->id));
-			} break;
-			case pipeline_resource_framebuffer: {
-				struct video_gl_framebuffer* fb = (struct video_gl_framebuffer*)desc->resource.framebuffer.ptr;
-
-				u32* attachment = table_get(fb->attachment_map, desc->resource.framebuffer.attachment);
-
-				check_gl(glActiveTexture(GL_TEXTURE0 + binding));
-				check_gl(glBindTexture(GL_TEXTURE_2D, *attachment));
 			} break;
 			case pipeline_resource_uniform_buffer: {
 				check_gl(glBindBufferBase(GL_UNIFORM_BUFFER, binding, desc->ub_id));

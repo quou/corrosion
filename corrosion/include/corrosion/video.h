@@ -102,7 +102,6 @@ struct pipeline_attribute_bindings {
 
 enum {
 	pipeline_resource_uniform_buffer,
-	pipeline_resource_framebuffer,
 	pipeline_resource_texture,
 	pipeline_resource_storage
 };
@@ -113,15 +112,10 @@ struct pipeline_resource {
 	union {
 		struct {
 			usize size;
-		} uniform, dynamic_uniform;
+		} uniform;
 
 		const struct texture* texture;
 		const struct storage* storage;
-
-		struct {
-			struct framebuffer* ptr;
-			usize attachment;
-		} framebuffer;
 	};
 };
 
@@ -222,7 +216,7 @@ struct video {
 	void (*resize_framebuffer)(struct framebuffer* fb, v2i new_size);
 	void (*begin_framebuffer)(struct framebuffer* fb);
 	void (*end_framebuffer)(struct framebuffer* fb);
-	struct texture* (*get_current_framebuffer_texture)(struct framebuffer* fb);
+	struct texture* (*get_attachment)(struct framebuffer* fb, u32 index);
 
 	/* Pipeline. */
 	struct pipeline* (*new_pipeline)(u32 flags, const struct shader* shader, const struct framebuffer* framebuffer,

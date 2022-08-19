@@ -19,6 +19,7 @@ void video_gl_resize_framebuffer(struct framebuffer* fb, v2i new_size);
 void video_gl_begin_framebuffer(struct framebuffer* fb);
 void video_gl_end_framebuffer(struct framebuffer* fb);
 struct framebuffer* video_gl_get_default_fb();
+struct texture* video_gl_get_attachment(struct framebuffer* fb, u32 index);
 
 struct pipeline* video_gl_new_pipeline(u32 flags, const struct shader* shader, const struct framebuffer* framebuffer,
 	struct pipeline_attribute_bindings attrib_bindings, struct pipeline_descriptor_sets descriptor_sets);

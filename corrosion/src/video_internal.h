@@ -126,6 +126,16 @@ struct vk_video_context {
 	PFN_vkCmdEndRenderingKHR vkCmdEndRenderingKHR;
 };
 
+struct video_vk_texture {
+	v2i size;
+
+	VkImage image;
+	VkImageView view;
+	VkSampler sampler;
+
+	VmaAllocation memory;
+};
+
 struct video_vk_framebuffer_attachment {
 	u32 type;
 
@@ -133,9 +143,7 @@ struct video_vk_framebuffer_attachment {
 
 	VkFormat format;
 
-	VkImage images[max_frames_in_flight];
-	VkImageView image_views[max_frames_in_flight];
-	VmaAllocation image_memories[max_frames_in_flight];
+	struct video_vk_texture* texture;
 };
 
 static inline VkImageAspectFlags get_vk_frambuffer_attachment_aspect_flags(const struct video_vk_framebuffer_attachment* a) {
@@ -164,13 +172,6 @@ struct video_vk_framebuffer {
 	VkFormat depth_format;
 
 	VkRenderingAttachmentInfoKHR* colour_infos;
-
-	/* Used if this is the default framebuffer. On the default
-	 * framebuffer, the depth buffer can't be sampled and a
-	 * separate one won't be needed for each frame in flight. */
-	VkImage depth_image;
-	VkImageView depth_image_view;
-	VmaAllocation depth_memory;
 
 	table(usize, struct video_vk_framebuffer_attachment*) attachment_map;
 
@@ -266,16 +267,6 @@ struct video_vk_shader {
 	VkShaderModule compute;
 
 	bool is_compute;
-};
-
-struct video_vk_texture {
-	v2i size;
-
-	VkImage image;
-	VkImageView view;
-	VkSampler sampler;
-
-	VmaAllocation memory;
 };
 
 enum {

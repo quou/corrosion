@@ -234,11 +234,8 @@ struct renderer* new_renderer(const struct framebuffer* framebuffer) {
 							.binding  = 0,
 							.stage    = pipeline_stage_fragment,
 							.resource = {
-								.type        = pipeline_resource_framebuffer,
-								.framebuffer = {
-									.ptr        = renderer->scene_fb,
-									.attachment = 0
-								}
+								.type    = pipeline_resource_texture,
+								.texture = video.get_attachment(renderer->scene_fb, 0)
 							}
 						},
 						{
@@ -246,11 +243,8 @@ struct renderer* new_renderer(const struct framebuffer* framebuffer) {
 							.binding  = 1,
 							.stage    = pipeline_stage_fragment,
 							.resource = {
-								.type        = pipeline_resource_framebuffer,
-								.framebuffer = {
-									.ptr        = renderer->scene_fb,
-									.attachment = 1
-								}
+								.type    = pipeline_resource_texture,
+								.texture = video.get_attachment(renderer->scene_fb, 1)
 							}
 						},
 						{
@@ -258,11 +252,8 @@ struct renderer* new_renderer(const struct framebuffer* framebuffer) {
 							.binding  = 2,
 							.stage    = pipeline_stage_fragment,
 							.resource = {
-								.type        = pipeline_resource_framebuffer,
-								.framebuffer = {
-									.ptr        = renderer->scene_fb,
-									.attachment = 2
-								}
+								.type    = pipeline_resource_texture,
+								.texture = video.get_attachment(renderer->scene_fb, 2)
 							}
 						},
 						{
