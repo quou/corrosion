@@ -1,9 +1,9 @@
 # Corrosion
 
-Framework for Vulkan.
+C graphics framework for GNU/Linux and Windows.
 
 ## Notes
- - Uses the dynamic rendering extension.
+ - Functional Vulkan backend that uses the dynamic rendering extension.
  - WIP OpenGL ES backend. Currently it isn't functional at all, but most of the groundwork is there.
 
 ## Build Instructions
