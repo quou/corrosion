@@ -15,8 +15,8 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <CustomBuild Include="..\..\..\sbox\src\invert.glsl" />
-    <CustomBuild Include="..\..\..\sbox\src\computetest.glsl" />
-    <CustomBuild Include="..\..\..\sbox\src\test.glsl" />
+    <ClCompile Include="..\..\..\..\demos\particles\src\main.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

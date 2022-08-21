@@ -15,7 +15,7 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <CustomBuild Include="..\..\..\games\shooter\src\lighting.glsl" />
-    <CustomBuild Include="..\..\..\games\shooter\src\lit.glsl" />
+    <CustomBuild Include="..\..\..\..\demos\particles\src\particle.glsl" />
+    <CustomBuild Include="..\..\..\..\demos\particles\src\update.glsl" />
   </ItemGroup>
 </Project>

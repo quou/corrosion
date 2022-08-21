@@ -94,7 +94,7 @@ static void compute_set_bindings() {
 		for (auto& desc : set.bindings) {
 			u32 binding = current_binding++;
 
-			desc.compiler.set_decoration(desc.id, spv::DecorationBinding, binding);
+			desc.compiler.set_decoration((spirv_cross::ID)desc.id, spv::DecorationBinding, binding);
 
 			DescID did{ id, desc.binding };
 

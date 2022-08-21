@@ -78,6 +78,9 @@
     <ClCompile Include="..\..\..\corrosion\src\render_util.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\corrosion\src\video_gl.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\corrosion\include\corrosion\app.h">
@@ -145,6 +148,9 @@
     </ClInclude>
     <ClInclude Include="..\..\..\corrosion\include\corrosion\render_util.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\corrosion\src\video_gl.h">
+      <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

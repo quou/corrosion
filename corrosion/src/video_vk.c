@@ -1882,7 +1882,7 @@ static void init_pipeline(struct video_vk_pipeline* pipeline, u32 flags, const s
 		.pAttachments = colour_blend_attachments
 	};
 
-	VkDescriptorSetLayout* set_layouts;
+	VkDescriptorSetLayout* set_layouts = null;
 	if (descriptor_sets->count != 0) {
 		set_layouts = init_pipeline_descriptors(pipeline, descriptor_sets);
 	}
@@ -1961,7 +1961,7 @@ static void init_compute_pipeline(struct video_vk_pipeline* pipeline, u32 flags,
 		.pName = "main"
 	};
 
-	VkDescriptorSetLayout* set_layouts;
+	VkDescriptorSetLayout* set_layouts = null;
 	if (descriptor_sets->count != 0) {
 		set_layouts = init_pipeline_descriptors(pipeline, descriptor_sets);
 	}

@@ -1,8 +1,6 @@
 #include <stdio.h>
 #include <time.h>
 
-#include <stdalign.h>
-
 #include <corrosion/cr.h>
 
 #define dispatch_size 256

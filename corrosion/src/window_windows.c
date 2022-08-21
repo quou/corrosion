@@ -289,8 +289,25 @@ void window_get_vk_extensions(vector(const char*)* extensions) {
 	vector_push(*extensions, "VK_KHR_win32_surface");
 }
 
-VkSurfaceKHR get_window_surface() {
+VkSurfaceKHR get_window_vk_surface() {
 	return window.surface;
+}
+
+void window_create_gl_context() {
+	abort_with("Not implemented.");
+}
+
+void window_destroy_gl_context() {
+	abort_with("Not implemented.");
+}
+
+void* window_get_gl_proc(const char* name) {
+	abort_with("Not implemented.");
+	return null;
+}
+
+void window_gl_swap() {
+	abort_with("Not implemented.");
 }
 
 void deinit_window() {
