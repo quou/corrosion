@@ -5,6 +5,10 @@
 
 struct video video;
 
+struct framebuffer_val_meta {
+	usize attachment_count;
+};
+
 struct {
 	bool is_init;
 	bool is_deinit;
@@ -12,6 +16,8 @@ struct {
 	bool has_default_fb;
 
 	struct framebuffer* current_fb;
+
+	table(struct framebuffer*, struct framebuffer_val_meta) fb_meta;
 } validation_state;
 
 #define get_api_proc(n_) ( \
@@ -21,6 +27,12 @@ struct {
 #define check_is_init(n_) \
 	if (!validation_state.is_init) { \
 		error("video." n_ ": Video context not initialised."); \
+		ok = false; \
+	}
+
+#define check_isnt_null(o_, n_, e_) \
+	if ((o_) == null) { \
+		error("video." n_ ": " e_); \
 		ok = false; \
 	}
 
@@ -65,6 +77,9 @@ static void validated_deinit() {
 	if (ok) {
 		validation_state.is_deinit = true;
 		get_api_proc(deinit)();
+
+		free_table(validation_state.fb_meta);
+
 		return;
 	}
 
@@ -217,7 +232,11 @@ static struct framebuffer* validated_new_framebuffer(
 
 	if (ok) {
 		validation_state.has_default_fb = true;
-		return get_api_proc(new_framebuffer)(flags, size, attachments, attachment_count);
+		struct framebuffer* fb = get_api_proc(new_framebuffer)(flags, size, attachments, attachment_count);
+
+		table_set(validation_state.fb_meta, fb, ((struct framebuffer_val_meta) { attachment_count }));
+
+		return fb;
 	}
 
 	abort();
@@ -227,13 +246,10 @@ static void validated_free_framebuffer(struct framebuffer* fb) {
 	bool ok = true;
 
 	check_is_init("free_framebuffer");
-
-	if (!fb) {
-		error("video.free_framebuffer: `fb' must be a valid pointer to a framebuffer.");
-		ok = false;
-	}
+	check_isnt_null(fb, "free_framebuffer", "`fb' must be a valid pointer to a framebuffer object.");
 
 	if (ok) {
+		table_delete(validation_state.fb_meta, fb);
 		get_api_proc(free_framebuffer)(fb);
 		return;
 	}
@@ -245,11 +261,7 @@ static v2i validated_get_framebuffer_size(const struct framebuffer* fb) {
 	bool ok = true;
 
 	check_is_init("get_framebuffer_size");
-
-	if (!fb) {
-		error("video.get_framebuffer_size: `fb' must be a valid pointer to a framebuffer.");
-		ok = false;
-	}
+	check_isnt_null(fb, "get_framebuffer_size", "`fb' must be a valid pointer to a framebuffer object.");
 
 	if (ok) {
 		return get_api_proc(get_framebuffer_size)(fb);
@@ -262,11 +274,7 @@ static void validated_resize_framebuffer(struct framebuffer* fb, v2i new_size) {
 	bool ok = true;
 
 	check_is_init("resize_framebuffer");
-
-	if (!fb) {
-		error("video.resize_framebuffer: `fb' must be a valid pointer to a framebuffer.");
-		ok = false;
-	}
+	check_isnt_null(fb, "resize_framebuffer", "`fb' must be a valid pointer to a framebuffer object.");
 
 	if (new_size.x < 1 || new_size.y < 1) {
 		error("video.resize_framebuffer: `new_size' mustn't be less than 1x1");
@@ -285,6 +293,8 @@ static void validated_begin_framebuffer(struct framebuffer* fb) {
 	bool ok = true;
 
 	check_is_init("begin_framebuffer");
+	check_isnt_null(fb, "begin_framebuffer", "`fb' must be a valid pointer to a framebuffer object.");
+	check_is_begin("begin_framebuffer");
 
 	if (validation_state.current_fb) {
 		error("video.begin_framebuffer: Mismatched video.begin_framebuffer/video.end_framebuffer."
@@ -305,6 +315,8 @@ static void validated_end_framebuffer(struct framebuffer* fb) {
 	bool ok = true;
 
 	check_is_init("end_framebuffer");
+	check_isnt_null(fb, "end_framebuffer", "`fb' must be a valid pointer to a framebuffer object.");
+	check_is_begin("begin_framebuffer");
 
 	if (validation_state.current_fb != fb) {
 		error("video.end_framebuffer: Mismatched video.begin_framebuffer/video.end_framebuffer");
@@ -315,6 +327,102 @@ static void validated_end_framebuffer(struct framebuffer* fb) {
 		validation_state.current_fb = null;
 		get_api_proc(end_framebuffer)(fb);
 		return;
+	}
+
+	abort();
+}
+
+static struct texture* validated_get_attachment(struct framebuffer* fb, u32 attachment) {
+	bool ok = true;
+
+	check_is_init("get_attachment");
+	check_isnt_null(fb, "get_attachment", "`fb' must be a valid pointer to a framebuffer object.");
+
+	struct framebuffer_val_meta* meta = table_get(validation_state.fb_meta, fb);
+
+	if (attachment >= (u32)meta->attachment_count) {
+		error("video.get_attachment: `attachment' must be"
+			" less than the amount of attachments attached to the given framebuffer.");
+		ok = false;
+	}
+
+	if (ok) {
+		return get_api_proc(get_attachment)(fb, attachment);
+	}
+
+	abort();
+}
+
+struct pipeline* validated_new_pipeline_ex(u32 flags, const struct shader* shader, const struct framebuffer* framebuffer,
+	struct pipeline_attribute_bindings attrib_bindings, struct pipeline_descriptor_sets descriptor_sets, const struct pipeline_config* config) {
+	return get_api_proc(new_pipeline_ex)(flags, shader, framebuffer, attrib_bindings, descriptor_sets, config);
+}
+
+static struct pipeline* validated_new_pipeline(u32 flags, const struct shader* shader, const struct framebuffer* framebuffer,
+	struct pipeline_attribute_bindings attrib_bindings, struct pipeline_descriptor_sets descriptor_sets) {
+	bool ok = true;
+
+	check_is_init("new_pipeline");
+	check_isnt_null(shader, "new_pipeline", "`shader' must be a valid pointer to a shader object.");
+	check_isnt_null(framebuffer, "new_pipeline", "`framebuffer' must be a valid pointer to a framebuffer object.");
+
+	if (!attrib_bindings.count || !attrib_bindings.bindings) {
+		error("new_pipeline: Graphics pipelines must have more than one attribute binding."
+			" If you meant to create a compute pipeline, use `video.new_compute_pipeline' instead.");
+		ok = false;
+	}
+
+	vector(u32) used_locs = null;
+	vector(u32) used_binds = null;
+
+	for (usize i = 0; i < attrib_bindings.count; i++) {
+		struct pipeline_attribute_binding* binding = &attrib_bindings.bindings[i];
+
+		if (binding->rate != pipeline_attribute_rate_per_vertex && binding->rate != pipeline_attribute_rate_per_instance) {
+			error("video.new_pipeline: Attribute binding %u: Binding rate must be equal to either"
+				" pipeline_attribute_rate_per_vertex or pipeline_attribute_rate_per_instance.", binding->binding);
+			ok = false;
+		}
+
+		for (usize ii = 0; ii < vector_count(used_binds); ii++) {
+			if (binding->binding == used_binds[ii]) {
+				error("video.new_pipeline: Attribute binding %u cannot be re-used.", binding->binding);
+				ok = false;
+				break;
+			}
+		}
+
+		vector_push(used_binds, binding->binding);
+
+		for (usize j = 0; j < binding->attributes.count; j++) {
+			struct pipeline_attribute* attrib = &binding->attributes.attributes[j];
+
+			for (usize ii = 0; ii < vector_count(used_locs); ii++) {
+				if (attrib->location == used_locs[ii]) {
+					error("video.new_pipeline: Attribute binding %u: Location %u cannot be re-used.",
+						binding->binding, attrib->location);
+					ok = false;
+					break;
+				}
+			}
+
+			if (attrib->type != pipeline_attribute_float && attrib->type != pipeline_attribute_vec2 &&
+				attrib->type != pipeline_attribute_vec3  && attrib->type != pipeline_attribute_vec4) {
+				error("video.new_pipeline: Attribute binding %u: Location %u: Type must be equal to any one of:"
+					" pipeline_attribute_float, pipeline_attribute_vec2, pipeline_attribute_vec3 or pipeline_attribute_vec4",
+					binding->binding, attrib->location);
+				ok = false;
+			}
+
+			vector_push(used_locs, attrib->location);
+		}
+	}
+
+	free_vector(used_locs);
+	free_vector(used_binds);
+
+	if (ok) {
+		return get_api_proc(new_pipeline)(flags, shader, framebuffer, attrib_bindings, descriptor_sets);
 	}
 
 	abort();
@@ -338,10 +446,10 @@ static void find_procs(u32 api, bool enable_validation) {
 	video.resize_framebuffer   = get_v_proc(resize_framebuffer);
 	video.begin_framebuffer    = get_v_proc(begin_framebuffer);
 	video.end_framebuffer      = get_v_proc(end_framebuffer);
-	video.get_attachment       = get_api_proc(get_attachment);
+	video.get_attachment       = get_v_proc(get_attachment);
 
-	video.new_pipeline                 = get_api_proc(new_pipeline);
-	video.new_pipeline_ex              = get_api_proc(new_pipeline_ex);
+	video.new_pipeline                 = get_v_proc(new_pipeline);
+	video.new_pipeline_ex              = get_v_proc(new_pipeline_ex);
 	video.new_compute_pipeline         = get_api_proc(new_compute_pipeline);
 	video.free_pipeline                = get_api_proc(free_pipeline);
 	video.begin_pipeline               = get_api_proc(begin_pipeline);
