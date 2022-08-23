@@ -355,11 +355,7 @@ static struct texture* validated_get_attachment(struct framebuffer* fb, u32 atta
 
 struct pipeline* validated_new_pipeline_ex(u32 flags, const struct shader* shader, const struct framebuffer* framebuffer,
 	struct pipeline_attribute_bindings attrib_bindings, struct pipeline_descriptor_sets descriptor_sets, const struct pipeline_config* config) {
-	return get_api_proc(new_pipeline_ex)(flags, shader, framebuffer, attrib_bindings, descriptor_sets, config);
-}
 
-static struct pipeline* validated_new_pipeline(u32 flags, const struct shader* shader, const struct framebuffer* framebuffer,
-	struct pipeline_attribute_bindings attrib_bindings, struct pipeline_descriptor_sets descriptor_sets) {
 	bool ok = true;
 
 	check_is_init("new_pipeline");
@@ -419,13 +415,108 @@ static struct pipeline* validated_new_pipeline(u32 flags, const struct shader* s
 	}
 
 	free_vector(used_locs);
+
+	vector(u64) used_set_names = null;
+	vector(u64) used_desc_names = null;
+
+	for (usize i = 0; i < descriptor_sets.count; i++) {
+		struct pipeline_descriptor_set* set = &descriptor_sets.sets[i];
+
+		if (!set->name) {
+			error("video.new_pipeline: Descriptor set %u must be named.", i);
+			ok = false;
+			break;
+		}
+
+		u64 set_name_hash = hash_string(set->name);
+		for (usize ii = 0; ii < vector_count(used_set_names); ii++) {
+			if (used_set_names[ii] == set_name_hash) {
+				error("video.new_pipeline: Descriptor set %s: Duplicate set name.", set->name);
+				ok = false;
+				break;
+			}
+		}
+
+		vector_clear(used_desc_names);
+		vector_clear(used_binds);
+		for (usize j = 0; j < set->count; j++) {
+			struct pipeline_descriptor* desc = &set->descriptors[j];
+
+			if (!desc->name) {
+				error("video.new_pipeline: Descriptor %u on set %s must be named.", j, set->name);
+				ok = false;
+				break;
+			}
+
+			u64 desc_name_hash = hash_string(desc->name);
+
+			for (usize jj = 0; jj < vector_count(used_desc_names); jj++) {
+				if (used_desc_names[jj] == desc_name_hash) {
+					error("video.new_pipeline: Descriptor %s: Duplicate name.");
+					ok = false;
+					break;
+				}
+			}
+
+			for (usize jj = 0; jj < vector_count(used_binds); jj++) {
+				if (used_binds[jj] == desc->binding) {
+					error("video.new_pipeline: Descriptor %s, on set %s: Duplicate binding %u.", desc->name, set->name, desc->binding);
+					ok = false;
+					break;
+				}
+			}
+
+			if (desc->stage != pipeline_stage_vertex && desc->stage != pipeline_stage_fragment) {
+				error("video.new_pipeline: Descriptor %s on set %s: Stage must",
+					" be equal to either pipeline_stage_vertex or pipeline_stage_fragment", desc->name, set->name);
+				ok = false;
+			}
+
+			if (desc->resource.type != pipeline_resource_uniform_buffer &&
+				desc->resource.type != pipeline_resource_texture &&
+				desc->resource.type != pipeline_resource_storage) {
+				error("video.new_pipeline: Descriptor %s on set %s: Resource type must"
+					" be equal to one of: pipeline_resource_uniform_buffer, pipeline_resource_texture or pipeline_resource_storage",
+					desc->name, set->name);
+				ok = false;
+			}
+
+			if (desc->resource.type == pipeline_resource_texture && desc->resource.texture == null) {
+				error("video.new_pipeline: Descriptor %s on set %s: If resource type is pipeline_resource_texture"
+					", then resource.texture must be a valid pointer to a texture object.", desc->name, set->name);
+				ok = false;
+			}
+
+			if (desc->resource.type == pipeline_resource_storage && desc->resource.storage == null) {
+				error("video.new_pipeline: Descriptor %s on set %s: If resource type is pipeline_resource_storage"
+					", then resource.storage must be a valid pointer to a storage object.", desc->name, set->name);
+				ok = false;
+			}
+
+			vector_push(used_binds, desc->binding);
+			vector_push(used_desc_names, desc_name_hash);
+		}
+		
+		vector_push(used_set_names, set_name_hash);
+	}
+	
 	free_vector(used_binds);
+	free_vector(used_set_names);
+	free_vector(used_desc_names);
 
 	if (ok) {
 		return get_api_proc(new_pipeline)(flags, shader, framebuffer, attrib_bindings, descriptor_sets);
 	}
 
 	abort();
+}
+
+static struct pipeline* validated_new_pipeline(u32 flags, const struct shader* shader, const struct framebuffer* framebuffer,
+	struct pipeline_attribute_bindings attrib_bindings, struct pipeline_descriptor_sets descriptor_sets) {
+
+	struct pipeline_config default_config = default_pipeline_config();
+
+	return get_api_proc(new_pipeline_ex)(flags, shader, framebuffer, attrib_bindings, descriptor_sets, &default_config);
 }
 
 static void find_procs(u32 api, bool enable_validation) {

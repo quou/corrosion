@@ -2049,9 +2049,7 @@ static void copy_pipeline_descriptor_set(struct pipeline_descriptor_set* dst, co
 
 struct pipeline* video_vk_new_pipeline(u32 flags, const struct shader* shader, const struct framebuffer* framebuffer,
 	struct pipeline_attribute_bindings attrib_bindings, struct pipeline_descriptor_sets descriptor_sets) {
-	struct pipeline_config default_config = {
-		.line_width = 1.0f
-	};
+	struct pipeline_config default_config = default_pipeline_config();
 
 	return video_vk_new_pipeline_ex(flags, shader, framebuffer, attrib_bindings, descriptor_sets, &default_config);
 }
