@@ -504,10 +504,6 @@ void video_gl_bind_pipeline_descriptor_set(struct pipeline* pipeline_, const cha
 	}
 }
 
-void video_gl_pipeline_add_descriptor_set(struct pipeline* pipeline, const struct pipeline_descriptor_set* set) {
-	abort_with("Not implemented");
-}
-
 static void pipeline_setup_va(struct video_gl_pipeline* pipeline, u32 binding) {
 	struct pipeline_attribute_binding* ab = table_get(pipeline->attribute_bindings, binding);
 
@@ -540,12 +536,6 @@ static void pipeline_setup_va(struct video_gl_pipeline* pipeline, u32 binding) {
 		check_gl(glVertexAttribPointer(attr->location, size, GL_FLOAT, GL_FALSE, ab->stride, (void*)attr->offset));
 		check_gl(glVertexAttribDivisor(attr->location, divisor));
 	}
-}
-
-void video_gl_pipeline_change_shader(struct pipeline* pipeline_, const struct shader* shader) {
-	struct video_gl_pipeline* pipeline = (struct video_gl_pipeline*)pipeline_;
-
-	pipeline->shader = (const struct video_gl_shader*)shader;
 }
 
 struct storage* video_gl_new_storage(u32 flags, usize size, void* initial_data) {

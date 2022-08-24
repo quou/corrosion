@@ -677,7 +677,7 @@ no_validation:
 		}
 	}
 
-	vctx.default_fb = video_vk_new_framebuffer(	framebuffer_flags_default | framebuffer_flags_fit, get_window_size(),
+	vctx.default_fb = video.new_framebuffer(framebuffer_flags_default | framebuffer_flags_fit, get_window_size(),
 		(struct framebuffer_attachment_desc[]) {
 			{
 				.type = framebuffer_attachment_depth,
@@ -2248,28 +2248,6 @@ void video_vk_bind_pipeline_descriptor_set(struct pipeline* pipeline_, const cha
 	vkCmdBindDescriptorSets(pipeline->command_buffers[vctx.current_frame], point,
 		pipeline->layout, (u32)target, 1,
 		desc_set->sets + vctx.current_frame, 0, null);
-}
-
-void video_vk_pipeline_add_descriptor_set(struct pipeline* pipeline_, const struct pipeline_descriptor_set* set) {
-	struct video_vk_pipeline* pipeline = (struct video_vk_pipeline*)pipeline_;
-
-	struct pipeline_descriptor_set dst = { 0 };
-
-	copy_pipeline_descriptor_set(&dst, set);
-
-	vector_push(pipeline->descriptor_sets, dst);
-
-	video_vk_recreate_pipeline(pipeline_);
-}
-
-void video_vk_pipeline_change_shader(struct pipeline* pipeline_, const struct shader* shader) {
-	struct video_vk_pipeline* pipeline = (struct video_vk_pipeline*)pipeline_;
-
-	if (pipeline->shader != shader) {
-		pipeline->shader = shader;
-
-		video_vk_recreate_pipeline(pipeline_);
-	}
 }
 
 struct storage* video_vk_new_storage(u32 flags, usize size, void* initial_data) {

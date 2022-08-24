@@ -9,38 +9,70 @@ struct framebuffer_val_meta {
 	usize attachment_count;
 };
 
+struct pipeline_val_meta {
+	bool is_compute;
+};
+
 struct {
 	bool is_init;
 	bool is_deinit;
 	bool end_called;
 	bool has_default_fb;
 
-	struct framebuffer* current_fb;
+	const struct framebuffer* current_fb;
+	const struct pipeline* current_pipeline;
 
-	table(struct framebuffer*, struct framebuffer_val_meta) fb_meta;
+	table(const struct framebuffer*, struct framebuffer_val_meta) fb_meta;
+	table(const struct pipeline*, struct pipeline_val_meta) pipeline_meta;
 } validation_state;
 
 #define get_api_proc(n_) ( \
 	video.api == video_api_vulkan ? cat(video_vk_, n_) : \
 	video.api == video_api_opengl ? cat(video_gl_, n_) : null)
 
+#define get_v_proc(n_) \
+	enable_validation ? cat(validated_, n_) : get_api_proc(n_)
+
 #define check_is_init(n_) \
-	if (!validation_state.is_init) { \
-		error("video." n_ ": Video context not initialised."); \
-		ok = false; \
-	}
+	do { \
+		if (!validation_state.is_init) { \
+			error("video." n_ ": Video context not initialised."); \
+			ok = false; \
+		} \
+	} while (0)
 
 #define check_isnt_null(o_, n_, e_) \
-	if ((o_) == null) { \
-		error("video." n_ ": " e_); \
-		ok = false; \
-	}
+	do { \
+		if ((o_) == null) { \
+			error("video." n_ ": " e_); \
+			ok = false; \
+		} \
+	} while (0)
 
 #define check_is_begin(n_) \
-	if (validation_state.end_called) { \
-		error("video." n_ ": Mismatched video.begin/video.end. Did you forget to call video.begin?"); \
-		ok = false; \
-	}
+	do { \
+		if (validation_state.end_called) { \
+			error("video." n_ ": Mismatched video.begin/video.end. Did you forget to call video.begin?"); \
+			ok = false; \
+		} \
+	} while (0)
+
+#define check_fb_valid(n_) \
+	do { \
+		if (fb == null || !table_get(validation_state.fb_meta, fb)) { \
+			error("video." n_ ": fb must be a valid pointer to a framebuffer object"); \
+			ok = false; \
+			abort(); \
+		} \
+	} while (0)
+
+#define check_pipeline_valid(n_) \
+	do { \
+		if (pipeline == null || !table_get(validation_state.pipeline_meta, pipeline)) { \
+			error("video." n_ ": pipeline must be a valid pointer to a pipeline object"); \
+			ok = false; \
+		} \
+	} while (0)
 
 static void validated_init(const struct video_config* config) {
 	bool ok = true;
@@ -79,6 +111,7 @@ static void validated_deinit() {
 		get_api_proc(deinit)();
 
 		free_table(validation_state.fb_meta);
+		free_table(validation_state.pipeline_meta);
 
 		return;
 	}
@@ -246,7 +279,12 @@ static void validated_free_framebuffer(struct framebuffer* fb) {
 	bool ok = true;
 
 	check_is_init("free_framebuffer");
-	check_isnt_null(fb, "free_framebuffer", "`fb' must be a valid pointer to a framebuffer object.");
+	check_fb_valid("free_framebuffer");
+	
+	if (!table_get(validation_state.fb_meta, fb)) {
+		error("fb must be a valid pointer to a framebuffer object.");
+		ok = false;
+	}
 
 	if (ok) {
 		table_delete(validation_state.fb_meta, fb);
@@ -261,7 +299,7 @@ static v2i validated_get_framebuffer_size(const struct framebuffer* fb) {
 	bool ok = true;
 
 	check_is_init("get_framebuffer_size");
-	check_isnt_null(fb, "get_framebuffer_size", "`fb' must be a valid pointer to a framebuffer object.");
+	check_fb_valid("get_framebuffer_size");
 
 	if (ok) {
 		return get_api_proc(get_framebuffer_size)(fb);
@@ -274,7 +312,7 @@ static void validated_resize_framebuffer(struct framebuffer* fb, v2i new_size) {
 	bool ok = true;
 
 	check_is_init("resize_framebuffer");
-	check_isnt_null(fb, "resize_framebuffer", "`fb' must be a valid pointer to a framebuffer object.");
+	check_fb_valid("resize_framebuffer_size");
 
 	if (new_size.x < 1 || new_size.y < 1) {
 		error("video.resize_framebuffer: `new_size' mustn't be less than 1x1");
@@ -293,7 +331,7 @@ static void validated_begin_framebuffer(struct framebuffer* fb) {
 	bool ok = true;
 
 	check_is_init("begin_framebuffer");
-	check_isnt_null(fb, "begin_framebuffer", "`fb' must be a valid pointer to a framebuffer object.");
+	check_fb_valid("begin_framebuffer");
 	check_is_begin("begin_framebuffer");
 
 	if (validation_state.current_fb) {
@@ -315,7 +353,7 @@ static void validated_end_framebuffer(struct framebuffer* fb) {
 	bool ok = true;
 
 	check_is_init("end_framebuffer");
-	check_isnt_null(fb, "end_framebuffer", "`fb' must be a valid pointer to a framebuffer object.");
+	check_fb_valid("end_framebuffer");
 	check_is_begin("begin_framebuffer");
 
 	if (validation_state.current_fb != fb) {
@@ -336,7 +374,7 @@ static struct texture* validated_get_attachment(struct framebuffer* fb, u32 atta
 	bool ok = true;
 
 	check_is_init("get_attachment");
-	check_isnt_null(fb, "get_attachment", "`fb' must be a valid pointer to a framebuffer object.");
+	check_fb_valid("get_attachment");
 
 	struct framebuffer_val_meta* meta = table_get(validation_state.fb_meta, fb);
 
@@ -351,6 +389,109 @@ static struct texture* validated_get_attachment(struct framebuffer* fb, u32 atta
 	}
 
 	abort();
+}
+
+static bool validate_descriptors(const char* fname, struct pipeline_descriptor_sets descriptor_sets, bool is_compute) {
+	bool ok = true;
+
+	vector(u64) used_set_names = null;
+	vector(u64) used_desc_names = null;
+	vector(u32) used_binds = null;
+
+	for (usize i = 0; i < descriptor_sets.count; i++) {
+		struct pipeline_descriptor_set* set = &descriptor_sets.sets[i];
+
+		if (!set->name) {
+			error("video.%s: Descriptor set %u must be named.", fname, i);
+			ok = false;
+			break;
+		}
+
+		u64 set_name_hash = hash_string(set->name);
+		for (usize ii = 0; ii < vector_count(used_set_names); ii++) {
+			if (used_set_names[ii] == set_name_hash) {
+				error("video.%s: Descriptor set %s: Duplicate set name.", fname, set->name);
+				ok = false;
+				break;
+			}
+		}
+
+		vector_clear(used_desc_names);
+		vector_clear(used_binds);
+		for (usize j = 0; j < set->count; j++) {
+			struct pipeline_descriptor* desc = &set->descriptors[j];
+
+			if (!desc->name) {
+				error("video.%s: Descriptor %u on set %s must be named.", fname, j, set->name);
+				ok = false;
+				break;
+			}
+
+			u64 desc_name_hash = hash_string(desc->name);
+
+			for (usize jj = 0; jj < vector_count(used_desc_names); jj++) {
+				if (used_desc_names[jj] == desc_name_hash) {
+					error("video.%s: Descriptor %s: Duplicate name.", fname, desc->name);
+					ok = false;
+					break;
+				}
+			}
+
+			for (usize jj = 0; jj < vector_count(used_binds); jj++) {
+				if (used_binds[jj] == desc->binding) {
+					error("video.%s: Descriptor %s, on set %s: Duplicate binding %u.", fname, desc->name, set->name, desc->binding);
+					ok = false;
+					break;
+				}
+			}
+
+			if (is_compute) {
+				if (desc->stage != pipeline_stage_compute) {
+					error("video.%s: Descriptor %s on set %s: Stage must"
+						" be equal to pipeline_stage_compute", fname, desc->name, set->name);
+					ok = false;
+				}
+			} else {
+				if (desc->stage != pipeline_stage_vertex && desc->stage != pipeline_stage_fragment) {
+					error("video.%s: Descriptor %s on set %s: Stage must"
+						" be equal to either pipeline_stage_vertex or pipeline_stage_fragment", fname, desc->name, set->name);
+					ok = false;
+				}
+			}
+
+			if (desc->resource.type != pipeline_resource_uniform_buffer &&
+				desc->resource.type != pipeline_resource_texture &&
+				desc->resource.type != pipeline_resource_storage) {
+				error("video.%s: Descriptor %s on set %s: Resource type must"
+					" be equal to one of: pipeline_resource_uniform_buffer, pipeline_resource_texture or pipeline_resource_storage",
+					fname, desc->name, set->name);
+				ok = false;
+			}
+
+			if (desc->resource.type == pipeline_resource_texture && desc->resource.texture == null) {
+				error("video.%s: Descriptor %s on set %s: If resource type is pipeline_resource_texture"
+					", then resource.texture must be a valid pointer to a texture object.", fname, desc->name, set->name);
+				ok = false;
+			}
+
+			if (desc->resource.type == pipeline_resource_storage && desc->resource.storage == null) {
+				error("video.%s: Descriptor %s on set %s: If resource type is pipeline_resource_storage"
+					", then resource.storage must be a valid pointer to a storage object.", fname, desc->name, set->name);
+				ok = false;
+			}
+
+			vector_push(used_binds, desc->binding);
+			vector_push(used_desc_names, desc_name_hash);
+		}
+		
+		vector_push(used_set_names, set_name_hash);
+	}
+
+	free_vector(used_set_names);
+	free_vector(used_desc_names);
+	free_vector(used_binds);
+
+	return ok;
 }
 
 struct pipeline* validated_new_pipeline_ex(u32 flags, const struct shader* shader, const struct framebuffer* framebuffer,
@@ -415,97 +556,18 @@ struct pipeline* validated_new_pipeline_ex(u32 flags, const struct shader* shade
 	}
 
 	free_vector(used_locs);
-
-	vector(u64) used_set_names = null;
-	vector(u64) used_desc_names = null;
-
-	for (usize i = 0; i < descriptor_sets.count; i++) {
-		struct pipeline_descriptor_set* set = &descriptor_sets.sets[i];
-
-		if (!set->name) {
-			error("video.new_pipeline: Descriptor set %u must be named.", i);
-			ok = false;
-			break;
-		}
-
-		u64 set_name_hash = hash_string(set->name);
-		for (usize ii = 0; ii < vector_count(used_set_names); ii++) {
-			if (used_set_names[ii] == set_name_hash) {
-				error("video.new_pipeline: Descriptor set %s: Duplicate set name.", set->name);
-				ok = false;
-				break;
-			}
-		}
-
-		vector_clear(used_desc_names);
-		vector_clear(used_binds);
-		for (usize j = 0; j < set->count; j++) {
-			struct pipeline_descriptor* desc = &set->descriptors[j];
-
-			if (!desc->name) {
-				error("video.new_pipeline: Descriptor %u on set %s must be named.", j, set->name);
-				ok = false;
-				break;
-			}
-
-			u64 desc_name_hash = hash_string(desc->name);
-
-			for (usize jj = 0; jj < vector_count(used_desc_names); jj++) {
-				if (used_desc_names[jj] == desc_name_hash) {
-					error("video.new_pipeline: Descriptor %s: Duplicate name.");
-					ok = false;
-					break;
-				}
-			}
-
-			for (usize jj = 0; jj < vector_count(used_binds); jj++) {
-				if (used_binds[jj] == desc->binding) {
-					error("video.new_pipeline: Descriptor %s, on set %s: Duplicate binding %u.", desc->name, set->name, desc->binding);
-					ok = false;
-					break;
-				}
-			}
-
-			if (desc->stage != pipeline_stage_vertex && desc->stage != pipeline_stage_fragment) {
-				error("video.new_pipeline: Descriptor %s on set %s: Stage must",
-					" be equal to either pipeline_stage_vertex or pipeline_stage_fragment", desc->name, set->name);
-				ok = false;
-			}
-
-			if (desc->resource.type != pipeline_resource_uniform_buffer &&
-				desc->resource.type != pipeline_resource_texture &&
-				desc->resource.type != pipeline_resource_storage) {
-				error("video.new_pipeline: Descriptor %s on set %s: Resource type must"
-					" be equal to one of: pipeline_resource_uniform_buffer, pipeline_resource_texture or pipeline_resource_storage",
-					desc->name, set->name);
-				ok = false;
-			}
-
-			if (desc->resource.type == pipeline_resource_texture && desc->resource.texture == null) {
-				error("video.new_pipeline: Descriptor %s on set %s: If resource type is pipeline_resource_texture"
-					", then resource.texture must be a valid pointer to a texture object.", desc->name, set->name);
-				ok = false;
-			}
-
-			if (desc->resource.type == pipeline_resource_storage && desc->resource.storage == null) {
-				error("video.new_pipeline: Descriptor %s on set %s: If resource type is pipeline_resource_storage"
-					", then resource.storage must be a valid pointer to a storage object.", desc->name, set->name);
-				ok = false;
-			}
-
-			vector_push(used_binds, desc->binding);
-			vector_push(used_desc_names, desc_name_hash);
-		}
-		
-		vector_push(used_set_names, set_name_hash);
-	}
-	
 	free_vector(used_binds);
-	free_vector(used_set_names);
-	free_vector(used_desc_names);
+
+	if (!validate_descriptors("new_pipeline", descriptor_sets, false)) {
+		ok = false;
+	}
 
 	if (ok) {
-		return get_api_proc(new_pipeline)(flags, shader, framebuffer, attrib_bindings, descriptor_sets);
+		struct pipeline* pipeline = get_api_proc(new_pipeline)(flags, shader, framebuffer, attrib_bindings, descriptor_sets);
+
+		table_set(validation_state.pipeline_meta, pipeline, ((struct pipeline_val_meta) { .is_compute = false }));
+
+		return pipeline;
 	}
 
 	abort();
@@ -516,7 +578,264 @@ static struct pipeline* validated_new_pipeline(u32 flags, const struct shader* s
 
 	struct pipeline_config default_config = default_pipeline_config();
 
-	return get_api_proc(new_pipeline_ex)(flags, shader, framebuffer, attrib_bindings, descriptor_sets, &default_config);
+	return validated_new_pipeline_ex(flags, shader, framebuffer, attrib_bindings, descriptor_sets, &default_config);
+}
+
+struct pipeline* validated_new_compute_pipeline(u32 flags, const struct shader* shader, struct pipeline_descriptor_sets descriptor_sets) {
+	bool ok = true;
+
+	check_is_init("new_compute_pipeline");
+	check_isnt_null(shader, "new_compute_pipeline", "`shader' must be a valid pointer to a shader object.");
+
+	if (!validate_descriptors("new_compute_pipeline", descriptor_sets, true)) {
+		ok = false;
+	}
+
+	if (ok) {
+		struct pipeline* pipeline = get_api_proc(new_compute_pipeline)(flags, shader, descriptor_sets);
+
+		table_set(validation_state.pipeline_meta, pipeline, ((struct pipeline_val_meta) { .is_compute = true }));
+
+		return pipeline;
+	}
+
+	abort();
+}
+
+static void validated_free_pipeline(struct pipeline* pipeline) {
+	bool ok = true;
+
+	check_is_init("free_pipeline");
+	check_pipeline_valid("free_pipeline");
+
+	if (ok) {
+		get_api_proc(free_pipeline)(pipeline);
+		table_delete(validation_state.pipeline_meta, pipeline);
+		return;
+	}
+
+	abort();
+}
+
+static void validated_begin_pipeline(const struct pipeline* pipeline) {
+	bool ok = true;
+
+	check_is_init("begin_pipeline");
+	check_is_begin("begin_pipeline");
+	check_pipeline_valid("begin_pipeline");
+
+	if (validation_state.current_pipeline) {
+		error("Mismatched video.begin_pipeline/video.end_pipeline. Did you forget to call video.end_pipeline?");
+		ok = false;
+	}
+
+	if (ok) {
+		validation_state.current_pipeline = pipeline;
+
+		get_api_proc(begin_pipeline)(pipeline);
+		return;
+	}
+
+	abort();
+}
+
+static void validated_end_pipeline(const struct pipeline* pipeline) {
+	bool ok = true;
+
+	check_is_init("end_pipeline");
+	check_is_begin("end_pipeline");
+	check_pipeline_valid("end_pipeline");
+
+	if (!validation_state.current_pipeline) {
+		error("Mismatched video.begin_pipeline/video.end_pipeline. Did you forget to call video.begin_pipeline?");
+		ok = false;
+	}
+
+	if (pipeline != validation_state.current_pipeline) {
+		error("Mismatched video.begin_pipeline/video.end_pipeline. Did you forget to call video.end_pipeline?");
+		ok = false;
+	}
+
+	if (ok) {
+		validation_state.current_pipeline = null;
+
+		get_api_proc(end_pipeline)(pipeline);
+		return;
+	}
+
+	abort();
+}
+
+static void validated_recreate_pipeline(struct pipeline* pipeline) {
+	bool ok = true;
+
+	check_is_init("recreate_pipeline");
+	check_pipeline_valid("recreate_pipeline");
+
+	if (ok) {
+		get_api_proc(recreate_pipeline)(pipeline);
+		return;
+	}
+
+	abort();
+}
+
+static void validated_bind_pipeline_descriptor_set(struct pipeline* pipeline, const char* set, usize target) {
+	bool ok = true;
+
+	check_is_init("bind_pipeline_descriptor_set");
+	check_pipeline_valid("bind_pipeline_descriptor_set");
+
+	if (!set) {
+		error("video.bind_pipeline_descriptor_set: Descriptor set must be named.");
+		ok = false;
+	}
+
+	if (ok) {
+		get_api_proc(bind_pipeline_descriptor_set)(pipeline, set, target);
+		return;
+	}
+
+	abort();
+}
+
+static void validated_update_pipeline_uniform(struct pipeline* pipeline, const char* set, const char* descriptor, const void* data) {
+	bool ok = true;
+
+	check_is_init("update_pipeline_uniform");
+	check_pipeline_valid("update_pipeline_uniform");
+
+	if (!set) {
+		error("video.update_pipeline_uniform: Descriptor set must be named.");
+		ok = false;
+	}
+
+	if (!descriptor) {
+		error("video.update_pipeline_uniform: Descriptor must be named.");
+		ok = false;
+	}
+
+	if (!data) {
+		error("video.update_pipeline_uniform: data must be a valid pointer.");
+		ok = false;
+	}
+
+	if (ok) {
+		get_api_proc(update_pipeline_uniform)(pipeline, set, descriptor, data);
+		return;
+	}
+	
+	abort();
+}
+
+static void validated_invoke_compute(v3u group_count) {
+	bool ok = true;
+
+	check_is_init("invoke_compute");
+	check_is_begin("invoke_compute");
+
+	if (!validation_state.current_pipeline) {
+		error("video.invoke_compute: A pipeline must be bound.");
+		ok = false;
+	}
+
+	struct pipeline_val_meta* meta = table_get(validation_state.pipeline_meta, validation_state.current_pipeline);
+	if (meta && !meta->is_compute) {
+		error("video.invoke_compute: Bound pipeline must be a compute pipeline.");
+		ok = false;
+	}
+
+	if (ok) {
+		get_api_proc(invoke_compute)(group_count);
+		return;
+	}
+
+	abort();
+}
+
+static void validated_draw(usize count, usize offset, usize instances) {
+	bool ok = true;
+
+	check_is_init("draw");
+	check_is_begin("draw");
+
+	if (!validation_state.current_pipeline) {
+		error("video.draw: A pipeline must be bound.");
+		ok = false;
+	}
+
+	struct pipeline_val_meta* meta = table_get(validation_state.pipeline_meta, validation_state.current_pipeline);
+	if (meta && meta->is_compute) {
+		error("video.draw: Bound pipeline must be a graphics pipeline.");
+		ok = false;
+	}
+
+	if (ok) {
+		get_api_proc(draw)(count, offset, instances);
+		return;
+	}
+
+	abort();
+}
+
+static void validated_draw_indexed(usize count, usize offset, usize instances) {
+	bool ok = true;
+
+	check_is_init("draw_indexed");
+	check_is_begin("draw_indexed");
+
+	if (!validation_state.current_pipeline) {
+		error("video.draw_indexed: A pipeline must be bound.");
+		ok = false;
+	}
+
+	struct pipeline_val_meta* meta = table_get(validation_state.pipeline_meta, validation_state.current_pipeline);
+	if (meta && meta->is_compute) {
+		error("video.draw_indexed: Bound pipeline must be a graphics pipeline.");
+		ok = false;
+	}
+
+	if (ok) {
+		get_api_proc(draw_indexed)(count, offset, instances);
+		return;
+	}
+
+	abort();
+}
+
+static void validated_set_scissor(v4i rect) {
+	bool ok = true;
+
+	check_is_init("set_scissor");
+	check_is_begin("set_scissor");
+
+	if (!validation_state.current_pipeline) {
+		error("video.set_scissor: A pipeline must be bound.");
+		ok = false;
+	}
+
+	struct pipeline_val_meta* meta = table_get(validation_state.pipeline_meta, validation_state.current_pipeline);
+	if (meta && meta->is_compute) {
+		error("video.set_scissor: Bound pipeline must be a graphics pipeline.");
+		ok = false;
+	}
+
+	if (rect.x < 0 || rect.y < 0) {
+		error("video.set_scissor: rect position (x and y) must be larger than or equal to zero");
+		ok = false;
+	}
+
+	if (rect.z < 0 || rect.w < 0) {
+		error("video.set_scissor: rect dimensions (z and w) must be larger than or equal to zero");
+		ok = false;
+	}
+
+	if (ok) {
+		get_api_proc(set_scissor)(rect);
+		return;
+	}
+
+	abort();
 }
 
 static void find_procs(u32 api, bool enable_validation) {
@@ -541,16 +860,13 @@ static void find_procs(u32 api, bool enable_validation) {
 
 	video.new_pipeline                 = get_v_proc(new_pipeline);
 	video.new_pipeline_ex              = get_v_proc(new_pipeline_ex);
-	video.new_compute_pipeline         = get_api_proc(new_compute_pipeline);
-	video.free_pipeline                = get_api_proc(free_pipeline);
-	video.begin_pipeline               = get_api_proc(begin_pipeline);
-	video.end_pipeline                 = get_api_proc(end_pipeline);
-	video.invoke_compute               = get_api_proc(invoke_compute);
-	video.recreate_pipeline            = get_api_proc(recreate_pipeline);
-	video.bind_pipeline_descriptor_set = get_api_proc(bind_pipeline_descriptor_set);
-	video.update_pipeline_uniform      = get_api_proc(update_pipeline_uniform);
-	video.pipeline_add_descriptor_set  = get_api_proc(pipeline_add_descriptor_set);
-	video.pipeline_change_shader       = get_api_proc(pipeline_change_shader);
+	video.new_compute_pipeline         = get_v_proc(new_compute_pipeline);
+	video.free_pipeline                = get_v_proc(free_pipeline);
+	video.begin_pipeline               = get_v_proc(begin_pipeline);
+	video.end_pipeline                 = get_v_proc(end_pipeline);
+	video.recreate_pipeline            = get_v_proc(recreate_pipeline);
+	video.bind_pipeline_descriptor_set = get_v_proc(bind_pipeline_descriptor_set);
+	video.update_pipeline_uniform      = get_v_proc(update_pipeline_uniform);
 
 	video.new_storage           = get_api_proc(new_storage);
 	video.update_storage        = get_api_proc(update_storage);
@@ -559,7 +875,6 @@ static void find_procs(u32 api, bool enable_validation) {
 	video.storage_barrier       = get_api_proc(storage_barrier);
 	video.storage_bind_as       = get_api_proc(storage_bind_as);
 	video.free_storage          = get_api_proc(free_storage);
-	video.invoke_compute        = get_api_proc(invoke_compute);
 
 	video.new_vertex_buffer    = get_api_proc(new_vertex_buffer);
 	video.free_vertex_buffer   = get_api_proc(free_vertex_buffer);
@@ -571,9 +886,10 @@ static void find_procs(u32 api, bool enable_validation) {
 	video.free_index_buffer = get_api_proc(free_index_buffer);
 	video.bind_index_buffer = get_api_proc(bind_index_buffer);
 
-	video.draw         = get_api_proc(draw);
-	video.draw_indexed = get_api_proc(draw_indexed);
-	video.set_scissor  = get_api_proc(set_scissor);
+	video.draw           = get_v_proc(draw);
+	video.draw_indexed   = get_v_proc(draw_indexed);
+	video.set_scissor    = get_v_proc(set_scissor);
+	video.invoke_compute = get_v_proc(invoke_compute);
 
 	video.new_texture      = get_api_proc(new_texture);
 	video.free_texture     = get_api_proc(free_texture);
@@ -585,7 +901,7 @@ static void find_procs(u32 api, bool enable_validation) {
 
 	video.get_draw_call_count = get_api_proc(get_draw_call_count);
 
-#undef get_proc
+#undef get_v_proc
 }
 
 void init_video(const struct video_config* config) {
