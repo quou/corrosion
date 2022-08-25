@@ -129,6 +129,10 @@ struct vk_video_context {
 struct video_vk_texture {
 	v2i size;
 
+	u32 state;
+
+	bool is_depth;
+
 	VkImage image;
 	VkImageView view;
 	VkSampler sampler;
@@ -189,6 +193,8 @@ struct video_vk_storage {
 	VkBuffer buffer;
 	VmaAllocation memory;
 
+	VkIndexType index_type;
+
 	usize size;
 
 	u32 flags;
@@ -214,6 +220,7 @@ struct video_vk_pipeline {
 	usize sampler_count;
 	usize uniform_count;
 	usize storage_count;
+	usize image_storage_count;
 
 	usize descriptor_set_count;
 
@@ -352,6 +359,8 @@ struct video_gl_index_buffer {
 struct video_gl_texture {
 	u32 flags;
 	u32 id;
+
+	u32 state;
 
 	v2i size;
 };

@@ -6,7 +6,7 @@ ifndef verbose
   silent = @
 endif
 
-projects = shadercompiler corrosion sbox 3d bloom particles
+projects = shadercompiler corrosion sbox 3d blur particles
 runnables =           \
     run_sbox          \
     debug_sbox        \
@@ -14,9 +14,9 @@ runnables =           \
     run_3d       \
     debug_3d     \
     memcheck_3d  \
-    run_bloom         \
-    debug_bloom       \
-    memcheck_bloom    \
+    run_blur         \
+    debug_blur       \
+    memcheck_blur    \
     run_particles     \
     debug_particles   \
     memcheck_particles\
@@ -50,7 +50,7 @@ memcheck_sbox: sbox
 	@echo == Building $@ ==
 	$(silent) make --no-print-directory -C demos/$@ config=$(config)
 
-bloom: corrosion
+blur: corrosion
 	@echo == Building $@ ==
 	$(silent) make --no-print-directory -C demos/$@ config=$(config)
 
@@ -67,14 +67,14 @@ debug_3d: 3d
 memcheck_3d: 3d
 	$(silent) make --no-print-directory -C demos/3d memcheck
 
-run_bloom: bloom
-	$(silent) make --no-print-directory -C demos/bloom run
+run_blur: blur
+	$(silent) make --no-print-directory -C demos/blur run
 
-debug_bloom: bloom
-	$(silent) make --no-print-directory -C demos/bloom debug
+debug_blur: blur
+	$(silent) make --no-print-directory -C demos/blur debug
 
-memcheck_bloom: bloom
-	$(silent) make --no-print-directory -C demos/bloom memcheck
+memcheck_blur: blur
+	$(silent) make --no-print-directory -C demos/blur memcheck
 
 run_particles: particles
 	$(silent) make --no-print-directory -C demos/particles run
@@ -90,5 +90,5 @@ clean:
 	$(silent) make --no-print-directory -C shadercompiler clean
 	$(silent) make --no-print-directory -C sbox clean
 	$(silent) make --no-print-directory -C demos/3d clean
-	$(silent) make --no-print-directory -C demos/bloom clean
+	$(silent) make --no-print-directory -C demos/blur clean
 	$(silent) make --no-print-directory -C demos/particles clean

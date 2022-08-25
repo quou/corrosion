@@ -707,6 +707,10 @@ void video_gl_texture_copy(struct texture* dst_, v2i dst_offset, const struct te
 		dimensions.x, dimensions.y, 1));
 }
 
+void video_gl_texture_barrier(struct texture* texture, u32 state) {
+	abort_with("Not implemented.");
+}
+
 static u32 init_shader_section(u32 section, const char* src) {
 	check_gl(u32 shader = glCreateShader(section));
 	check_gl(glShaderSource(shader, 1, &src, null));

@@ -25,11 +25,7 @@ layout (location = 0) in VSOut {
 	vec2 uv;
 } fs_in;
 
-layout (binding = 0) uniform Config {
-	vec2 image_size;
-} config;
-
-layout (binding = 1) uniform sampler2D image;
+layout (binding = 0) uniform sampler2D image;
 
 void main() {
 	colour = texture(image, fs_in.uv);

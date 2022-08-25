@@ -490,12 +490,16 @@ static void new_image(v2i size, VkFormat format, VkImageTiling tiling, VkImageUs
 	}
 }
 
-static void new_depth_resources(VkImage* image, VkImageView* view, VmaAllocation* memory, v2i size, bool can_sample) {
+static void new_depth_resources(VkImage* image, VkImageView* view, VmaAllocation* memory, v2i size, bool can_sample, bool can_storage) {
 	VkFormat depth_format = find_depth_format();
 
 	i32 usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
 	if (can_sample) {
 		usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
+	}
+
+	if (can_storage) {
+		usage |= VK_IMAGE_USAGE_STORAGE_BIT;
 	}
 
 	VkImageLayout layout = can_sample ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_UNDEFINED;
@@ -1066,8 +1070,14 @@ static void init_vk_framebuffer(struct video_vk_framebuffer* fb,
 		for (usize i = 0; i < fb->colour_count; i++) {
 			struct video_vk_framebuffer_attachment* attachment = &fb->colours[i];
 
+			u32 usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+
+			if (fb->flags & framebuffer_flags_attachments_are_storage) {
+				usage |= VK_IMAGE_USAGE_STORAGE_BIT;
+			}
+
 			new_image(fb->size, attachment->format, VK_IMAGE_TILING_OPTIMAL,
-				VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+				usage,
 				VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 				&attachment->texture->image, &attachment->texture->memory,
 				VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, false);
@@ -1096,7 +1106,7 @@ static void init_vk_framebuffer(struct video_vk_framebuffer* fb,
 		}
 
 		new_depth_resources(&fb->depth.texture->image, &fb->depth.texture->view,
-			&fb->depth.texture->memory, fb->size, true);
+			&fb->depth.texture->memory, fb->size, true, fb->flags & framebuffer_flags_attachments_are_storage);
 	}
 }
 
@@ -1237,6 +1247,8 @@ void video_vk_begin_framebuffer(struct framebuffer* framebuffer) {
 			vkCmdPipelineBarrier(vctx.command_buffers[vctx.current_frame],
 				old_stage, stage,
 				0, 0, null, 0, null, 1, &barrier);
+
+			attachment->texture->state = texture_state_attachment_write;
 		}
 	} else {
 		const struct video_vk_framebuffer_attachment* attachment = fb->colours;
@@ -1373,8 +1385,10 @@ void video_vk_end_framebuffer(struct framebuffer* framebuffer) {
 			};
 
 			vkCmdPipelineBarrier(vctx.command_buffers[vctx.current_frame],
-				prev_stage, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+				prev_stage, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT,
 				0, 0, null, 0, null, 1, &barrier);
+
+			attachment->texture->state = texture_state_shader_graphics_read;
 		}
 	} else {
 		const struct video_vk_framebuffer_attachment* attachment = fb->colours;
@@ -1511,6 +1525,7 @@ static VkDescriptorSetLayout* init_pipeline_descriptors(struct video_vk_pipeline
 	pipeline->sampler_count = 0;
 	pipeline->uniform_count = 0;
 	pipeline->storage_count = 0;
+	pipeline->image_storage_count = 0;
 	for (usize i = 0; i < descriptor_sets->count; i++) {
 		const struct pipeline_descriptor_set* set = descriptor_sets->sets + i;
 
@@ -1524,6 +1539,9 @@ static VkDescriptorSetLayout* init_pipeline_descriptors(struct video_vk_pipeline
 				case pipeline_resource_texture:
 					pipeline->sampler_count++;
 					break;
+				case pipeline_resource_texture_storage:
+					pipeline->image_storage_count++;
+					break;
 				case pipeline_resource_storage:
 					pipeline->storage_count++;
 					break;
@@ -1535,7 +1553,7 @@ static VkDescriptorSetLayout* init_pipeline_descriptors(struct video_vk_pipeline
 	}
 
 	/* Create the descriptor pool. */
-	VkDescriptorPoolSize pool_sizes[3];
+	VkDescriptorPoolSize pool_sizes[4];
 	usize pool_size_count = 0;
 	if (pipeline->uniform_count > 0) {
 		usize idx = pool_size_count++;
@@ -1556,6 +1574,13 @@ static VkDescriptorSetLayout* init_pipeline_descriptors(struct video_vk_pipeline
 
 		pool_sizes[idx].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
 		pool_sizes[idx].descriptorCount = max_frames_in_flight * (u32)pipeline->storage_count;
+	}
+
+	if (pipeline->image_storage_count > 0) {
+		usize idx = pool_size_count++;
+
+		pool_sizes[idx].type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+		pool_sizes[idx].descriptorCount = max_frames_in_flight * (u32)pipeline->image_storage_count;
 	}
 
 	if (vkCreateDescriptorPool(vctx.device, &(VkDescriptorPoolCreateInfo) {
@@ -1591,6 +1616,9 @@ static VkDescriptorSetLayout* init_pipeline_descriptors(struct video_vk_pipeline
 					break;
 				case pipeline_resource_texture:
 					lb->descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+					break;
+				case pipeline_resource_texture_storage:
+					lb->descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
 					break;
 				case pipeline_resource_storage:
 					lb->descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
@@ -1634,7 +1662,8 @@ static VkDescriptorSetLayout* init_pipeline_descriptors(struct video_vk_pipeline
 			abort_with("Failed to allocate descriptor sets.");
 		}
 
-		VkDescriptorImageInfo* image_infos = core_calloc(max_frames_in_flight, sizeof(VkDescriptorImageInfo));
+		usize image_type_count = 2;
+		VkDescriptorImageInfo* image_infos = core_calloc(max_frames_in_flight * image_type_count, sizeof(VkDescriptorImageInfo));
 		usize image_info_count = 0;
 
 		usize buffer_type_count = 2;
@@ -1701,6 +1730,18 @@ static VkDescriptorSetLayout* init_pipeline_descriptors(struct video_vk_pipeline
 						image_info->imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
 						write->descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+						write->pImageInfo = image_info;
+					} break;
+					case pipeline_resource_texture_storage: {
+						const struct video_vk_texture* texture = (const struct video_vk_texture*)desc->resource.texture;
+
+						VkDescriptorImageInfo* image_info = image_infos + (image_info_count++);
+
+						image_info->imageView = texture->view;
+						image_info->sampler = texture->sampler;
+						image_info->imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+
+						write->descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
 						write->pImageInfo = image_info;
 					} break;
 					case pipeline_resource_storage: {
@@ -2269,6 +2310,11 @@ struct storage* video_vk_new_storage(u32 flags, usize size, void* initial_data) 
 
 	if (flags & storage_flags_index_buffer) {
 		usage |= VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+
+		storage->index_type = VK_INDEX_TYPE_UINT16;
+		if (flags & storage_flags_32bit_indices) {
+			storage->index_type = VK_INDEX_TYPE_UINT32;
+		}
 	}
 
 	if (flags & storage_flags_cpu_readable || flags & storage_flags_cpu_writable) {
@@ -2489,7 +2535,7 @@ void video_vk_storage_bind_as(const struct storage* storage_, u32 as, u32 point)
 			vkCmdBindVertexBuffers(vctx.command_buffers[vctx.current_frame], point, 1, &storage->buffer, offsets);
 		} break;
 		case storage_bind_as_index_buffer:
-			abort_with("Not implemented.");
+			vkCmdBindIndexBuffer(vctx.command_buffers[vctx.current_frame], storage->buffer, 0, storage->index_type);
 			break;
 	}
 }
@@ -2817,6 +2863,10 @@ static void init_texture(struct video_vk_texture* texture, const struct image* i
 
 	u32 usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
 
+	if (flags & texture_flags_storage) {
+		usage |= VK_IMAGE_USAGE_STORAGE_BIT;
+	}
+
 	new_image(image->size, format, VK_IMAGE_TILING_OPTIMAL,
 		usage, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 		&texture->image, &texture->memory, VK_IMAGE_LAYOUT_UNDEFINED, false);
@@ -2824,6 +2874,8 @@ static void init_texture(struct video_vk_texture* texture, const struct image* i
 	change_image_layout(texture->image, format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, false);
 	copy_buffer_to_image(stage, texture->image, image->size, vctx.command_pool, vctx.graphics_compute_queue);
 	change_image_layout(texture->image, format, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, false);
+
+	texture->state = texture_state_shader_graphics_read;
 
 	vmaDestroyBuffer(vctx.allocator, stage, stage_memory);
 
@@ -2970,6 +3022,77 @@ void video_vk_texture_copy(struct texture* dst_, v2i dst_offset, const struct te
 		});
 
 	end_temp_command_buffer(command_buffer, vctx.command_pool, vctx.graphics_compute_queue);
+}
+
+void video_vk_texture_barrier(struct texture* texture_, u32 state) {
+	struct video_vk_texture* texture = (struct video_vk_texture*)texture_;
+
+	VkImageLayout old_layout, new_layout;
+	VkAccessFlags src_access, dst_access;
+	VkPipelineStageFlags old_stage, new_stage;
+
+	switch (texture->state) {
+		case texture_state_shader_write:
+			old_layout = VK_IMAGE_LAYOUT_GENERAL;
+			src_access = VK_ACCESS_SHADER_WRITE_BIT;
+			old_stage  = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+			break;
+		case texture_state_shader_graphics_read:
+			old_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			src_access = VK_ACCESS_SHADER_READ_BIT;
+			old_stage  = VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT;
+			break;
+		case texture_state_shader_compute_read:
+			old_layout = VK_IMAGE_LAYOUT_GENERAL;
+			src_access = VK_ACCESS_SHADER_READ_BIT;
+			old_stage  = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+			break;
+		case texture_state_attachment_write:
+			old_layout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL_KHR;
+			src_access = texture->is_depth ? VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT : VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+			old_stage  = VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT;
+			break;
+	}
+
+	switch (state) {
+		case texture_state_shader_write:
+			new_layout = VK_IMAGE_LAYOUT_GENERAL;
+			dst_access = VK_ACCESS_SHADER_WRITE_BIT;
+			new_stage  = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+			break;
+		case texture_state_shader_graphics_read:
+			new_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			dst_access = VK_ACCESS_SHADER_READ_BIT;
+			new_stage  = VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT;
+			break;
+		case texture_state_shader_compute_read:
+			new_layout = VK_IMAGE_LAYOUT_GENERAL;
+			dst_access = VK_ACCESS_SHADER_READ_BIT;
+			new_stage  = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+			break;
+		case texture_state_attachment_write:
+			new_layout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL_KHR;
+			dst_access = texture->is_depth ? VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT : VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+			new_stage  = VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT;
+			break;
+	}
+
+	vkCmdPipelineBarrier(vctx.command_buffers[vctx.current_frame],
+		old_stage, new_stage,
+		0, 0, null, 0, null, 1, 
+		&(VkImageMemoryBarrier) {
+			.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+			.image = texture->image,
+			.oldLayout = old_layout,
+			.newLayout = new_layout,
+			.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 },
+			.srcAccessMask = src_access,
+			.dstAccessMask = dst_access,
+			.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+			.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED
+		});
+	
+	texture->state = state;
 }
 
 static void shader_on_load(const char* filename, u8* raw, usize raw_size, void* payload, usize payload_size, void* udata) {

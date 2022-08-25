@@ -62,6 +62,7 @@ struct texture* video_vk_new_texture(const struct image* image, u32 flags);
 void video_vk_free_texture(struct texture* texture);
 v2i  video_vk_get_texture_size(const struct texture* texture);
 void video_vk_texture_copy(struct texture* dst, v2i dst_offset, const struct texture* src, v2i src_offset, v2i dimensions);
+void video_vk_texture_barrier(struct texture* texture, u32 state);
 
 struct shader* video_vk_new_shader(const u8* data, usize data_size);
 void video_vk_free_shader(struct shader* shader);

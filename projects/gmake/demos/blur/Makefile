@@ -11,9 +11,9 @@ endif
 cc = gcc
 cpp = g++
 includes = -I../../../../corrosion/include
-target_name = bloom
+target_name = blur
 deps =
-srcdir = ../../../../demos/bloom/src
+srcdir = ../../../../demos/blur/src
 libs = -lm -lX11 -lXi -lvulkan -lGL
 defines =
 
@@ -43,25 +43,25 @@ all: $(deps) $(target)
 
 run: | $(deps) $(target)
 	@echo ==
-	$(silent) cd ../../../../demos/bloom; \
-	./../../projects/gmake/demos/bloom/$(target)
+	$(silent) cd ../../../../demos/blur; \
+	./../../projects/gmake/demos/blur/$(target)
 
 debug: | $(deps) $(target)
 	@echo ==
-	$(silent) cd ../../../../demos/bloom; \
-	gdb ./../../projects/gmake/demos/bloom/$(target)
+	$(silent) cd ../../../../demos/blur; \
+	gdb ./../../projects/gmake/demos/blur/$(target)
 
 memcheck: | $(deps) $(target)
 	@echo ==
-	$(silent) cd ../../../../demos/bloom; \
-	valgrind --leak-check=full ./../../projects/gmake/demos/bloom/$(target)
+	$(silent) cd ../../../../demos/blur; \
+	valgrind --leak-check=full ./../../projects/gmake/demos/blur/$(target)
 
 sources = $(wildcard $(srcdir)/*.c $(srcdir)/*/*.c)
 objects = $(sources:$(srcdir)/%.c=$(objdir)/%.o)
 
 shaders = $(wildcard $(srcdir)/*.glsl $(srcdir)/*/*.glsl)
 
-shader_targetdir = ../../../../demos/bloom/shaders/
+shader_targetdir = ../../../../demos/blur/shaders/
 shader_targets = $(shaders:$(srcdir)%.glsl=$(shader_targetdir)%.csh)
 shader_compiler = ../../shadercompiler/bin/$(config)/shadercompiler
 

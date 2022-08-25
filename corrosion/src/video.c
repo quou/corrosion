@@ -183,7 +183,7 @@ static struct framebuffer* validated_new_framebuffer(
 		ok = false;
 	}
 
-	if (flags > (framebuffer_flags_fit | framebuffer_flags_default | framebuffer_flags_headless)) {
+	if (flags > (framebuffer_flags_fit | framebuffer_flags_default | framebuffer_flags_headless | framebuffer_flags_attachments_are_storage)) {
 		error("video.new_framebuffer: Invalid flags.");
 		ok = false;
 	}
@@ -461,9 +461,10 @@ static bool validate_descriptors(const char* fname, struct pipeline_descriptor_s
 
 			if (desc->resource.type != pipeline_resource_uniform_buffer &&
 				desc->resource.type != pipeline_resource_texture &&
-				desc->resource.type != pipeline_resource_storage) {
+				desc->resource.type != pipeline_resource_storage &&
+				desc->resource.type != pipeline_resource_texture_storage) {
 				error("video.%s: Descriptor %s on set %s: Resource type must"
-					" be equal to one of: pipeline_resource_uniform_buffer, pipeline_resource_texture or pipeline_resource_storage",
+					" be equal to one of: pipeline_resource_uniform_buffer, pipeline_resource_texture, pipeline_resource_texture_storage or pipeline_resource_storage",
 					fname, desc->name, set->name);
 				ok = false;
 			}
@@ -895,6 +896,7 @@ static void find_procs(u32 api, bool enable_validation) {
 	video.free_texture     = get_api_proc(free_texture);
 	video.get_texture_size = get_api_proc(get_texture_size);
 	video.texture_copy     = get_api_proc(texture_copy);
+	video.texture_barrier  = get_api_proc(texture_barrier);
 
 	video.new_shader  = get_api_proc(new_shader);
 	video.free_shader = get_api_proc(free_shader);

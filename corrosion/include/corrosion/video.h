@@ -26,9 +26,10 @@ enum {
 };
 
 enum {
-	framebuffer_flags_fit      = 1 << 0,
-	framebuffer_flags_default  = 1 << 1,
-	framebuffer_flags_headless = 1 << 2
+	framebuffer_flags_fit                     = 1 << 0,
+	framebuffer_flags_default                 = 1 << 1,
+	framebuffer_flags_headless                = 1 << 2,
+	framebuffer_flags_attachments_are_storage = 1 << 3
 };
 
 struct framebuffer_attachment_desc {	
@@ -103,6 +104,7 @@ struct pipeline_attribute_bindings {
 enum {
 	pipeline_resource_uniform_buffer,
 	pipeline_resource_texture,
+	pipeline_resource_texture_storage,
 	pipeline_resource_storage
 };
 
@@ -141,6 +143,14 @@ enum {
 	texture_flags_none           = 1 << 0,
 	texture_flags_filter_linear  = 1 << 1,
 	texture_flags_filter_none    = 1 << 2,
+	texture_flags_storage        = 1 << 3
+};
+
+enum {
+	texture_state_shader_write = 0,
+	texture_state_shader_graphics_read,
+	texture_state_shader_compute_read,
+	texture_state_attachment_write
 };
 
 enum {
@@ -169,7 +179,9 @@ enum {
 	storage_flags_cpu_writable   = 1 << 1,
 	storage_flags_cpu_readable   = 1 << 2,
 	storage_flags_vertex_buffer  = 1 << 3,
-	storage_flags_index_buffer   = 1 << 4
+	storage_flags_index_buffer   = 1 << 4,
+	storage_flags_16bit_indices  = 1 << 5,
+	storage_flags_32bit_indices  = 1 << 6
 };
 
 enum {
@@ -263,6 +275,7 @@ struct video {
 	void (*free_texture)(struct texture* texture);
 	v2i  (*get_texture_size)(const struct texture* texture);
 	void (*texture_copy)(struct texture* dst, v2i dst_offset, const struct texture* src, v2i src_offset, v2i dimensions);
+	void (*texture_barrier)(struct texture* texture, u32 state);
 
 	/* Shader. */
 	struct shader* (*new_shader)(const u8* data, usize data_size);
