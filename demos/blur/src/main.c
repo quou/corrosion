@@ -49,7 +49,7 @@ void cr_init() {
 
 	app.image = load_texture("textures/testimage.png", texture_flags_filter_linear);
 
-	const struct shader* shader = load_shader("shaders/bloom.csh");
+	const struct shader* shader = load_shader("shaders/quad.csh");
 	const struct shader* blur_shader = load_shader("shaders/blur.csh");
 
 	struct image i = {
