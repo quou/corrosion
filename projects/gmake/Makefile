@@ -6,17 +6,20 @@ ifndef verbose
   silent = @
 endif
 
-projects = shadercompiler corrosion sbox 3d blur particles
+projects = shadercompiler corrosion sbox 3d blur sand particles
 runnables =           \
     run_sbox          \
     debug_sbox        \
     memcheck_sbox     \
-    run_3d       \
-    debug_3d     \
-    memcheck_3d  \
-    run_blur         \
-    debug_blur       \
-    memcheck_blur    \
+    run_3d            \
+    debug_3d          \
+    memcheck_3d       \
+    run_blur          \
+    debug_blur        \
+    memcheck_blur     \
+    run_sand          \
+    debug_sand        \
+    memcheck_sand     \
     run_particles     \
     debug_particles   \
     memcheck_particles\
@@ -54,6 +57,10 @@ blur: corrosion
 	@echo == Building $@ ==
 	$(silent) make --no-print-directory -C demos/$@ config=$(config)
 
+sand: corrosion
+	@echo == Building $@ ==
+	$(silent) make --no-print-directory -C demos/$@ config=$(config)
+
 particles: corrosion
 	@echo == Building $@ ==
 	$(silent) make --no-print-directory -C demos/$@ config=$(config)
@@ -76,6 +83,15 @@ debug_blur: blur
 memcheck_blur: blur
 	$(silent) make --no-print-directory -C demos/blur memcheck
 
+run_sand: sand
+	$(silent) make --no-print-directory -C demos/sand run
+
+debug_sand: sand
+	$(silent) make --no-print-directory -C demos/sand debug
+
+memcheck_sand: sand
+	$(silent) make --no-print-directory -C demos/sand memcheck
+
 run_particles: particles
 	$(silent) make --no-print-directory -C demos/particles run
 
@@ -91,4 +107,5 @@ clean:
 	$(silent) make --no-print-directory -C sbox clean
 	$(silent) make --no-print-directory -C demos/3d clean
 	$(silent) make --no-print-directory -C demos/blur clean
+	$(silent) make --no-print-directory -C demos/sand clean
 	$(silent) make --no-print-directory -C demos/particles clean

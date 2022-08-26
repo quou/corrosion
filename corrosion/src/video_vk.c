@@ -2323,11 +2323,12 @@ struct storage* video_vk_new_storage(u32 flags, usize size, void* initial_data) 
 
 		new_buffer(size, usage, props, a_flags, &storage->buffer, &storage->memory);
 
+		vmaMapMemory(vctx.allocator, storage->memory, &storage->mapping);
+
 		if (initial_data) {
-			void* data;
-			vmaMapMemory(vctx.allocator, storage->memory, &data);
-			memcpy(data, initial_data, size);
-			vmaUnmapMemory(vctx.allocator, storage->memory);
+			memcpy(storage->mapping, initial_data, size);
+		} else {
+			memset(storage->mapping, 0, size);
 		}
 	} else {
 		new_buffer(size, usage, props, a_flags, &storage->buffer, &storage->memory);
@@ -2355,16 +2356,16 @@ struct storage* video_vk_new_storage(u32 flags, usize size, void* initial_data) 
 	return (struct storage*)storage;
 }
 
-void video_vk_update_storage(struct storage* storage_, u32 mode, void* data) {
+void video_vk_update_storage(struct storage* storage_, void* data) {
 	struct video_vk_storage* storage = (struct video_vk_storage*)storage_;
 
-	abort_with("Not implemented.");
+	memcpy(storage->mapping, data, storage->size);
 }
 
-void video_vk_update_storage_region(struct storage* storage_, u32 mode, void* data, usize offset, usize size) {
+void video_vk_update_storage_region(struct storage* storage_, void* data, usize offset, usize size) {
 	struct video_vk_storage* storage = (struct video_vk_storage*)storage_;
 
-	abort_with("Not implemented.");
+	memcpy(storage->mapping + offset, data, size);
 }
 
 void video_vk_copy_storage(struct storage* dst_, usize dst_offset, const struct storage* src_, usize src_offset, usize size) {
@@ -2544,6 +2545,10 @@ void video_vk_free_storage(struct storage* storage_) {
 	struct video_vk_storage* storage = (struct video_vk_storage*)storage_;
 
 	vkDeviceWaitIdle(vctx.device);
+
+	if (storage->flags & storage_flags_cpu_readable || storage->flags & storage_flags_cpu_writable) {
+		vmaUnmapMemory(vctx.allocator, storage->memory);
+	}
 
 	vmaDestroyBuffer(vctx.allocator, storage->buffer, storage->memory);
 

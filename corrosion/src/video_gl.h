@@ -34,8 +34,8 @@ void video_gl_update_pipeline_uniform(struct pipeline* pipeline, const char* set
 void video_gl_bind_pipeline_descriptor_set(struct pipeline* pipeline, const char* set, usize target);
 
 struct storage* video_gl_new_storage(u32 flags, usize size, void* initial_data);
-void video_gl_update_storage(struct storage* storage, u32 mode, void* data);
-void video_gl_update_storage_region(struct storage* storage, u32 mode, void* data, usize offset, usize size);
+void video_gl_update_storage(struct storage* storage, void* data);
+void video_gl_update_storage_region(struct storage* storage, void* data, usize offset, usize size);
 void video_gl_copy_storage(struct storage* dst, usize dst_offset, const struct storage* src, usize src_offset, usize size);
 void video_gl_storage_barrier(struct storage* storage, u32 state);
 void video_gl_storage_bind_as(const struct storage* storage, u32 as, u32 point);

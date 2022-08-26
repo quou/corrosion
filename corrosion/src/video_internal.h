@@ -195,6 +195,8 @@ struct video_vk_storage {
 
 	VkIndexType index_type;
 
+	void* mapping;
+
 	usize size;
 
 	u32 flags;

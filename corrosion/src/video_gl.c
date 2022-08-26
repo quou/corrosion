@@ -543,11 +543,11 @@ struct storage* video_gl_new_storage(u32 flags, usize size, void* initial_data) 
 	return null;
 }
 
-void video_gl_update_storage(struct storage* storage, u32 mode, void* data) {
+void video_gl_update_storage(struct storage* storage, void* data) {
 	abort_with("Not implemented.");
 }
 
-void video_gl_update_storage_region(struct storage* storage, u32 mode, void* data, usize offset, usize size) {
+void video_gl_update_storage_region(struct storage* storage, void* data, usize offset, usize size) {
 	abort_with("Not implemented.");
 }
 
