@@ -35,6 +35,18 @@ struct {
 	f32 numbers[256];
 } app;
 
+void on_resize(const struct window_event* event) {
+	info("Window resized: %d, %d", event->size_changed.new_size.x, event->size_changed.new_size.y);
+}
+
+void on_event(const struct window_event* event) {
+	info("Window event with type: %d", event->type);
+}
+
+void on_type(const struct window_event* event) {
+	info("Text typed: %.*s", event->text_typed.len, event->text_typed.text);
+}
+
 struct app_config cr_config() {
 	return (struct app_config) {
 		.name = "Sandbox",
@@ -57,6 +69,10 @@ struct app_config cr_config() {
 
 void cr_init() {
 	ui_init();
+
+	window_event_subscribe(window_event_size_changed, on_resize);
+	window_event_subscribe(window_event_any, on_event);
+	window_event_subscribe(window_event_text_typed, on_type);
 
 	app.r = 0.0f;
 	app.fps_timer = 1.0;

@@ -20,8 +20,6 @@ typedef GLXContext (*create_context_func)
 Display* display;
 Atom wm_delete_window_id, wm_protocols_id;
 
-struct window window;
-
 void init_window(const struct window_config* config, u32 api) {
 	memset(&window, 0, sizeof window);
 
@@ -236,15 +234,11 @@ void deinit_window() {
 
 	XCloseDisplay(display);
 
+	for (usize i = 0; i < window_event_count; i++) {
+		free_vector(window.event_handlers[i]);
+	}
+
 	free_table(window.keymap);
-}
-
-bool window_open() {
-	return window.open;
-}
-
-v2i get_window_size() {
-	return window.size;
 }
 
 void update_events() {
@@ -272,11 +266,21 @@ void update_events() {
 			case Expose: {
 				XWindowAttributes gwa;
 				XGetWindowAttributes(display, window.window, &gwa);
-				window.size.x = gwa.width;
-				window.size.y = gwa.height;
 
-				if (window.api == video_api_vulkan) {
-					video_vk_want_recreate();
+				if (gwa.width != window.size.x || gwa.height != window.size.y) {
+					window.size.x = gwa.width;
+					window.size.y = gwa.height;
+
+					if (window.api == video_api_vulkan) {
+						video_vk_want_recreate();
+					}
+
+					struct window_event resize_event = {
+						.type = window_event_size_changed,
+						.size_changed.new_size = window.size
+					};
+
+					dispatch_event(&resize_event);
 				}
 			} break;
 			case KeyPress: {
@@ -291,6 +295,13 @@ void update_events() {
 				window.held_keys[key] = true;
 				window.pressed_keys[key] = true;
 
+				struct window_event key_event = {
+					.type = window_event_key_pressed,
+					.key = key
+				};
+
+				dispatch_event(&key_event);
+
 				/* Text input. */
 				XLookupString(&e.xkey, window.input_string, sizeof window.input_string, null, null);
 				if ((window.input_string_len = strlen(window.input_string)) > 0) {
@@ -300,6 +311,14 @@ void update_events() {
 							window.input_string_len--;
 						}
 					}
+
+					struct window_event text_event = {
+						.type = window_event_text_typed,
+						.text_typed.text = window.input_string,
+						.text_typed.len = window.input_string_len
+					};
+
+					dispatch_event(&text_event);
 				}
 			} break;
 			case KeyRelease: {
@@ -313,6 +332,13 @@ void update_events() {
 
 				window.held_keys[key] = false;
 				window.released_keys[key] = true;
+
+				struct window_event key_event = {
+					.type = window_event_key_released,
+					.key = key
+				};
+
+				dispatch_event(&key_event);
 			} break;
 			case MotionNotify: {
 				if (!window.mouse_locked) {
@@ -323,6 +349,13 @@ void update_events() {
 					window.mouse_pos = raw_pos;
 
 					window.last_mouse = raw_pos;
+
+					struct window_event mouse_event = {
+						.type = window_event_mouse_moved,
+						.mouse_moved.position = window.mouse_pos
+					};
+
+					dispatch_event(&mouse_event);
 				}
 			} break;
 			case ButtonPress: {
@@ -332,6 +365,13 @@ void update_events() {
 					case 3:
 						window.held_mouse_btns[e.xbutton.button - 1] = true;
 						window.pressed_mouse_btns[e.xbutton.button - 1] = true;
+
+						struct window_event mouse_button_event = {
+							.type = window_event_mouse_button_pressed,
+							.mouse_button = e.xbutton.button = 1
+						};
+
+						dispatch_event(&mouse_button_event);
 						break;
 					case 4:
 						window.scroll.y++;
@@ -355,6 +395,14 @@ void update_events() {
 					case 3:
 						window.held_mouse_btns[e.xbutton.button - 1] = false;
 						window.released_mouse_btns[e.xbutton.button - 1] = true;
+
+						struct window_event mouse_button_event = {
+							.type = window_event_mouse_button_released,
+							.mouse_button = e.xbutton.button = 1
+						};
+
+						dispatch_event(&mouse_button_event);
+
 						break;
 				}
 				break;
@@ -383,30 +431,6 @@ void update_events() {
 			default: break;
 		}
 	}
-}
-
-bool key_pressed(u32 code) {
-	return window.held_keys[code];
-}
-
-bool key_just_pressed(u32 code) {
-	return window.pressed_keys[code];
-}
-
-bool key_just_released(u32 code) {
-	return window.released_keys[code];
-}
-
-bool mouse_btn_pressed(u32 code) {
-	return window.held_mouse_btns[code];
-}
-
-bool mouse_btn_just_pressed(u32 code) {
-	return window.pressed_mouse_btns[code];
-}
-
-bool mouse_btn_just_released(u32 code) {
-	return window.released_mouse_btns[code];
 }
 
 void lock_mouse(bool lock) {
@@ -438,24 +462,3 @@ void lock_mouse(bool lock) {
 	window.mouse_locked = lock;
 }
 
-bool mouse_locked() {
-	return window.mouse_locked;
-}
-
-v2i get_mouse_pos() {
-	return window.mouse_pos;
-}
-
-v2i get_scroll() {
-	return window.scroll;
-}
-
-bool get_input_string(const char** string, usize* len) {
-	if (window.input_string_len > 0) {
-		*string = window.input_string;
-		*len = window.input_string_len;
-		return true;
-	}
-
-	return false;
-}

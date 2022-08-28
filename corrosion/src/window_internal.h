@@ -6,9 +6,18 @@
 #include "maths.h"
 #include "window.h"
 
-#ifdef _WIN32
+extern struct window window;
+
+#if defined(_WIN32)
 
 #include <Windows.h>
+
+#elif defined(__linux__) || defined(__FreeBSD__)
+
+#include <X11/X.h>
+#include <X11/Xlib.h>
+
+#endif
 
 struct window {
 	bool open;
@@ -20,54 +29,24 @@ struct window {
 	v2i size;
 	v2i new_size;
 
+#if defined(_WIN32)
 	HWND hwnd;
 
-	VkSurfaceKHR surface;
-
-	bool held_keys[key_count];
-	bool pressed_keys[key_count];
-	bool released_keys[key_count];
-
-	bool held_mouse_btns[mouse_btn_count];
-	bool pressed_mouse_btns[mouse_btn_count];
-	bool released_mouse_btns[mouse_btn_count];
-
-	v2i mouse_pos;
-
-	v2i scroll;
-
-	char input_string[256];
-	usize input_string_len;
-
 	table(i32, u32) keymap;
-
-	u8* raw_input_buffer;
-	usize raw_input_buffer_capacity;
-};
-
-#else
-
-#include <X11/X.h>
-#include <X11/Xlib.h>
-
-struct window {
-	bool open;
-	bool resizable;
-
-	bool mouse_locked;
-
-	u32 api;
-
-	v2i size;
-
+#elif defined(__linux__) || defined(__FreeBSD__)
 	Window window;
-
-	VkSurfaceKHR surface;
 
 	/* Context handle is a void pointer and not a GLXContext because
 	 * including `GL/glx.h' will cause conflicts with Glad. */
 	void* context;
 
+	table(KeySym, u32) keymap;
+
+	v2i last_mouse;
+#endif
+
+	VkSurfaceKHR surface;
+
 	bool held_keys[key_count];
 	bool pressed_keys[key_count];
 	bool released_keys[key_count];
@@ -77,19 +56,17 @@ struct window {
 	bool released_mouse_btns[mouse_btn_count];
 
 	v2i mouse_pos;
-	v2i last_mouse;
-
-	v2i warp_pos;
 
 	v2i scroll;
 
 	char input_string[256];
 	usize input_string_len;
 
-	table(KeySym, u32) keymap;
-};
+	u8* raw_input_buffer;
+	usize raw_input_buffer_capacity;
 
-#endif
+	vector(window_event_handler_t) event_handlers[window_event_count];
+};
 
 void window_create_vk_surface(VkInstance instance);
 void window_destroy_vk_surface(VkInstance instance);
@@ -101,3 +78,5 @@ void window_create_gl_context();
 void window_destroy_gl_context();
 void* window_get_gl_proc(const char* name);
 void window_gl_swap();
+
+void dispatch_event(const struct window_event* event);

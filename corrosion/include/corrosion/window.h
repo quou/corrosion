@@ -6,10 +6,50 @@
 
 struct window;
 
+enum {
+	window_event_size_changed = 0,
+	window_event_mouse_moved,
+	window_event_key_pressed,
+	window_event_key_released,
+	window_event_text_typed,
+	window_event_mouse_button_pressed,
+	window_event_mouse_button_released,
+	window_event_any,
+	window_event_count
+};
+
+struct window_event {
+	u32 type;
+
+	union {
+		struct {
+			v2i new_size;
+		} size_changed;
+
+		struct {
+			v2i position;
+		} mouse_moved;
+
+		i32 key;
+		i32 mouse_button;
+
+		struct {
+			const char* text;
+			usize len;
+		} text_typed;
+	};
+};
+
+typedef void (*window_event_handler_t)(const struct window_event* event);
+
 void init_window(const struct window_config* config, u32 api);
 void deinit_window();
 bool window_open();
 void update_events();
+
+void window_event_subscribe(u32 type, window_event_handler_t callback);
+void window_event_unsubscribe(u32 type, window_event_handler_t callback);
+void window_event_unsubscribe_all(u32 type);
 
 v2i get_window_size();
 
