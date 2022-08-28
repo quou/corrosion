@@ -15,6 +15,10 @@ struct {
 
 	struct camera camera;
 
+	v2i old_mouse;
+	bool camera_active;
+	bool first_move;
+
 	struct {
 		v2i size;
 	} config;
@@ -162,9 +166,78 @@ void cr_init() {
 	};
 
 	app.vb = video.new_vertex_buffer(verts, sizeof verts, vertex_buffer_flags_none);
+
+	app.camera_active = false;
+	app.first_move = true;
 }
 
-void cr_update() {
+void cr_update(f64 ts) {
+	if (mouse_btn_just_pressed(mouse_btn_right)) {
+		lock_mouse(true);
+		app.camera_active = true;
+		app.first_move = true;
+	}
+
+	if (mouse_btn_just_released(mouse_btn_right)) {
+		lock_mouse(false);
+		app.camera_active = false;
+	}
+
+	if (app.camera_active) {
+		struct camera* cam = &app.camera;
+
+		f32 camera_speed = 3.0f;
+		if (key_pressed(key_shift)) {
+			camera_speed = 20.0f;
+		}
+
+		v2i mouse_pos = get_mouse_pos();
+
+		i32 change_x = app.old_mouse.x - mouse_pos.x;
+		i32 change_y = app.old_mouse.y - mouse_pos.y;
+
+		if (app.first_move) {
+			app.old_mouse = mouse_pos;
+			change_x = change_y = 0;
+			app.first_move = false;
+		}
+
+		cam->rotation.y += (f32)change_x * 0.01f;
+		cam->rotation.x += (f32)change_y * 0.01f;
+
+		if (cam->rotation.x >= 89.0f) {
+			cam->rotation.x = 89.0f;
+		}
+
+		if (cam->rotation.x <= -89.0f) {
+			cam->rotation.x = -89.0f;
+		}
+
+		app.old_mouse = mouse_pos;
+
+		v3f cam_dir = make_v3f(
+			cosf(to_rad(cam->rotation.x)) * sinf(to_rad(cam->rotation.y)),
+			sinf(to_rad(cam->rotation.x)),
+			cosf(to_rad(cam->rotation.x)) * cosf(to_rad(cam->rotation.y))
+		);
+
+		if (key_pressed(key_S)) {
+			cam->position = v3f_sub(cam->position, v3f_scale(v3f_scale(cam_dir, camera_speed), (f32)ts));
+		}
+
+		if (key_pressed(key_W)) {
+			cam->position = v3f_add(cam->position, v3f_scale(v3f_scale(cam_dir, camera_speed), (f32)ts));
+		}
+
+		if (key_pressed(key_D)) {
+			cam->position = v3f_add(cam->position, v3f_scale(v3f_scale(v3f_cross(cam_dir, make_v3f(0.0f, 1.0f, 0.0f)), camera_speed), (f32)ts));
+		}
+
+		if (key_pressed(key_A)) {
+			cam->position = v3f_sub(cam->position, v3f_scale(v3f_scale(v3f_cross(cam_dir, make_v3f(0.0f, 1.0f, 0.0f)), camera_speed), (f32)ts));
+		}
+	}
+
 	app.config.size = get_window_size();
 
 	app.render_data.fov = to_rad(app.camera.fov);
