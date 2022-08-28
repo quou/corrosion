@@ -55,7 +55,7 @@ void cr_init() {
 	app.camera = (struct camera) {
 		.fov = 70.0f,
 		.position = make_v3f(3.0f, 0.0f, 3.0f),
-		.rotation = make_v3f(0.0f, -40.0f, 0.0f)
+		.rotation = make_v3f(0.0f, 45.0f, 0.0f)
 	};
 
 	const struct shader* raymarch_shader = load_shader("shaders/raymarch.csh");
@@ -85,6 +85,8 @@ void cr_init() {
 							.stage = pipeline_stage_compute,
 							.resource = {
 								.type = pipeline_resource_texture_storage,
+
+
 								.texture = app.result
 							}
 						}
@@ -202,7 +204,7 @@ void cr_update(f64 ts) {
 			app.first_move = false;
 		}
 
-		cam->rotation.y += (f32)change_x * 0.01f;
+		cam->rotation.y -= (f32)change_x * 0.01f;
 		cam->rotation.x += (f32)change_y * 0.01f;
 
 		if (cam->rotation.x >= 89.0f) {
@@ -222,11 +224,11 @@ void cr_update(f64 ts) {
 		);
 
 		if (key_pressed(key_S)) {
-			cam->position = v3f_sub(cam->position, v3f_scale(v3f_scale(cam_dir, camera_speed), (f32)ts));
+			cam->position = v3f_add(cam->position, v3f_scale(v3f_scale(cam_dir, camera_speed), (f32)ts));
 		}
 
 		if (key_pressed(key_W)) {
-			cam->position = v3f_add(cam->position, v3f_scale(v3f_scale(cam_dir, camera_speed), (f32)ts));
+			cam->position = v3f_sub(cam->position, v3f_scale(v3f_scale(cam_dir, camera_speed), (f32)ts));
 		}
 
 		if (key_pressed(key_D)) {

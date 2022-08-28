@@ -57,7 +57,7 @@ float ray_march(vec3 origin, vec3 direction) {
 void render(inout vec3 col, vec2 pixel_coord) {
 	vec3 origin = camera_position;
 	vec3 direction = normalize(vec3(pixel_coord, fov));
-	direction = (camera * vec4(direction, 0.0)).xyz;
+	direction = (transpose(camera) * vec4(direction, 0.0)).xyz;
 
 	float dist = ray_march(origin, direction);
 
