@@ -56,6 +56,19 @@ void init_window(const struct window_config* config, u32 api) {
 
 	XStoreName(display, window.window, config->title);
 
+	if (!config->resizable) {
+		XSizeHints* hints = XAllocSizeHints();
+		hints->flags = PMinSize | PMaxSize;
+		hints->min_width = config->size.x;
+		hints->min_height = config->size.y;
+		hints->max_width = config->size.x;
+		hints->max_height = config->size.y;
+
+		XSetWMNormalHints(display, window.window, hints);
+
+		XFree(hints);
+	}
+
 	XClearWindow(display, window.window);
 	XMapRaised(display, window.window);
 
