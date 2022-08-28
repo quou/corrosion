@@ -15,7 +15,8 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <CustomBuild Include="..\..\..\..\demos\blur\src\blur.glsl" />
-    <CustomBuild Include="..\..\..\..\demos\blur\src\quad.glsl" />
+    <ClCompile Include="..\..\..\..\demos\sand\src\main.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

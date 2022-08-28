@@ -39,7 +39,7 @@ struct app_config cr_config() {
 		.window_config = (struct window_config) {
 			.title = "Compute Blur",
 			.size = make_v2i(1920, 1080),
-			.resizable = true
+			.resizable = false
 		}
 	};
 }
