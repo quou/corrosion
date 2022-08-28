@@ -24,7 +24,7 @@
     <ProjectGuid>{48C327D5-73C5-45D1-8E12-F91E2C75D189}</ProjectGuid>
     <RootNamespace>sbox</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
-    <ProjectName>bloom</ProjectName>
+    <ProjectName>blur</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -169,7 +169,7 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\..\..\demos\bloom\src\main.c" />
+    <ClCompile Include="..\..\..\..\demos\blur\src\main.c" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -33,6 +33,14 @@ static LRESULT CALLBACK win32_event_callback(HWND hwnd, UINT msg, WPARAM wparam,
 				u32 y = (lparam >> 16) & 0xFFFF;
 
 				window.mouse_pos = make_v2i((i32)x, (i32)y);
+
+				struct window_event mouse_event = {
+					.type = window_event_mouse_moved,
+					.mouse_moved.position = window.mouse_pos
+				};
+
+				dispatch_event(&mouse_event);
+
 				return 0;
 			}
 			break;
@@ -74,6 +82,13 @@ static LRESULT CALLBACK win32_event_callback(HWND hwnd, UINT msg, WPARAM wparam,
 					} else {
 						window.mouse_pos = make_v2i(raw->data.mouse.lLastX, raw->data.mouse.lLastY);
 					}
+
+					struct window_event mouse_event = {
+						.type = window_event_mouse_moved,
+						.mouse_moved.position = window.mouse_pos
+					};
+
+					dispatch_event(&mouse_event);
 				}
 			}
 		} break;
@@ -86,6 +101,13 @@ static LRESULT CALLBACK win32_event_callback(HWND hwnd, UINT msg, WPARAM wparam,
 
 				window.held_keys[key] = true;
 				window.pressed_keys[key] = true;
+
+				struct window_event key_event = {
+					.type = window_event_key_pressed,
+					.key = key
+				};
+
+				dispatch_event(&key_event);
 			}
 
 			/* Text input */
@@ -105,6 +127,14 @@ static LRESULT CALLBACK win32_event_callback(HWND hwnd, UINT msg, WPARAM wparam,
 						window.input_string_len--;
 					}
 				}
+
+				struct window_event text_event = {
+					.type = window_event_text_typed,
+					.text_typed.text = window.input_string,
+					.text_typed.len = window.input_string_len
+				};
+
+				dispatch_event(&text_event);
 			}
 
 			return 0;
@@ -118,32 +148,69 @@ static LRESULT CALLBACK win32_event_callback(HWND hwnd, UINT msg, WPARAM wparam,
 
 				window.held_keys[key] = false;
 				window.released_keys[key] = true;
+
+				struct window_event key_event = {
+					.type = window_event_key_released,
+					.key = key
+				};
+
+				dispatch_event(&key_event);
 			}
 			return 0;
 		}
 		case WM_LBUTTONDOWN:
 			window.held_mouse_btns[mouse_btn_left] = true;
 			window.pressed_mouse_btns[mouse_btn_left] = true;
+
+			dispatch_event(&(struct window_event) {
+				.type = window_event_mouse_button_pressed,
+				.mouse_button = mouse_btn_left
+			});
 			return 0;
 		case WM_LBUTTONUP:
 			window.held_mouse_btns[mouse_btn_left] = false;
 			window.released_mouse_btns[mouse_btn_left] = true;
+
+			dispatch_event(&(struct window_event) {
+				.type = window_event_mouse_button_released,
+				.mouse_button = mouse_btn_left
+			});
 			return 0;
 		case WM_MBUTTONDOWN:
 			window.held_mouse_btns[mouse_btn_middle] = true;
 			window.pressed_mouse_btns[mouse_btn_middle] = true;
+
+			dispatch_event(&(struct window_event) {
+				.type = window_event_mouse_button_pressed,
+				.mouse_button = mouse_btn_middle
+			});
 			return 0;
 		case WM_MBUTTONUP:
 			window.held_mouse_btns[mouse_btn_middle] = false;
 			window.released_mouse_btns[mouse_btn_middle] = true;
+
+			dispatch_event(&(struct window_event) {
+				.type = window_event_mouse_button_released,
+				.mouse_button = mouse_btn_middle
+			});
 			return 0;
 		case WM_RBUTTONDOWN:
 			window.held_mouse_btns[mouse_btn_right] = true;
 			window.pressed_mouse_btns[mouse_btn_right] = true;
+
+			dispatch_event(&(struct window_event) {
+				.type = window_event_mouse_button_pressed,
+				.mouse_button = mouse_btn_right
+			});
 			return 0;
 		case WM_RBUTTONUP:
 			window.held_mouse_btns[mouse_btn_right] = false;
 			window.released_mouse_btns[mouse_btn_right] = true;
+
+			dispatch_event(&(struct window_event) {
+				.type = window_event_mouse_button_released,
+				.mouse_button = mouse_btn_right
+			});
 			return 0;
 		case WM_MOUSEWHEEL:
 			window.scroll.y += GET_WHEEL_DELTA_WPARAM(wparam) > 1 ? 1 : -1;
@@ -317,6 +384,10 @@ void deinit_window() {
 
 	DestroyWindow(window.hwnd);
 
+	for (usize i = 0; i < window_event_count; i++) {
+		free_vector(window.event_handlers[i]);
+	}
+
 	free_table(window.keymap);
 }
 
@@ -352,49 +423,15 @@ void update_events() {
 		if (window.api == video_api_vulkan) {
 			video_vk_want_recreate();
 		}
+
+		struct window_event resize_event = {
+			.type = window_event_size_changed,
+			.size_changed.new_size = window.size
+		};
+
+		dispatch_event(&resize_event);
 	}
 }
-
-bool window_open() {
-	return window.open;
-}
-
-v2i get_window_size() {
-	return window.size;
-}
-
-bool key_pressed(u32 code) {
-	return window.held_keys[code];
-}
-
-bool key_just_pressed(u32 code) {
-	return window.pressed_keys[code];
-}
-
-bool key_just_released(u32 code) {
-	return window.released_keys[code];
-}
-
-bool mouse_btn_pressed(u32 code) {
-	return window.held_mouse_btns[code];
-}
-
-bool mouse_btn_just_pressed(u32 code) {
-	return window.pressed_mouse_btns[code];
-}
-
-bool mouse_btn_just_released(u32 code) {
-	return window.released_mouse_btns[code];
-}
-
-v2i get_mouse_pos() {
-	return window.mouse_pos;
-}
-
-v2i get_scroll() {
-	return window.scroll;
-}
-
 
 void lock_mouse(bool lock) {
 	window.mouse_locked = lock;
@@ -422,18 +459,4 @@ void lock_mouse(bool lock) {
 	
 		ShowCursor(true);
 	}
-}
-
-bool mouse_locked() {
-	return window.mouse_locked;
-}
-
-bool get_input_string(const char** string, usize* len) {
-	if (window.input_string_len > 0) {
-		*string = window.input_string;
-		*len = window.input_string_len;
-		return true;
-	}
-
-	return false;
 }

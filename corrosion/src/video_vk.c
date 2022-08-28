@@ -2365,7 +2365,7 @@ void video_vk_update_storage(struct storage* storage_, void* data) {
 void video_vk_update_storage_region(struct storage* storage_, void* data, usize offset, usize size) {
 	struct video_vk_storage* storage = (struct video_vk_storage*)storage_;
 
-	memcpy(storage->mapping + offset, data, size);
+	memcpy((u8*)storage->mapping + offset, data, size);
 }
 
 void video_vk_copy_storage(struct storage* dst_, usize dst_offset, const struct storage* src_, usize src_offset, usize size) {

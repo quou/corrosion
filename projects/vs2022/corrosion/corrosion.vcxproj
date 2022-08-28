@@ -196,6 +196,7 @@
     <ClCompile Include="..\..\..\corrosion\src\video_gl.c" />
     <ClCompile Include="..\..\..\corrosion\src\video_vk.c" />
     <ClCompile Include="..\..\..\corrosion\src\vma.cpp" />
+    <ClCompile Include="..\..\..\corrosion\src\window_common.c" />
     <ClCompile Include="..\..\..\corrosion\src\window_windows.c" />
   </ItemGroup>
   <ItemGroup>

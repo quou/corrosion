@@ -81,6 +81,9 @@
     <ClCompile Include="..\..\..\corrosion\src\video_gl.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\corrosion\src\window_common.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\corrosion\include\corrosion\app.h">
