@@ -11,10 +11,6 @@
 #include "window.h"
 #include "window_internal.h"
 
-/* TODO: Event callbacks
- * TODO: Disable window resizing if requested.
- */
-
 static LRESULT CALLBACK win32_event_callback(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
 	switch (msg) {
 		case WM_CLOSE:
