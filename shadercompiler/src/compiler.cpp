@@ -76,10 +76,7 @@ struct DescID {
 std::unordered_map<u64, u32> set_bindings;
 std::unordered_map<u32, DescSet> sets;
 
-
 u32 current_binding = 0;
-
-std::vector<std::string> included;
 
 static std::string convert_filename(const std::string& path, const std::string& name) {
 	usize slash = path.find_last_of("/");
@@ -101,47 +98,6 @@ static void compute_set_bindings() {
 			set_bindings[elf_hash(reinterpret_cast<u8*>(&did), sizeof did)] = binding;
 		}
 	}
-}
-
-static bool include_file(const std::string& filepath, std::string& out) {
-	std::ifstream file(filepath);
-	if (!file.good()) {
-		error("Failed to open `%s'", filepath.c_str());
-		return false;
-	}
-
-	std::string line;
-
-	while (std::getline(file, line)) {
-		if (line.find("#include") == 0) {
-			usize pos;
-			if ((pos = line.find("\"")) != std::string::npos) {
-				usize last_pos = line.find("\"", pos + 1);
-
-				if (last_pos == pos || last_pos == std::string::npos) {
-					error("Expected \" after string literal.");
-					return false;
-				}
-
-				std::string i_filename = convert_filename(filepath, line.substr(pos + 1, last_pos - pos - 1));
-
-				if (std::find(included.begin(), included.end(), i_filename) == included.end()) {
-					if (!include_file(i_filename, out)) {
-						return false;
-					}
-				}
-			} else {
-				error("Expected string literal after `#include'.");
-				return false;
-			}
-		} else {
-			out += line;
-		}
-	}
-
-	included.push_back(filepath);
-
-	return true;
 }
 
 static bool preprocess(const char* filepath, PrepOut& out) {
@@ -201,39 +157,6 @@ static bool preprocess(const char* filepath, PrepOut& out) {
 			}
 		} else if (!out.is_compute && line.find("#end") == 0) {
 			adding_to = -1;
-		} else if (line.find("#include") == 0) {
-			usize pos;
-			if ((pos = line.find("\"")) != std::string::npos) {
-				usize last_pos = line.find("\"", pos + 1);
-
-				if (last_pos == pos || last_pos == std::string::npos) {
-					error("Expected \" after string literal.");
-					return false;
-				}
-
-				std::string i_filename = convert_filename(filepath, line.substr(pos + 1, last_pos - pos - 1));
-
-				if (std::find(included.begin(), included.end(), i_filename) == included.end()) {
-					std::string* add_to = nullptr;
-
-					if (adding_to == 0) {
-						add_to = &out.vert_src;
-					} else if (adding_to == 1) {
-						add_to = &out.frag_src;
-					}
-
-					if (add_to) {
-						if (!include_file(i_filename, *add_to)) {
-							return false;
-						}
-					}
-				}
-			} else {
-				error("Expected string literal after `#include'.");
-				return false;
-			}
-
-			goto loop_end;
 		}
 
 		if (out.is_compute) {
