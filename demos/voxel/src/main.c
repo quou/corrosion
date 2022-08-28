@@ -6,8 +6,6 @@ struct vertex {
 };
 
 struct {
-	struct texture* result;
-
 	struct pipeline* process_pip;
 	struct pipeline* draw_pip;
 
@@ -46,7 +44,7 @@ struct app_config cr_config() {
 		.window_config = (struct window_config) {
 			.title = "Voxel Engine",
 			.size = make_v2i(1920, 1080),
-			.resizable = false
+			.resizable = true
 		}
 	};
 }
@@ -59,44 +57,7 @@ void cr_init() {
 	};
 
 	const struct shader* raymarch_shader = load_shader("shaders/raymarch.csh");
-	const struct shader* sdf_gen_shader = load_shader("shaders/sdf_gen.csh");
 
-	struct image i = { .size = get_window_size() };
-	app.result = video.new_texture(&i, texture_flags_filter_none | texture_flags_storage);
-
-	app.process_pip = video.new_compute_pipeline(pipeline_flags_none, sdf_gen_shader,
-		(struct pipeline_descriptor_sets) {
-			.sets = (struct pipeline_descriptor_set[]) {
-				{
-					.name = "primary",
-					.descriptors = (struct pipeline_descriptor[]) {
-						{
-							.name = "config",
-							.binding = 0,
-							.stage = pipeline_stage_compute,
-							.resource = {
-								.type = pipeline_resource_uniform_buffer,
-								.uniform.size = sizeof app.config
-							}
-						},
-						{
-							.name = "result",
-							.binding = 1,
-							.stage = pipeline_stage_compute,
-							.resource = {
-								.type = pipeline_resource_texture_storage,
-
-
-								.texture = app.result
-							}
-						}
-					},
-					.count = 2
-				}
-			},
-			.count = 1
-		});
-	
 	app.draw_pip = video.new_pipeline(
 		pipeline_flags_draw_tris,
 		raymarch_shader,
@@ -133,19 +94,9 @@ void cr_init() {
 				{
 					.name = "primary",
 					.descriptors = (struct pipeline_descriptor[]) {
-
-						{
-							.name = "image",
-							.binding = 0,
-							.stage = pipeline_stage_fragment,
-							.resource = {
-								.type = pipeline_resource_texture,
-								.texture = app.result
-							}
-						},
 						{
 							.name = "RenderData",
-							.binding = 1,
+							.binding = 0,
 							.stage = pipeline_stage_fragment,
 							.resource = {
 								.type = pipeline_resource_uniform_buffer,
@@ -153,7 +104,7 @@ void cr_init() {
 							}
 						}
 					},
-					.count = 2
+					.count = 1
 				}
 			},
 			.count = 1
@@ -247,17 +198,7 @@ void cr_update(f64 ts) {
 	app.render_data.camera_position = app.camera.position;
 	app.render_data.camera = get_camera_view(&app.camera);
 
-	video.update_pipeline_uniform(app.process_pip, "primary", "config", &app.config);
 	video.update_pipeline_uniform(app.draw_pip, "primary", "RenderData", &app.render_data);
-
-	video.texture_barrier(app.result, texture_state_shader_write);
-
-	video.begin_pipeline(app.process_pip);
-		video.bind_pipeline_descriptor_set(app.process_pip, "primary", 0);
-		video.invoke_compute(make_v3u((u32)app.config.size.x / 16, (u32)app.config.size.y + 1 / 16, 1));
-	video.end_pipeline(app.process_pip);
-
-	video.texture_barrier(app.result, texture_state_shader_graphics_read);
 
 	video.begin_framebuffer(video.get_default_fb());
 		video.begin_pipeline(app.draw_pip);
@@ -270,9 +211,6 @@ void cr_update(f64 ts) {
 
 void cr_deinit() {
 	video.free_pipeline(app.draw_pip);
-	video.free_pipeline(app.process_pip);
 	
 	video.free_vertex_buffer(app.vb);
-
-	video.free_texture(app.result);
 }

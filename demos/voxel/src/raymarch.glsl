@@ -29,9 +29,7 @@ layout (location = 0) in VSOut {
 	vec2 uv;
 } fs_in;
 
-layout (binding = 0) uniform sampler2D image;
-
-layout (binding = 1) uniform RenderData {
+layout (binding = 0) uniform RenderData {
 	vec2 resolution;
 	float fov;
 	vec3 camera_position;
@@ -39,8 +37,9 @@ layout (binding = 1) uniform RenderData {
 };
 
 float get_sdf(vec3 p) {
-	vec3 box_size = vec3(1.0);
-	return length(max(abs(p) - box_size, 0.0));
+	return min(
+		length(max(abs(p) - vec3(0.5), 0.0)),
+		length(max(abs(p + vec3(2.0, 0.0, 0.0)) - vec3(0.5), 0.0)));
 }
 
 float ray_march(vec3 origin, vec3 direction) {
