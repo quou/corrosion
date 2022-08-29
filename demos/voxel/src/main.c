@@ -1,3 +1,5 @@
+#include <stdio.h>
+
 #include <corrosion/cr.h>
 
 struct vertex {
@@ -16,6 +18,11 @@ struct {
 	v2i old_mouse;
 	bool camera_active;
 	bool first_move;
+
+	f64 fps_timer;
+	char fps_buf[256];
+
+	struct ui* ui;
 
 	struct {
 		v2i size;
@@ -50,6 +57,12 @@ struct app_config cr_config() {
 }
 
 void cr_init() {
+	app.fps_timer = 0.0;
+
+	ui_init();
+
+	app.ui = new_ui(video.get_default_fb());
+
 	app.camera = (struct camera) {
 		.fov = 70.0f,
 		.position = make_v3f(3.0f, 0.0f, 3.0f),
@@ -125,6 +138,10 @@ void cr_init() {
 }
 
 void cr_update(f64 ts) {
+	app.fps_timer += ts;
+
+	ui_begin(app.ui);
+
 	if (mouse_btn_just_pressed(mouse_btn_right)) {
 		lock_mouse(true);
 		app.camera_active = true;
@@ -191,6 +208,16 @@ void cr_update(f64 ts) {
 		}
 	}
 
+	app.fps_timer += ts;
+	if (app.fps_timer >= 1.0) {
+		app.fps_timer = 0.0;
+		snprintf(app.fps_buf, sizeof app.fps_buf, "FPS: %g", 1.0 / ts);
+	}
+
+	ui_label(app.ui, app.fps_buf);
+
+	ui_end(app.ui);
+
 	app.config.size = get_window_size();
 
 	app.render_data.fov = to_rad(app.camera.fov);
@@ -206,6 +233,8 @@ void cr_update(f64 ts) {
 			video.bind_pipeline_descriptor_set(app.draw_pip, "primary", 0);
 			video.draw(3, 0, 1);
 		video.end_pipeline(app.draw_pip);
+
+		ui_draw(app.ui);
 	video.end_framebuffer(video.get_default_fb());
 }
 
@@ -213,4 +242,7 @@ void cr_deinit() {
 	video.free_pipeline(app.draw_pip);
 	
 	video.free_vertex_buffer(app.vb);
+
+	free_ui(app.ui);
+	ui_deinit();
 }
