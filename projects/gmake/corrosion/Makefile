@@ -73,6 +73,7 @@ sources =                            \
 
 shaders =                       \
           $(srcdir)/line.glsl   \
+          $(srcdir)/line2d.glsl \
           $(srcdir)/ui.glsl     \
           $(srcdir)/simple.glsl \
           $(srcdir)/error.glsl \

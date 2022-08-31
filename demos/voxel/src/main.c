@@ -218,6 +218,8 @@ void cr_update(f64 ts) {
 
 	ui_end(app.ui);
 
+	gizmo_line2d(make_v2f(0.0f, 0.0f), make_v2f(100.0f, 100.0f));
+
 	app.config.size = get_window_size();
 
 	app.render_data.fov = to_rad(app.camera.fov);
@@ -235,6 +237,7 @@ void cr_update(f64 ts) {
 		video.end_pipeline(app.draw_pip);
 
 		ui_draw(app.ui);
+		gizmos_draw();
 	video.end_framebuffer(video.get_default_fb());
 }
 

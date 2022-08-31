@@ -15,6 +15,7 @@ static const char* files[] = {
 	"error.png",
 	"error.csh",
 	"line.csh",
+	"line2d.csh",
 	"simple.csh",	
 	"ui.csh",
 };
