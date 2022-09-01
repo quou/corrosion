@@ -1,40 +1,22 @@
 #version 440
 
-#begin vertex
+#compute
 
-layout (location = 0) in vec2 position;
-layout (location = 1) in vec2 uv;
-
-layout (location = 0) out VSOut {
-	vec2 uv;
-} vs_out;
-
-void main() {
-	vs_out.uv = uv;
-
-	gl_Position = vec4(position, 0.0, 1.0);
-}
-
-#end vertex
-
-#begin fragment
 
 #define max_ray_steps 256
 #define max_ray_dist  256.0
 #define min_ray_dist  0.001
 
-layout (location = 0) out vec4 colour;
-
-layout (location = 0) in VSOut {
-	vec2 uv;
-} fs_in;
+layout (local_size_x = 16, local_size_y = 16) in;
 
 layout (binding = 0) uniform RenderData {
-	vec2 resolution;
+	ivec2 resolution;
 	float fov;
 	vec3 camera_position;
 	mat4 camera;
 };
+
+layout (binding = 1, rgba16f) uniform image2D output_image;
 
 float get_sdf(vec3 p) {
 	return min(
@@ -66,14 +48,16 @@ void render(inout vec3 col, vec2 pixel_coord) {
 }
 
 void main() {
-	vec2 r = resolution;
-	vec3 pixel_colour = vec3(0.0);
+	ivec2 coords = ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y);
+	if (coords.x > resolution.x || coords.y > resolution.y) {
+		return;
+	}
 
-	vec2 pixel_coord = (2.0 * gl_FragCoord.xy - resolution.xy) / resolution.y;
+	vec2 uv = (2.0 * coords - resolution) / resolution.y;
 
-	render(pixel_colour, pixel_coord);
+	vec3 colour = vec3(0.0);
 
-	colour = vec4(pixel_colour, 1.0);
+	render(colour, uv);
+
+	imageStore(output_image, coords, vec4(colour, 1.0));
 }
-
-#end fragment

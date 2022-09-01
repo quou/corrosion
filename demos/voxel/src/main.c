@@ -8,8 +8,10 @@ struct vertex {
 };
 
 struct {
-	struct pipeline* process_pip;
 	struct pipeline* draw_pip;
+	struct pipeline* blit_pip;
+
+	struct texture* draw_result;
 
 	struct vertex_buffer* vb;
 
@@ -25,11 +27,7 @@ struct {
 	struct ui* ui;
 
 	struct {
-		v2i size;
-	} config;
-
-	struct {
-		v2f resolution;
+		v2i resolution;
 		f32 fov;
 		pad(4); v3f camera_position;
 		pad(4); m4f camera;
@@ -51,7 +49,7 @@ struct app_config cr_config() {
 		.window_config = (struct window_config) {
 			.title = "Voxel Engine",
 			.size = make_v2i(1920, 1080),
-			.resizable = true
+			.resizable = false
 		}
 	};
 }
@@ -69,11 +67,49 @@ void cr_init() {
 		.rotation = make_v3f(0.0f, 45.0f, 0.0f)
 	};
 
-	const struct shader* raymarch_shader = load_shader("shaders/raymarch.csh");
+	const struct shader* blit_shader = load_shader("shaders/blit.csh");
+	const struct shader* draw_shader = load_shader("shaders/raytrace.csh");
 
-	app.draw_pip = video.new_pipeline(
+	struct image i = {
+		.size = get_window_size()
+	};
+	app.draw_result = video.new_texture(&i, texture_flags_filter_none | texture_flags_storage, texture_format_rgba16f);
+
+	app.draw_pip = video.new_compute_pipeline(
+		pipeline_flags_none, draw_shader,
+		(struct pipeline_descriptor_sets) {
+			.sets = (struct pipeline_descriptor_set[]) {
+				{
+					.name = "primary",
+					.descriptors = (struct pipeline_descriptor[]) {
+						{
+							.name = "output_image",
+							.binding = 1,
+							.stage = pipeline_stage_compute,
+							.resource = {
+								.type = pipeline_resource_texture_storage,
+								.texture = app.draw_result
+							}
+						},
+						{
+							.name = "RenderData",
+							.binding = 0,
+							.stage = pipeline_stage_compute,
+							.resource = {
+								.type = pipeline_resource_uniform_buffer,
+								.uniform.size = sizeof app.render_data
+							}
+						}
+					},
+					.count = 2
+				}
+			},
+			.count = 1,
+		});
+
+	app.blit_pip = video.new_pipeline(
 		pipeline_flags_draw_tris,
-		raymarch_shader,
+		blit_shader,
 		video.get_default_fb(),
 		(struct pipeline_attribute_bindings) {
 			.bindings = (struct pipeline_attribute_binding[]) {
@@ -108,12 +144,12 @@ void cr_init() {
 					.name = "primary",
 					.descriptors = (struct pipeline_descriptor[]) {
 						{
-							.name = "RenderData",
+							.name = "image",
 							.binding = 0,
 							.stage = pipeline_stage_fragment,
 							.resource = {
-								.type = pipeline_resource_uniform_buffer,
-								.uniform.size = sizeof app.render_data
+								.type = pipeline_resource_texture,
+								.texture = app.draw_result
 							}
 						}
 					},
@@ -123,7 +159,6 @@ void cr_init() {
 			.count = 1
 		}
 	);
-
 
 	struct vertex verts[] = {
 		{ { -1.0,   1.0 }, { 0.0f, 0.0f } },
@@ -220,21 +255,33 @@ void cr_update(f64 ts) {
 
 	gizmo_line2d(make_v2f(0.0f, 0.0f), make_v2f(100.0f, 100.0f));
 
-	app.config.size = get_window_size();
-
 	app.render_data.fov = to_rad(app.camera.fov);
-	app.render_data.resolution = make_v2f(app.config.size.x, app.config.size.y);
+	app.render_data.resolution = get_window_size();
 	app.render_data.camera_position = app.camera.position;
 	app.render_data.camera = get_camera_view(&app.camera);
 
+	video.texture_barrier(app.draw_result, texture_state_shader_write);
+
 	video.update_pipeline_uniform(app.draw_pip, "primary", "RenderData", &app.render_data);
 
+	v2i texture_size = video.get_texture_size(app.draw_result);
+
+	video.begin_pipeline(app.draw_pip);
+		video.bind_pipeline_descriptor_set(app.draw_pip, "primary", 0);
+		video.invoke_compute(make_v3u(
+			(u32)((f32)texture_size.x / 16.0f + 1.0f),
+			(u32)((f32)texture_size.y / 16.0f + 1.0f),
+			1));
+	video.end_pipeline(app.draw_pip);
+
+	video.texture_barrier(app.draw_result, texture_state_shader_graphics_read);
+
 	video.begin_framebuffer(video.get_default_fb());
-		video.begin_pipeline(app.draw_pip);
+		video.begin_pipeline(app.blit_pip);
 			video.bind_vertex_buffer(app.vb, 0);
-			video.bind_pipeline_descriptor_set(app.draw_pip, "primary", 0);
+			video.bind_pipeline_descriptor_set(app.blit_pip, "primary", 0);
 			video.draw(3, 0, 1);
-		video.end_pipeline(app.draw_pip);
+		video.end_pipeline(app.blit_pip);
 
 		ui_draw(app.ui);
 		gizmos_draw();
@@ -242,7 +289,10 @@ void cr_update(f64 ts) {
 }
 
 void cr_deinit() {
+	video.free_pipeline(app.blit_pip);
 	video.free_pipeline(app.draw_pip);
+
+	video.free_texture(app.draw_result);
 	
 	video.free_vertex_buffer(app.vb);
 
