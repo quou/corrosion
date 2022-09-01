@@ -15,6 +15,73 @@ extern "C" {
 
 /* Usage: compiler file output */
 
+class MyIncluder : public shaderc::CompileOptions::IncluderInterface {
+private:
+	static shaderc_include_result* make_error(const char* message) {
+		return new shaderc_include_result { "", 0, message, strlen(message) };
+	}
+
+	struct FileData {
+		char* buffer1;
+		char* buffer2;
+	};
+public:
+	shaderc_include_result* GetInclude(
+		const char* requested_src, shaderc_include_type type, const char* requesting_src, usize include_depth) override {
+
+		usize filepath_len = strlen(requesting_src);
+		for (const char* c = requesting_src + filepath_len; c != requesting_src && *c != '/' && *c != '\\'; c--, filepath_len--) {}
+
+		if (requesting_src[filepath_len - 1] != '/') {
+			filepath_len++;
+		}
+
+		usize filename_len = strlen(requested_src);
+
+		char* buffer = new char[filepath_len + filename_len + 1];
+		memcpy(buffer, requesting_src, filepath_len);
+		memcpy(buffer + filepath_len, requested_src, filename_len);
+		buffer[filepath_len + filename_len] = '\0';
+
+		usize full_len = strlen(buffer);
+
+		if (full_len == 0) {
+			abort_with((std::string("Failed to include \"") + std::string(buffer) + std::string("\".")).c_str());
+		}
+
+		std::ifstream file(buffer, std::ios::binary | std::ios::ate);
+		if (!file.good()) {
+			abort_with((std::string("Failed to include \"") + std::string(buffer) + std::string("\".")).c_str());
+		}
+
+		std::streamsize size = file.tellg();
+		file.seekg(0, std::ios::beg);
+
+		char* contents = new char[size];
+
+		file.read(contents, size);
+
+		file.close();
+
+		return new shaderc_include_result {
+			buffer,
+			full_len,
+			contents,
+			static_cast<usize>(size),
+			new FileData { buffer, contents }
+		};
+	}
+
+	void ReleaseInclude(shaderc_include_result* data) {
+		FileData* file_data = reinterpret_cast<FileData*>(data->user_data);
+
+		delete[] file_data->buffer1;
+		delete[] file_data->buffer2;
+
+		delete file_data;
+	}
+};
+
 struct PrepOut {
 	bool is_compute;
 
@@ -235,6 +302,8 @@ i32 main(i32 argc, const char** argv) {
 	shaderc::CompileOptions options;
 	options.SetTargetEnvironment(shaderc_target_env_vulkan, shaderc_env_version_vulkan_1_2);
 	options.SetOptimizationLevel(shaderc_optimization_level_performance);
+
+	options.SetIncluder(std::make_unique<MyIncluder>());
 
 	if (!prep.is_compute) {
 		shaderc::SpvCompilationResult vertex_mod =
