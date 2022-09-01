@@ -1,6 +1,9 @@
 #include <stdio.h>
+#include <time.h>
 
 #include <corrosion/cr.h>
+
+#include "chunk.h"
 
 struct vertex {
 	v2f position;
@@ -14,6 +17,9 @@ struct {
 	struct texture* draw_result;
 
 	struct vertex_buffer* vb;
+
+	struct chunk chunk;
+	struct storage* voxels;
 
 	struct camera camera;
 
@@ -31,7 +37,13 @@ struct {
 		f32 fov;
 		pad(4); v3f camera_position;
 		pad(4); m4f camera;
+		v3f chunk_pos;
+		pad(4); v3f chunk_extent;
 	} render_data;
+
+	struct {
+		v2f image_size;
+	} blit_data;
 } app;
 
 struct app_config cr_config() {
@@ -49,24 +61,12 @@ struct app_config cr_config() {
 		.window_config = (struct window_config) {
 			.title = "Voxel Engine",
 			.size = make_v2i(1920, 1080),
-			.resizable = false
+			.resizable = true
 		}
 	};
 }
 
-void cr_init() {
-	app.fps_timer = 0.0;
-
-	ui_init();
-
-	app.ui = new_ui(video.get_default_fb());
-
-	app.camera = (struct camera) {
-		.fov = 70.0f,
-		.position = make_v3f(3.0f, 0.0f, 3.0f),
-		.rotation = make_v3f(0.0f, 45.0f, 0.0f)
-	};
-
+static void create_resources() {
 	const struct shader* blit_shader = load_shader("shaders/blit.csh");
 	const struct shader* draw_shader = load_shader("shaders/raytrace.csh");
 
@@ -84,7 +84,7 @@ void cr_init() {
 					.descriptors = (struct pipeline_descriptor[]) {
 						{
 							.name = "output_image",
-							.binding = 1,
+							.binding = 0,
 							.stage = pipeline_stage_compute,
 							.resource = {
 								.type = pipeline_resource_texture_storage,
@@ -92,8 +92,17 @@ void cr_init() {
 							}
 						},
 						{
+							.name = "voxels",
+							.binding = 1,
+							.stage = pipeline_stage_compute,
+							.resource = {
+								.type = pipeline_resource_storage,
+								.storage = app.voxels
+							}
+						},
+						{
 							.name = "RenderData",
-							.binding = 0,
+							.binding = 2,
 							.stage = pipeline_stage_compute,
 							.resource = {
 								.type = pipeline_resource_uniform_buffer,
@@ -101,7 +110,7 @@ void cr_init() {
 							}
 						}
 					},
-					.count = 2
+					.count = 3
 				}
 			},
 			.count = 1,
@@ -151,14 +160,72 @@ void cr_init() {
 								.type = pipeline_resource_texture,
 								.texture = app.draw_result
 							}
+						},
+						{
+							.name = "Config",
+							.binding = 1,
+							.stage = pipeline_stage_fragment,
+							.resource = {
+								.type = pipeline_resource_uniform_buffer,
+								.uniform.size = sizeof app.blit_data
+							}
 						}
 					},
-					.count = 1
+					.count = 2
 				}
 			},
 			.count = 1
 		}
 	);
+}
+
+static void destroy_resources() {
+	video.free_pipeline(app.blit_pip);
+	video.free_pipeline(app.draw_pip);
+	video.free_texture(app.draw_result);
+}
+
+static void on_resize(const struct window_event* event) {
+	destroy_resources();
+	create_resources();
+}
+
+void cr_init() {
+	srand(time(0));
+
+	app.fps_timer = 0.0;
+
+	ui_init();
+
+	app.ui = new_ui(video.get_default_fb());
+
+	app.camera = (struct camera) {
+		.fov = 70.0f,
+		.position = make_v3f(3.0f, 0.0f, 10.0f),
+		.rotation = make_v3f(0.0f, 45.0f, 0.0f)
+	};
+
+	window_event_subscribe(window_event_size_changed, on_resize);
+
+	init_chunk(&app.chunk, make_v3i(0, 0, 0), make_v3u(256, 256, 256));
+
+	app.voxels = video.new_storage(storage_flags_cpu_writable, chunk_size(&app.chunk), null);
+
+	chunk_set(&app.chunk, make_v3u(0, 0, 0), make_rgba(0xff00ff, 255));
+	chunk_set(&app.chunk, make_v3u(1, 1, 1), make_rgba(0xff00ff, 255));
+	chunk_set(&app.chunk, make_v3u(2, 2, 2), make_rgba(0xff00ff, 255));
+
+	chunk_set(&app.chunk, make_v3u(7, 0, 7), make_rgba(0xff00ff, 255));
+	chunk_set(&app.chunk, make_v3u(6, 1, 6), make_rgba(0xff00ff, 255));
+	chunk_set(&app.chunk, make_v3u(5, 2, 5), make_rgba(0xff00ff, 255));
+
+	for (usize i = 0; i < 256 * 256 * 256; i++) {
+		//app.chunk.voxels[i] = rand() % 2;
+	}
+
+	copy_chunk_to_storage(app.voxels, &app.chunk, 0);
+
+	create_resources();
 
 	struct vertex verts[] = {
 		{ { -1.0,   1.0 }, { 0.0f, 0.0f } },
@@ -253,16 +320,19 @@ void cr_update(f64 ts) {
 
 	ui_end(app.ui);
 
-	gizmo_line2d(make_v2f(0.0f, 0.0f), make_v2f(100.0f, 100.0f));
-
 	app.render_data.fov = to_rad(app.camera.fov);
 	app.render_data.resolution = get_window_size();
 	app.render_data.camera_position = app.camera.position;
 	app.render_data.camera = get_camera_view(&app.camera);
+	app.render_data.chunk_pos = make_v3f(app.chunk.position.x, app.chunk.position.y, app.chunk.position.z);
+	app.render_data.chunk_extent = make_v3f(app.chunk.extent.x, app.chunk.extent.y, app.chunk.extent.z);
+
+	app.blit_data.image_size = make_v2f((f32)get_window_size().x, (f32)get_window_size().y);
 
 	video.texture_barrier(app.draw_result, texture_state_shader_write);
 
 	video.update_pipeline_uniform(app.draw_pip, "primary", "RenderData", &app.render_data);
+	video.update_pipeline_uniform(app.blit_pip, "primary", "Config", &app.blit_data);
 
 	v2i texture_size = video.get_texture_size(app.draw_result);
 
@@ -289,10 +359,11 @@ void cr_update(f64 ts) {
 }
 
 void cr_deinit() {
-	video.free_pipeline(app.blit_pip);
-	video.free_pipeline(app.draw_pip);
+	deinit_chunk(&app.chunk);
 
-	video.free_texture(app.draw_result);
+	destroy_resources();
+
+	video.free_storage(app.voxels);
 	
 	video.free_vertex_buffer(app.vb);
 

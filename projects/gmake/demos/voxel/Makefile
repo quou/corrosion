@@ -59,7 +59,10 @@ memcheck: | $(deps) $(target)
 sources = $(wildcard $(srcdir)/*.c $(srcdir)/*/*.c)
 objects = $(sources:$(srcdir)/%.c=$(objdir)/%.o)
 
-shaders = $(wildcard $(srcdir)/*.glsl $(srcdir)/*/*.glsl)
+shaders = \
+	$(srcdir)/raytrace.glsl \
+	$(srcdir)/blit.glsl     \
+
 
 shader_targetdir = ../../../../demos/voxel/shaders/
 shader_targets = $(shaders:$(srcdir)%.glsl=$(shader_targetdir)%.csh)
