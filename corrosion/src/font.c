@@ -74,7 +74,7 @@ retry:
 		image.colours[(i * 4) + 3] = n;
 	}
 
-	set->atlas = video.new_texture(&image, texture_flags_filter_none);
+	set->atlas = video.new_texture(&image, texture_flags_filter_none, texture_format_rgba8i);
 
 	core_free(image.colours);
 

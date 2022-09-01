@@ -55,7 +55,7 @@ void cr_init() {
 	struct image i = {
 		.size = video.get_texture_size(app.image)
 	};
-	app.blurred = video.new_texture(&i, texture_flags_filter_linear | texture_flags_storage);
+	app.blurred = video.new_texture(&i, texture_flags_filter_linear | texture_flags_storage, texture_format_rgba8i);
 
 	app.fb = video.new_framebuffer(framebuffer_flags_fit | framebuffer_flags_attachments_are_storage, get_window_size(),
 		(struct framebuffer_attachment_desc[]) {

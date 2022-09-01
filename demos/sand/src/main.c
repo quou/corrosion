@@ -49,7 +49,7 @@ void cr_init() {
 	const struct shader* process_shader = load_shader("shaders/process.csh");
 
 	struct image i = { .size = sim_size };
-	app.result = video.new_texture(&i, texture_flags_filter_none | texture_flags_storage);
+	app.result = video.new_texture(&i, texture_flags_filter_none | texture_flags_storage, texture_format_rgba8i);
 	app.particles = video.new_storage(storage_flags_cpu_writable, sim_size.x * sim_size.y * sizeof(i32), null);
 	app.temp_particles = video.new_storage(storage_flags_none, sim_size.x * sim_size.y * sizeof(i32), null);
 

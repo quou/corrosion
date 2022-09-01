@@ -58,7 +58,7 @@ void video_vk_draw(usize count, usize offset, usize instances);
 void video_vk_draw_indexed(usize count, usize offset, usize instances);
 void video_vk_set_scissor(v4i rect);
 
-struct texture* video_vk_new_texture(const struct image* image, u32 flags);
+struct texture* video_vk_new_texture(const struct image* image, u32 flags, u32 format);
 void video_vk_free_texture(struct texture* texture);
 v2i  video_vk_get_texture_size(const struct texture* texture);
 void video_vk_texture_copy(struct texture* dst, v2i dst_offset, const struct texture* src, v2i src_offset, v2i dimensions);

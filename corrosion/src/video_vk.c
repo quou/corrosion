@@ -2837,15 +2837,39 @@ void video_vk_free_shader(struct shader* shader) {
 	core_free(shader);
 }
 
-static void init_texture(struct video_vk_texture* texture, const struct image* image, u32 flags) {
+struct texture_format_data {
+	VkFormat format;
+	usize pixel_size;
+};
+
+static struct texture_format_data get_texture_format_data(u32 format) {
+	switch (format) {
+		case texture_format_r8i:     return (struct texture_format_data) { VK_FORMAT_R8_UNORM,            1  };
+		case texture_format_r16f:    return (struct texture_format_data) { VK_FORMAT_R16_SFLOAT,          2  };
+		case texture_format_r32f:    return (struct texture_format_data) { VK_FORMAT_R32_SFLOAT,          4  };
+		case texture_format_rg8i:    return (struct texture_format_data) { VK_FORMAT_R8G8_UNORM,          2  };
+		case texture_format_rg16f:   return (struct texture_format_data) { VK_FORMAT_R16G16_SFLOAT,       4  };
+		case texture_format_rg32f:   return (struct texture_format_data) { VK_FORMAT_R32G32_SFLOAT,       8  };
+		case texture_format_rgb8i:   return (struct texture_format_data) { VK_FORMAT_R8G8B8_UNORM,        3  };
+		case texture_format_rgb16f:  return (struct texture_format_data) { VK_FORMAT_R16G16B16_SFLOAT,    6  };
+		case texture_format_rgb32f:  return (struct texture_format_data) { VK_FORMAT_R32G32B32_SFLOAT,    12 };
+		case texture_format_rgba8i:  return (struct texture_format_data) { VK_FORMAT_R8G8B8A8_UNORM,      4  };
+		case texture_format_rgba16f: return (struct texture_format_data) { VK_FORMAT_R16G16B16A16_SFLOAT, 8  };
+		case texture_format_rgba32f: return (struct texture_format_data) { VK_FORMAT_R32G32B32A32_SFLOAT, 16 };
+	}
+
+	return (struct texture_format_data) { VK_FORMAT_R8G8B8A8_UNORM, 4 };
+}
+
+static void init_texture(struct video_vk_texture* texture, const struct image* image, u32 flags, u32 format) {
 	texture->size = image->size;
 
-	VkFormat format = VK_FORMAT_R8G8B8A8_UNORM;
+	struct texture_format_data format_data = get_texture_format_data(format);
 
 	VkDeviceSize image_size =
 		(VkDeviceSize)image->size.x *
 		(VkDeviceSize)image->size.y *
-		(VkDeviceSize)4;
+		(VkDeviceSize)format_data.pixel_size;
 
 	VkBuffer stage;
 	VmaAllocation stage_memory;
@@ -2872,19 +2896,19 @@ static void init_texture(struct video_vk_texture* texture, const struct image* i
 		usage |= VK_IMAGE_USAGE_STORAGE_BIT;
 	}
 
-	new_image(image->size, format, VK_IMAGE_TILING_OPTIMAL,
+	new_image(image->size, format_data.format, VK_IMAGE_TILING_OPTIMAL,
 		usage, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 		&texture->image, &texture->memory, VK_IMAGE_LAYOUT_UNDEFINED, false);
 	
-	change_image_layout(texture->image, format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, false);
+	change_image_layout(texture->image, format_data.format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, false);
 	copy_buffer_to_image(stage, texture->image, image->size, vctx.command_pool, vctx.graphics_compute_queue);
-	change_image_layout(texture->image, format, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, false);
+	change_image_layout(texture->image, format_data.format, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, false);
 
 	texture->state = texture_state_shader_graphics_read;
 
 	vmaDestroyBuffer(vctx.allocator, stage, stage_memory);
 
-	texture->view = new_image_view(texture->image, format, VK_IMAGE_ASPECT_COLOR_BIT);
+	texture->view = new_image_view(texture->image, format_data.format, VK_IMAGE_ASPECT_COLOR_BIT);
 
 	if (vkCreateSampler(vctx.device, &(VkSamplerCreateInfo) {
 			.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
@@ -2912,10 +2936,10 @@ static void deinit_texture(struct video_vk_texture* texture) {
 	vmaDestroyImage(vctx.allocator, texture->image, texture->memory);
 }
 
-struct texture* video_vk_new_texture(const struct image* image, u32 flags) {
+struct texture* video_vk_new_texture(const struct image* image, u32 flags, u32 format) {
 	struct video_vk_texture* texture = core_calloc(1, sizeof(struct video_vk_texture));
 
-	init_texture(texture, image, flags);
+	init_texture(texture, image, flags, format);
 
 	return (struct texture*)texture;
 }
@@ -3128,7 +3152,7 @@ static void texture_on_load(const char* filename, u8* raw, usize raw_size, void*
 		flags = texture_flags_filter_none;
 	}
 
-	init_texture(payload, &image, flags);
+	init_texture(payload, &image, flags, texture_format_rgba8i);
 
 	deinit_image(&image);
 }

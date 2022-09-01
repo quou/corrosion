@@ -10,7 +10,7 @@ struct atlas* new_atlas(u32 flags) {
 
 	atlas->flags = flags;
 
-	atlas->texture = video.new_texture(&image, flags);
+	atlas->texture = video.new_texture(&image, flags, texture_format_rgba8i);
 
 	return atlas;
 }
@@ -51,7 +51,7 @@ bool atlas_add_texture(struct atlas* atlas, const struct texture* new_texture) {
 			.size = final_size
 		};
 
-		atlas->texture = video.new_texture(&image, atlas->flags);
+		atlas->texture = video.new_texture(&image, atlas->flags, texture_format_rgba8i);
 		atlas->size = final_size;
 
 		recreated = true;

@@ -691,7 +691,7 @@ struct ui* new_ui(const struct framebuffer* framebuffer) {
 	struct image alpha_image;
 	init_image_from_raw(&alpha_image, bir_checkerboard_png, bir_checkerboard_png_size);
 
-	ui->alpha_texture = video.new_texture(&alpha_image, texture_flags_none);
+	ui->alpha_texture = video.new_texture(&alpha_image, texture_flags_none, texture_format_rgba8i);
 
 	deinit_image(&alpha_image);
 

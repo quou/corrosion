@@ -677,7 +677,7 @@ static void deinit_texture(struct video_gl_texture* texture) {
 	check_gl(glDeleteTextures(1, &texture->id));
 }
 
-struct texture* video_gl_new_texture(const struct image* image, u32 flags) {
+struct texture* video_gl_new_texture(const struct image* image, u32 flags, u32 format) {
 	struct video_gl_texture* texture = core_calloc(1, sizeof *texture);
 
 	init_texture(texture, image, flags);
