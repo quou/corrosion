@@ -11,19 +11,18 @@ const float infinity = 1.0 / 0.0;
 
 layout (local_size_x = 16, local_size_y = 16) in;
 
-layout (binding = 4) uniform RenderData {
+layout (binding = 3) uniform RenderData {
 	ivec2 resolution;
 	float fov;
 	vec3 camera_position;
-	mat4 camera;
+	mat4 view;
 	vec3 chunk_pos;
 	vec3 chunk_extent;
 };
 
 layout (binding = 0, rgba16f) uniform image2D output_colour;
-layout (binding = 1, rgba16f) uniform image2D output_normal;
-layout (binding = 2, rgba16f) uniform image2D output_position;
-layout (binding = 3) buffer VoxelBuffer {
+layout (binding = 1, r32f)    uniform image2D output_depth;
+layout (binding = 2) buffer VoxelBuffer {
 	uint voxels[];
 };
 
@@ -108,6 +107,8 @@ bool raytrace(in Ray ray, in Bound bound, float max_dist, out vec3 colour, out v
 	dist.y = (step.y > 0) ? (i.y + 1 - ray.origin.y) : (ray.origin.y - i.y);
 	dist.z = (step.z > 0) ? (i.z + 1 - ray.origin.z) : (ray.origin.z - i.z);
 
+	int stepped_index = -1;
+
 	vec3 max_t;
 	max_t.x = (delta_t.x < infinity) ? (delta_t.x * dist.x) : (infinity);
 	max_t.y = (delta_t.y < infinity) ? (delta_t.y * dist.y) : (infinity);
@@ -123,6 +124,14 @@ bool raytrace(in Ray ray, in Bound bound, float max_dist, out vec3 colour, out v
 		if (voxel_at(i, colour)) {
 			pos = ray.origin + t * ray.dir;
 
+			normal = vec3(0.0);
+			
+			switch (stepped_index) {
+				case 0: normal.x = -step.x; break;
+				case 1: normal.y = -step.y; break;
+				case 2: normal.z = -step.z; break;
+			}
+
 			return true;
 		}
 
@@ -131,20 +140,24 @@ bool raytrace(in Ray ray, in Bound bound, float max_dist, out vec3 colour, out v
 				i.x += step.x;
 				t = max_t.x;
 				max_t.x += delta_t.x;
+				stepped_index = 0;
 			} else {
 				i.z += step.z;
 				t = max_t.z;
 				max_t.z += delta_t.z;
+				stepped_index = 2;
 			}
 		} else {
 			if (max_t.y < max_t.z) {
 				i.y += step.y;
 				t = max_t.y;
 				max_t.y += delta_t.y;
+				stepped_index = 1;
 			} else {
 				i.z += step.z;
 				t = max_t.z;
 				max_t.z += delta_t.z;
+				stepped_index = 2;
 			}
 		}
 	}
@@ -166,7 +179,7 @@ void main() {
 
 	Ray primary = Ray(
 		camera_position,
-		(transpose(camera) * vec4(normalize(vec3(uv, fov)), 0.0)).xyz
+		(transpose(view) * vec4(normalize(vec3(uv, fov)), 0.0)).xyz
 	);
 
 	Bound chunk_bound = Bound(
@@ -189,11 +202,10 @@ void main() {
 		if (raytrace(secondary, chunk_bound, 1000.0, vcol, vpos, vnorm)) {
 			colour = vcol;
 			normal = vnorm;
-			position = vpos;
+			position = (view * vec4(vpos, 1.0)).xyz;
 		}
 	}
 
 	imageStore(output_colour, coords, vec4(colour, 1.0));
-	imageStore(output_normal, coords, vec4(normal, 1.0));
-	imageStore(output_position, coords, vec4(position, 1.0));
+	imageStore(output_depth,  coords, vec4(position.z));
 }

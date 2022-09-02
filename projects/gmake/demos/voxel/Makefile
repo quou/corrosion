@@ -63,7 +63,6 @@ shaders = \
 	$(srcdir)/raytrace.glsl \
 	$(srcdir)/blit.glsl     \
 
-
 shader_targetdir = ../../../../demos/voxel/shaders/
 shader_targets = $(shaders:$(srcdir)%.glsl=$(shader_targetdir)%.csh)
 shader_compiler = ../../shadercompiler/bin/$(config)/shadercompiler

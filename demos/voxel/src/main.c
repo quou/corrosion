@@ -15,8 +15,7 @@ struct {
 	struct pipeline* blit_pip;
 
 	struct texture* draw_result_colour;
-	struct texture* draw_result_normal;
-	struct texture* draw_result_position;
+	struct texture* draw_result_depth;
 
 	struct vertex_buffer* vb;
 
@@ -38,7 +37,7 @@ struct {
 		v2i resolution;
 		f32 fov;
 		pad(4); v3f camera_position;
-		pad(4); m4f camera;
+		pad(4); m4f view;
 		v3f chunk_pos;
 		pad(4); v3f chunk_extent;
 	} render_data;
@@ -69,15 +68,16 @@ struct app_config cr_config() {
 }
 
 static void create_resources() {
-	const struct shader* blit_shader = load_shader("shaders/blit.csh");
-	const struct shader* draw_shader = load_shader("shaders/raytrace.csh");
+	const struct shader* blit_shader    = load_shader("shaders/blit.csh");
+	const struct shader* draw_shader    = load_shader("shaders/raytrace.csh");
 
 	struct image i = {
 		.size = get_window_size()
 	};
-	app.draw_result_colour   = video.new_texture(&i, texture_flags_filter_none | texture_flags_storage, texture_format_rgba16f);
-	app.draw_result_normal   = video.new_texture(&i, texture_flags_filter_none | texture_flags_storage, texture_format_rgba16f);
-	app.draw_result_position = video.new_texture(&i, texture_flags_filter_none | texture_flags_storage, texture_format_rgba16f);
+	app.draw_result_colour   = video.new_texture(&i,
+		texture_flags_filter_none | texture_flags_clamp | texture_flags_storage, texture_format_rgba16f);
+	app.draw_result_depth = video.new_texture(&i,
+		texture_flags_filter_none | texture_flags_clamp | texture_flags_storage, texture_format_r32f);
 
 	app.draw_pip = video.new_compute_pipeline(
 		pipeline_flags_none, draw_shader,
@@ -96,26 +96,17 @@ static void create_resources() {
 							}
 						},
 						{
-							.name = "output_normal",
+							.name = "output_depth",
 							.binding = 1,
 							.stage = pipeline_stage_compute,
 							.resource = {
 								.type = pipeline_resource_texture_storage,
-								.texture = app.draw_result_normal
-							}
-						},
-						{
-							.name = "output_position",
-							.binding = 2,
-							.stage = pipeline_stage_compute,
-							.resource = {
-								.type = pipeline_resource_texture_storage,
-								.texture = app.draw_result_position
+								.texture = app.draw_result_depth
 							}
 						},
 						{
 							.name = "voxels",
-							.binding = 3,
+							.binding = 2,
 							.stage = pipeline_stage_compute,
 							.resource = {
 								.type = pipeline_resource_storage,
@@ -124,7 +115,7 @@ static void create_resources() {
 						},
 						{
 							.name = "RenderData",
-							.binding = 4,
+							.binding = 3,
 							.stage = pipeline_stage_compute,
 							.resource = {
 								.type = pipeline_resource_uniform_buffer,
@@ -132,7 +123,7 @@ static void create_resources() {
 							}
 						}
 					},
-					.count = 5
+					.count = 4
 				}
 			},
 			.count = 1,
@@ -205,8 +196,7 @@ static void destroy_resources() {
 	video.free_pipeline(app.blit_pip);
 	video.free_pipeline(app.draw_pip);
 	video.free_texture(app.draw_result_colour);
-	video.free_texture(app.draw_result_normal);
-	video.free_texture(app.draw_result_position);
+	video.free_texture(app.draw_result_depth);
 }
 
 static void on_resize(const struct window_event* event) {
@@ -230,7 +220,9 @@ void cr_init() {
 	app.camera = (struct camera) {
 		.fov = 70.0f,
 		.position = make_v3f(3.0f, 0.0f, 10.0f),
-		.rotation = make_v3f(0.0f, 45.0f, 0.0f)
+		.rotation = make_v3f(0.0f, 45.0f, 0.0f),
+		.near_plane = 0.0f,
+		.far_plane = 1000.0f
 	};
 
 	window_event_subscribe(window_event_size_changed, on_resize);
@@ -351,15 +343,14 @@ void cr_update(f64 ts) {
 	app.render_data.fov = to_rad(app.camera.fov);
 	app.render_data.resolution = get_window_size();
 	app.render_data.camera_position = app.camera.position;
-	app.render_data.camera = get_camera_view(&app.camera);
+	app.render_data.view = get_camera_view(&app.camera);
 	app.render_data.chunk_pos = make_v3f(app.chunk.position.x, app.chunk.position.y, app.chunk.position.z);
 	app.render_data.chunk_extent = make_v3f(app.chunk.extent.x, app.chunk.extent.y, app.chunk.extent.z);
 
 	app.blit_data.image_size = make_v2f((f32)get_window_size().x, (f32)get_window_size().y);
 
 	video.texture_barrier(app.draw_result_colour,   texture_state_shader_write);
-	video.texture_barrier(app.draw_result_normal,   texture_state_shader_write);
-	video.texture_barrier(app.draw_result_position, texture_state_shader_write);
+	video.texture_barrier(app.draw_result_depth, texture_state_shader_write);
 
 	video.update_pipeline_uniform(app.draw_pip, "primary", "RenderData", &app.render_data);
 	video.update_pipeline_uniform(app.blit_pip, "primary", "Config", &app.blit_data);
@@ -375,8 +366,7 @@ void cr_update(f64 ts) {
 	video.end_pipeline(app.draw_pip);
 
 	video.texture_barrier(app.draw_result_colour,   texture_state_shader_graphics_read);
-	video.texture_barrier(app.draw_result_normal,   texture_state_shader_graphics_read);
-	video.texture_barrier(app.draw_result_position, texture_state_shader_graphics_read);
+	video.texture_barrier(app.draw_result_depth, texture_state_shader_graphics_read);
 
 	video.begin_framebuffer(video.get_default_fb());
 		video.begin_pipeline(app.blit_pip);
