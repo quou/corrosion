@@ -102,3 +102,30 @@ bool in_frustum(const struct aabb* aabb, const struct frustum_plane* planes) {
 
 	return true;
 }
+
+struct texture* rgb_noise_texture(u32 flags, v2i size) {
+	v4f* noise = core_calloc(size.x * size.y, sizeof *noise);
+
+	for (i32 i = 0; i < size.x * size.y; i++) {
+		noise[i] = make_v4f(
+			random_float(-1.0f, 1.0f),
+			random_float(-1.0f, 1.0f),
+			random_float(-1.0f, 1.0f),
+			random_float(-1.0f, 1.0f)
+		);
+	}
+
+	struct image image = {
+		.size = size,
+		.colours = (void*)noise
+	};
+
+	struct texture* t = video.new_texture(&image, flags, texture_format_rgba32f);
+	core_free(noise);
+	return t;
+}
+
+struct texture* simplex_noise_texture(u32 flags, v2i size) {
+	abort_with("Not implemented.");
+	return null;
+}

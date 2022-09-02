@@ -143,7 +143,9 @@ enum {
 	texture_flags_none           = 1 << 0,
 	texture_flags_filter_linear  = 1 << 1,
 	texture_flags_filter_none    = 1 << 2,
-	texture_flags_storage        = 1 << 3
+	texture_flags_storage        = 1 << 3,
+	texture_flags_repeat         = 1 << 4,
+	texture_flags_clamp          = 1 << 5
 };
 
 enum {

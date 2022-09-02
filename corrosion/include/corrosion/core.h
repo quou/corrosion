@@ -418,3 +418,13 @@ char* copy_string(const char* str);
 			(n_)->prev->next = (n_)->next; \
 		} \
 	} while (0)
+
+/* RNG */
+force_inline f32 random_float(f32 min, f32 max) {
+	f32 scale = (f32)rand() / (f32)RAND_MAX;
+	return min + scale * (max - min);
+}
+
+force_inline i32 random_int(i32 min, i32 max) {
+	return (rand() % (min - max + 1)) + min;
+}

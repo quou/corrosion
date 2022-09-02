@@ -2910,13 +2910,18 @@ static void init_texture(struct video_vk_texture* texture, const struct image* i
 
 	texture->view = new_image_view(texture->image, format_data.format, VK_IMAGE_ASPECT_COLOR_BIT);
 
+	VkSamplerAddressMode address_mode = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	if (flags & texture_flags_clamp) {
+		address_mode = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+	}
+
 	if (vkCreateSampler(vctx.device, &(VkSamplerCreateInfo) {
 			.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
 			.magFilter = (flags & texture_flags_filter_linear) ? VK_FILTER_LINEAR : VK_FILTER_NEAREST,
 			.minFilter = (flags & texture_flags_filter_linear) ? VK_FILTER_LINEAR : VK_FILTER_NEAREST,
-			.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT,
-			.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT,
-			.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT,
+			.addressModeU = address_mode,
+			.addressModeV = address_mode,
+			.addressModeW = address_mode,
 			.anisotropyEnable = VK_FALSE,
 			.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK,
 			.unnormalizedCoordinates = VK_FALSE,
@@ -3072,7 +3077,7 @@ void video_vk_texture_barrier(struct texture* texture_, u32 state) {
 			old_stage  = VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT;
 			break;
 		case texture_state_shader_compute_read:
-			old_layout = VK_IMAGE_LAYOUT_GENERAL;
+			old_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 			src_access = VK_ACCESS_SHADER_READ_BIT;
 			old_stage  = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
 			break;
@@ -3095,7 +3100,7 @@ void video_vk_texture_barrier(struct texture* texture_, u32 state) {
 			new_stage  = VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT;
 			break;
 		case texture_state_shader_compute_read:
-			new_layout = VK_IMAGE_LAYOUT_GENERAL;
+			new_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 			dst_access = VK_ACCESS_SHADER_READ_BIT;
 			new_stage  = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
 			break;

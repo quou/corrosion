@@ -30,3 +30,6 @@ void compute_frustum_planes(m4f vp, struct frustum_plane* planes);
 /* Checks if an AABB is inside a frustum, for frustum culling. `planes` should be
  * an array of at least six elements. */
 bool in_frustum(const struct aabb* aabb, const struct frustum_plane* planes);
+
+struct texture* rgb_noise_texture(u32 flags, v2i size);
+struct texture* simplex_noise_texture(u32 flags, v2i size);

@@ -1,5 +1,6 @@
-#include "app.h"
+#include <time.h>
 
+#include "app.h"
 #include "gizmo.h"
 #include "res.h"
 #include "timer.h"
@@ -17,6 +18,8 @@ i32 main(i32 argc, const char** argv) {
 	struct app_config cfg = cr_config();
 
 	init_timer();
+
+	srand(time(0));
 
 	init_window(&cfg.window_config, cfg.video_config.api);
 
