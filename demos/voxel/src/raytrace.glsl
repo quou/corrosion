@@ -11,7 +11,7 @@ const float infinity = 1.0 / 0.0;
 
 layout (local_size_x = 16, local_size_y = 16) in;
 
-layout (binding = 2) uniform RenderData {
+layout (binding = 4) uniform RenderData {
 	ivec2 resolution;
 	float fov;
 	vec3 camera_position;
@@ -20,8 +20,10 @@ layout (binding = 2) uniform RenderData {
 	vec3 chunk_extent;
 };
 
-layout (binding = 0, rgba16f) uniform image2D output_image;
-layout (binding = 1) buffer VoxelBuffer {
+layout (binding = 0, rgba16f) uniform image2D output_colour;
+layout (binding = 1, rgba16f) uniform image2D output_normal;
+layout (binding = 2, rgba16f) uniform image2D output_position;
+layout (binding = 3) buffer VoxelBuffer {
 	uint voxels[];
 };
 
@@ -120,7 +122,6 @@ bool raytrace(in Ray ray, in Bound bound, float max_dist, out vec3 colour, out v
 
 		if (voxel_at(i, colour)) {
 			pos = ray.origin + t * ray.dir;
-			normal = -step;
 
 			return true;
 		}
@@ -160,6 +161,8 @@ void main() {
 	vec2 uv = (2.0 * coords - resolution) / resolution.y;
 
 	vec3 colour = vec3(0.0);
+	vec3 normal = vec3(0.0);
+	vec3 position = vec3(0.0);
 
 	Ray primary = Ray(
 		camera_position,
@@ -182,11 +185,15 @@ void main() {
 			primary.dir
 		);
 
-		vec3 voxel_colour, pos, normal;
-		if (raytrace(secondary, chunk_bound, 1000.0, voxel_colour, pos, normal)) {
-			colour = voxel_colour;
+		vec3 vcol, vnorm, vpos;
+		if (raytrace(secondary, chunk_bound, 1000.0, vcol, vpos, vnorm)) {
+			colour = vcol;
+			normal = vnorm;
+			position = vpos;
 		}
 	}
 
-	imageStore(output_image, coords, vec4(colour, 1.0));
+	imageStore(output_colour, coords, vec4(colour, 1.0));
+	imageStore(output_normal, coords, vec4(normal, 1.0));
+	imageStore(output_position, coords, vec4(position, 1.0));
 }

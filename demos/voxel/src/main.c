@@ -14,7 +14,9 @@ struct {
 	struct pipeline* draw_pip;
 	struct pipeline* blit_pip;
 
-	struct texture* draw_result;
+	struct texture* draw_result_colour;
+	struct texture* draw_result_normal;
+	struct texture* draw_result_position;
 
 	struct vertex_buffer* vb;
 
@@ -73,7 +75,9 @@ static void create_resources() {
 	struct image i = {
 		.size = get_window_size()
 	};
-	app.draw_result = video.new_texture(&i, texture_flags_filter_none | texture_flags_storage, texture_format_rgba16f);
+	app.draw_result_colour   = video.new_texture(&i, texture_flags_filter_none | texture_flags_storage, texture_format_rgba16f);
+	app.draw_result_normal   = video.new_texture(&i, texture_flags_filter_none | texture_flags_storage, texture_format_rgba16f);
+	app.draw_result_position = video.new_texture(&i, texture_flags_filter_none | texture_flags_storage, texture_format_rgba16f);
 
 	app.draw_pip = video.new_compute_pipeline(
 		pipeline_flags_none, draw_shader,
@@ -83,17 +87,35 @@ static void create_resources() {
 					.name = "primary",
 					.descriptors = (struct pipeline_descriptor[]) {
 						{
-							.name = "output_image",
+							.name = "output_colour",
 							.binding = 0,
 							.stage = pipeline_stage_compute,
 							.resource = {
 								.type = pipeline_resource_texture_storage,
-								.texture = app.draw_result
+								.texture = app.draw_result_colour
+							}
+						},
+						{
+							.name = "output_normal",
+							.binding = 1,
+							.stage = pipeline_stage_compute,
+							.resource = {
+								.type = pipeline_resource_texture_storage,
+								.texture = app.draw_result_normal
+							}
+						},
+						{
+							.name = "output_position",
+							.binding = 2,
+							.stage = pipeline_stage_compute,
+							.resource = {
+								.type = pipeline_resource_texture_storage,
+								.texture = app.draw_result_position
 							}
 						},
 						{
 							.name = "voxels",
-							.binding = 1,
+							.binding = 3,
 							.stage = pipeline_stage_compute,
 							.resource = {
 								.type = pipeline_resource_storage,
@@ -102,7 +124,7 @@ static void create_resources() {
 						},
 						{
 							.name = "RenderData",
-							.binding = 2,
+							.binding = 4,
 							.stage = pipeline_stage_compute,
 							.resource = {
 								.type = pipeline_resource_uniform_buffer,
@@ -110,7 +132,7 @@ static void create_resources() {
 							}
 						}
 					},
-					.count = 3
+					.count = 5
 				}
 			},
 			.count = 1,
@@ -158,7 +180,7 @@ static void create_resources() {
 							.stage = pipeline_stage_fragment,
 							.resource = {
 								.type = pipeline_resource_texture,
-								.texture = app.draw_result
+								.texture = app.draw_result_colour
 							}
 						},
 						{
@@ -182,7 +204,9 @@ static void create_resources() {
 static void destroy_resources() {
 	video.free_pipeline(app.blit_pip);
 	video.free_pipeline(app.draw_pip);
-	video.free_texture(app.draw_result);
+	video.free_texture(app.draw_result_colour);
+	video.free_texture(app.draw_result_normal);
+	video.free_texture(app.draw_result_position);
 }
 
 static void on_resize(const struct window_event* event) {
@@ -211,34 +235,22 @@ void cr_init() {
 
 	window_event_subscribe(window_event_size_changed, on_resize);
 
-	init_chunk(&app.chunk, make_v3i(0, 0, 0), make_v3u(64, 64, 64));
-
-	app.voxels = video.new_storage(storage_flags_cpu_writable, chunk_size(&app.chunk), null);
-
-	for (u32 y = 0; y < 64; y++) {
-		for (u32 x = 0; x < 64; x++ ) {
-			for (u32 z = 0; z < 64; z++) {
-				if (x == 0 || x == 63 || y == 0 || y == 63 || z == 0 || z == 63) {
-					chunk_set(&app.chunk, make_v3u(x, y, z),
-						make_v3f(
-							rand_flt(),
-							rand_flt(),
-							rand_flt()
-						)
-					);
-				} else if (rand() % 2 == 1) {
-					chunk_set(&app.chunk, make_v3u(x, y, z),
-						make_v3f(
-							rand_flt(),
-							rand_flt(),
-							rand_flt()
-						)
-					);
-				}
-			}
-		}
+	struct image slices = { 0 };
+	u8* raw_image;
+	usize raw_image_size;
+	if (!read_raw("res/world.png", &raw_image, &raw_image_size)) {
+		abort();
 	}
 
+	init_image_from_raw(&slices, raw_image, raw_image_size);
+
+	core_free(raw_image);
+
+	init_chunk_from_slices(&app.chunk, make_v3i(0, 0, 0), &slices);
+
+	deinit_image(&slices);
+
+	app.voxels = video.new_storage(storage_flags_cpu_writable, chunk_size(&app.chunk), null);
 	copy_chunk_to_storage(app.voxels, &app.chunk, 0);
 
 	create_resources();
@@ -345,12 +357,14 @@ void cr_update(f64 ts) {
 
 	app.blit_data.image_size = make_v2f((f32)get_window_size().x, (f32)get_window_size().y);
 
-	video.texture_barrier(app.draw_result, texture_state_shader_write);
+	video.texture_barrier(app.draw_result_colour,   texture_state_shader_write);
+	video.texture_barrier(app.draw_result_normal,   texture_state_shader_write);
+	video.texture_barrier(app.draw_result_position, texture_state_shader_write);
 
 	video.update_pipeline_uniform(app.draw_pip, "primary", "RenderData", &app.render_data);
 	video.update_pipeline_uniform(app.blit_pip, "primary", "Config", &app.blit_data);
 
-	v2i texture_size = video.get_texture_size(app.draw_result);
+	v2i texture_size = video.get_texture_size(app.draw_result_colour);
 
 	video.begin_pipeline(app.draw_pip);
 		video.bind_pipeline_descriptor_set(app.draw_pip, "primary", 0);
@@ -360,7 +374,9 @@ void cr_update(f64 ts) {
 			1));
 	video.end_pipeline(app.draw_pip);
 
-	video.texture_barrier(app.draw_result, texture_state_shader_graphics_read);
+	video.texture_barrier(app.draw_result_colour,   texture_state_shader_graphics_read);
+	video.texture_barrier(app.draw_result_normal,   texture_state_shader_graphics_read);
+	video.texture_barrier(app.draw_result_position, texture_state_shader_graphics_read);
 
 	video.begin_framebuffer(video.get_default_fb());
 		video.begin_pipeline(app.blit_pip);

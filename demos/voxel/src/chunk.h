@@ -12,6 +12,7 @@ struct chunk {
 };
 
 void init_chunk(struct chunk* chunk, v3i pos, v3u extent);
+void init_chunk_from_slices(struct chunk* chunk, v3i pos, const struct image* image);
 void deinit_chunk(struct chunk* chunk);
 
 static inline usize chunk_idx(const struct chunk* chunk, v3u pos) {
