@@ -219,8 +219,8 @@ void cr_init() {
 
 	app.camera = (struct camera) {
 		.fov = 70.0f,
-		.position = make_v3f(3.0f, 0.0f, 10.0f),
-		.rotation = make_v3f(0.0f, 45.0f, 0.0f),
+		.position = make_v3f(-5.0f, 7.0f, -5.0f),
+		.rotation = make_v3f(-40.0f, -140.0f, 0.0f),
 		.near_plane = 0.0f,
 		.far_plane = 1000.0f
 	};
