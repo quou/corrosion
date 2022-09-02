@@ -668,7 +668,7 @@ void ui_init() {
 		.on_unload = stylesheet_on_unload
 	});
 
-	default_font = new_font(bir_DejaVuSans_ttf, bir_DejaVuSans_ttf_size, 14.0f);
+	default_font = new_font(bir_DejaVuSans_ttf, bir_DejaVuSans_ttf_size, 30.0f);
 }
 
 void ui_deinit() {

@@ -7,8 +7,15 @@
 #define cr_min(a_, b_) ((a_) < (b_) ? (a_) : (b_))
 #define cr_max(a_, b_) ((a_) > (b_) ? (a_) : (b_))
 
-#define v2(t_) struct { t_ x; t_ y; }
-#define v3(t_) struct { t_ x; t_ y; t_ z; }
+#define v2(t_) struct { \
+	union { t_ x; t_ u; }; \
+	union { t_ y; t_ v; }; \
+}
+#define v3(t_) struct { \
+	union { t_ x; t_ r; t_ h; }; \
+	union { t_ y; t_ g; t_ s; }; \
+	union { t_ z; t_ b; t_ v; }; \
+}
 #define v4(t_) struct { \
 	union { t_ x; t_ r; t_ h; }; \
 	union { t_ y; t_ g; t_ s; }; \

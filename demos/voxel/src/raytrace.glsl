@@ -35,11 +35,21 @@ struct Bound {
 	vec3 maxi;
 };
 
-bool voxel_at(in vec3 pos) {
+bool voxel_at(in vec3 pos, out vec3 colour) {
 	uvec3 e = uvec3(uint(chunk_extent.x), uint(chunk_extent.y), uint(chunk_extent.z));
 	uvec3 p = uvec3(uint(pos.x), uint(pos.y), uint(pos.z));
 
-	return voxels[(e.x * e.y * p.z) + (e.y * p.y) + p.x] != 0;
+	if (p.x >= e.x || p.y >= e.y || p.z >= e.z) {
+		return false;
+	}
+
+	uint v = voxels[(e.x * e.y * p.z) + (e.y * p.y) + p.x];
+
+	colour.r = (float(((v >> 24) & 0xff))) / 255.0;
+	colour.g = (float(((v >> 16) & 0xff))) / 255.0;
+	colour.b = (float(((v >> 8)  & 0xff))) / 255.0;
+
+	return v != 0;
 }
 
 bool intersect_bound(in Ray ray, in Bound bound, out float t_near, out float t_far) {
@@ -82,12 +92,8 @@ bool point_inside_bound(in vec3 pos, in Bound bound) {
 	return inside;
 }
 
-vec3 tile_coords(in vec3 p) {
-	return floor(p / voxel_size);
-}
-
 /* From https://github.com/fenomas/fast-voxel-raycast/blob/master/index.js */
-bool raytrace(in Ray ray, in Bound bound, float max_dist) {
+bool raytrace(in Ray ray, in Bound bound, float max_dist, out vec3 colour, out vec3 pos, out vec3 normal) {
 	float t = 0.0;
 	vec3 i = floor(ray.origin);
 
@@ -105,12 +111,17 @@ bool raytrace(in Ray ray, in Bound bound, float max_dist) {
 	max_t.y = (delta_t.y < infinity) ? (delta_t.y * dist.y) : (infinity);
 	max_t.z = (delta_t.z < infinity) ? (delta_t.z * dist.z) : (infinity);
 
+	/* TODO: Do it without branches */
+
 	while (t < max_dist) {
 		if (!point_inside_bound(i, bound)) {
 			return false;
 		}
 
-		if (voxel_at(i)) {
+		if (voxel_at(i, colour)) {
+			pos = ray.origin + t * ray.dir;
+			normal = -step;
+
 			return true;
 		}
 
@@ -163,14 +174,17 @@ void main() {
 	float t_near, t_far;
 	bool intersect = intersect_bound(primary, chunk_bound, t_near, t_far);
 
+	vec3 sun_dir = vec3(0.3, 0.3, 0.3);
+
 	if (intersect) {
 		Ray secondary = Ray(
-			primary.origin + primary.dir * t_near,
+			primary.origin + primary.dir * t_near + 0.001,
 			primary.dir
 		);
 
-		if (raytrace(secondary, chunk_bound, 1000.0)) {
-			colour = vec3(1.0);
+		vec3 voxel_colour, pos, normal;
+		if (raytrace(secondary, chunk_bound, 1000.0, voxel_colour, pos, normal)) {
+			colour = voxel_colour;
 		}
 	}
 

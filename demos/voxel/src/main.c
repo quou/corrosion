@@ -190,6 +190,10 @@ static void on_resize(const struct window_event* event) {
 	create_resources();
 }
 
+static f32 rand_flt() {
+	return (f32)rand() / (f32)RAND_MAX;
+}
+
 void cr_init() {
 	srand(time(0));
 
@@ -207,20 +211,32 @@ void cr_init() {
 
 	window_event_subscribe(window_event_size_changed, on_resize);
 
-	init_chunk(&app.chunk, make_v3i(0, 0, 0), make_v3u(256, 256, 256));
+	init_chunk(&app.chunk, make_v3i(0, 0, 0), make_v3u(64, 64, 64));
 
 	app.voxels = video.new_storage(storage_flags_cpu_writable, chunk_size(&app.chunk), null);
 
-	chunk_set(&app.chunk, make_v3u(0, 0, 0), make_rgba(0xff00ff, 255));
-	chunk_set(&app.chunk, make_v3u(1, 1, 1), make_rgba(0xff00ff, 255));
-	chunk_set(&app.chunk, make_v3u(2, 2, 2), make_rgba(0xff00ff, 255));
-
-	chunk_set(&app.chunk, make_v3u(7, 0, 7), make_rgba(0xff00ff, 255));
-	chunk_set(&app.chunk, make_v3u(6, 1, 6), make_rgba(0xff00ff, 255));
-	chunk_set(&app.chunk, make_v3u(5, 2, 5), make_rgba(0xff00ff, 255));
-
-	for (usize i = 0; i < 256 * 256 * 256; i++) {
-		//app.chunk.voxels[i] = rand() % 2;
+	for (u32 y = 0; y < 64; y++) {
+		for (u32 x = 0; x < 64; x++ ) {
+			for (u32 z = 0; z < 64; z++) {
+				if (x == 0 || x == 63 || y == 0 || y == 63 || z == 0 || z == 63) {
+					chunk_set(&app.chunk, make_v3u(x, y, z),
+						make_v3f(
+							rand_flt(),
+							rand_flt(),
+							rand_flt()
+						)
+					);
+				} else if (rand() % 2 == 1) {
+					chunk_set(&app.chunk, make_v3u(x, y, z),
+						make_v3f(
+							rand_flt(),
+							rand_flt(),
+							rand_flt()
+						)
+					);
+				}
+			}
+		}
 	}
 
 	copy_chunk_to_storage(app.voxels, &app.chunk, 0);
