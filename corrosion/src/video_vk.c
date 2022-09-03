@@ -3077,7 +3077,7 @@ void video_vk_texture_barrier(struct texture* texture_, u32 state) {
 			old_stage  = VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT;
 			break;
 		case texture_state_shader_compute_read:
-			old_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			old_layout = VK_IMAGE_LAYOUT_GENERAL;
 			src_access = VK_ACCESS_SHADER_READ_BIT;
 			old_stage  = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
 			break;
@@ -3100,7 +3100,7 @@ void video_vk_texture_barrier(struct texture* texture_, u32 state) {
 			new_stage  = VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT;
 			break;
 		case texture_state_shader_compute_read:
-			new_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			new_layout = VK_IMAGE_LAYOUT_GENERAL;
 			dst_access = VK_ACCESS_SHADER_READ_BIT;
 			new_stage  = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
 			break;
