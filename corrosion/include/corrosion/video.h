@@ -168,6 +168,7 @@ enum {
 	texture_state_shader_write = 0,
 	texture_state_shader_graphics_read,
 	texture_state_shader_compute_read,
+	texture_state_shader_compute_sample,
 	texture_state_attachment_write
 };
 

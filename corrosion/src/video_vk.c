@@ -3081,6 +3081,11 @@ void video_vk_texture_barrier(struct texture* texture_, u32 state) {
 			src_access = VK_ACCESS_SHADER_READ_BIT;
 			old_stage  = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
 			break;
+		case texture_state_shader_compute_sample:
+			old_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			src_access = VK_ACCESS_SHADER_READ_BIT;
+			old_stage  = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+			break;
 		case texture_state_attachment_write:
 			old_layout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL_KHR;
 			src_access = texture->is_depth ? VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT : VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
@@ -3101,6 +3106,11 @@ void video_vk_texture_barrier(struct texture* texture_, u32 state) {
 			break;
 		case texture_state_shader_compute_read:
 			new_layout = VK_IMAGE_LAYOUT_GENERAL;
+			dst_access = VK_ACCESS_SHADER_READ_BIT;
+			new_stage  = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+			break;
+		case texture_state_shader_compute_sample:
+			new_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 			dst_access = VK_ACCESS_SHADER_READ_BIT;
 			new_stage  = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
 			break;
