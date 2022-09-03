@@ -10,6 +10,13 @@ struct vertex {
 	v2f uv;
 };
 
+struct light {
+	v3f position;
+	f32 power;
+	v3f colour;
+	pad(4);
+};
+
 struct {
 	struct pipeline* draw_pip;
 	struct pipeline* blit_pip;
@@ -40,6 +47,8 @@ struct {
 		pad(4); m4f view;
 		v3f chunk_pos;
 		pad(4); v3f chunk_extent;
+		u32 light_count;
+		struct light lights[32];
 	} render_data;
 
 	struct {
@@ -175,8 +184,17 @@ static void create_resources() {
 							}
 						},
 						{
-							.name = "Config",
+							.name = "depth_tex",
 							.binding = 1,
+							.stage = pipeline_stage_fragment,
+							.resource = {
+								.type = pipeline_resource_texture,
+								.texture = app.draw_result_depth
+							}
+						},
+						{
+							.name = "Config",
+							.binding = 2,
 							.stage = pipeline_stage_fragment,
 							.resource = {
 								.type = pipeline_resource_uniform_buffer,
@@ -184,7 +202,7 @@ static void create_resources() {
 							}
 						}
 					},
-					.count = 2
+					.count = 3
 				}
 			},
 			.count = 1
@@ -346,6 +364,24 @@ void cr_update(f64 ts) {
 	app.render_data.view = get_camera_view(&app.camera);
 	app.render_data.chunk_pos = make_v3f(app.chunk.position.x, app.chunk.position.y, app.chunk.position.z);
 	app.render_data.chunk_extent = make_v3f(app.chunk.extent.x, app.chunk.extent.y, app.chunk.extent.z);
+
+	app.render_data.light_count = 4;
+
+	app.render_data.lights[0].position = make_v3f(5.0f, 30.0f, 5.0f);
+	app.render_data.lights[0].power = 1.0f;
+	app.render_data.lights[0].colour = make_rgb(0xffffff);
+
+	app.render_data.lights[1].position = make_v3f(20.0f, 25.0f, 20.0f);
+	app.render_data.lights[1].power = 10.0f;
+	app.render_data.lights[1].colour = make_rgb(0xff0000);
+
+	app.render_data.lights[2].position = make_v3f(30.0f, 25.0f, 20.0f);
+	app.render_data.lights[2].power = 10.0f;
+	app.render_data.lights[2].colour = make_rgb(0x00ff00);
+
+	app.render_data.lights[3].position = make_v3f(16.0f, 10.0f, 14.0f);
+	app.render_data.lights[3].power = 30.0f;
+	app.render_data.lights[3].colour = make_rgb(0xffffff);
 
 	app.blit_data.image_size = make_v2f((f32)get_window_size().x, (f32)get_window_size().y);
 

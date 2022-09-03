@@ -11,6 +11,12 @@ const float infinity = 1.0 / 0.0;
 
 layout (local_size_x = 16, local_size_y = 16) in;
 
+struct Light {
+	vec3 position;
+	float power;
+	vec3 colour;
+};
+
 layout (binding = 3) uniform RenderData {
 	ivec2 resolution;
 	float fov;
@@ -18,6 +24,9 @@ layout (binding = 3) uniform RenderData {
 	mat4 view;
 	vec3 chunk_pos;
 	vec3 chunk_extent;
+
+	uint light_count;
+	Light lights[32];
 };
 
 layout (binding = 0, rgba16f) uniform image2D output_colour;
@@ -50,7 +59,20 @@ bool voxel_at(in vec3 pos, out vec3 colour) {
 	colour.g = (float(((v >> 16) & 0xff))) / 255.0;
 	colour.b = (float(((v >> 8)  & 0xff))) / 255.0;
 
-	return v != 0;
+	return v != 0.0;
+}
+
+float get_voxel(in vec3 pos) {
+	uvec3 e = uvec3(uint(chunk_extent.x), uint(chunk_extent.y), uint(chunk_extent.z));
+	uvec3 p = uvec3(uint(pos.x), uint(pos.y), uint(pos.z));
+
+	if (p.x >= e.x || p.y >= e.y || p.z >= e.z) {
+		return float(0.0);
+	}
+
+	uint v = voxels[(e.x * e.y * p.z) + (e.y * p.y) + p.x];
+
+	return float(v != 0.0);
 }
 
 bool intersect_bound(in Ray ray, in Bound bound, out float t_near, out float t_far) {
@@ -200,9 +222,28 @@ void main() {
 
 		vec3 vcol, vnorm, vpos;
 		if (raytrace(secondary, chunk_bound, 1000.0, vcol, vpos, vnorm)) {
-			colour = vcol;
 			normal = vnorm;
 			position = (view * vec4(vpos, 1.0)).xyz;
+
+			/* Apply lighting. */
+			vec3 lighting = vcol * vec3(0.1);
+			for (uint i = 0; i < light_count; i++) {
+				Light light = lights[i];
+				Ray light_ray = Ray(
+					vpos - secondary.dir * 0.001,
+					normalize(light.position - vpos)
+				);
+
+				vec3 hcol, hnorm, hpos;
+				float dist = length(light.position - vpos);
+				if (!raytrace(light_ray, chunk_bound, dist, hcol, hnorm, hpos)) {
+					float attenuation = 1.0 / (pow(dist, 2.0) + 1);
+
+					lighting += (vcol * vec3(0.1)) + vcol * attenuation * light.power * light.colour;
+				}
+			}
+
+			colour = lighting * vcol;
 		}
 	}
 

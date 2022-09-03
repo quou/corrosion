@@ -26,13 +26,15 @@ layout (location = 0) in VSOut {
 } fs_in;
 
 layout (binding = 0) uniform sampler2D image;
+layout (binding = 1) uniform sampler2D depth_tex;
 
-layout (binding = 1) uniform Config {
+layout (binding = 2) uniform Config {
 	vec2 image_size;
 };
 
 void main() {
-	colour = texture(image, fs_in.uv);
+	float gamma = 2.2;
+	colour = vec4(pow(texture(image, fs_in.uv).rgb, vec3(1.0 / gamma)), 1.0);
 }
 
 #end fragment
