@@ -172,7 +172,7 @@
     </CustomBuild>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ProjectReference Include="..\shadercompiler\shadercompiler.vcxproj">
+    <ProjectReference Include="..\..\shadercompiler\shadercompiler.vcxproj">
       <Project>{f26d760e-ebb9-4ad9-ba11-a313a23efb9b}</Project>
     </ProjectReference>
   </ItemGroup>

@@ -15,6 +15,7 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <CustomBuild Include="..\..\..\..\demos\voxel\src\raymarch.glsl" />
+    <CustomBuild Include="..\..\..\..\demos\voxel\src\blit.glsl" />
+    <CustomBuild Include="..\..\..\..\demos\voxel\src\raytrace.glsl" />
   </ItemGroup>
 </Project>
