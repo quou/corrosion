@@ -59,7 +59,7 @@ struct {
 
 #define check_fb_valid(n_) \
 	do { \
-		if (fb == null || !table_get(validation_state.fb_meta, fb)) { \
+		if (fb != video.get_default_fb() && !table_get(validation_state.fb_meta, fb)) { \
 			error("video." n_ ": fb must be a valid pointer to a framebuffer object"); \
 			ok = false; \
 			abort(); \

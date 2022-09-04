@@ -71,6 +71,18 @@ void video_gl_deinit() {
 }
 
 void video_gl_begin() {
+	if (gctx.want_recreate) {
+		struct video_gl_framebuffer* framebuffer = gctx.framebuffers.head;
+		while (framebuffer) {
+			if (framebuffer->flags & framebuffer_flags_fit) {
+				video_gl_resize_framebuffer((struct framebuffer*)framebuffer, get_window_size());
+			}
+
+			framebuffer = framebuffer->next;
+		}
+
+		gctx.want_recreate = false;
+	}
 }
 
 void video_gl_end() {
@@ -78,7 +90,7 @@ void video_gl_end() {
 }
 
 void video_gl_want_recreate() {
-
+	gctx.want_recreate = true;
 }
 
 static void video_gl_init_framebuffer(struct video_gl_framebuffer* fb, u32 flags, v2i size,
@@ -86,8 +98,10 @@ static void video_gl_init_framebuffer(struct video_gl_framebuffer* fb, u32 flags
 	memset(fb, 0, sizeof *fb);
 
 	fb->size = size;
+	fb->flags = flags;
 
 	check_gl(glGenFramebuffers(1, &fb->id));
+	check_gl(glGenFramebuffers(1, &fb->flipped_fb));
 	check_gl(glBindFramebuffer(GL_FRAMEBUFFER, fb->id));
 
 	for (usize i = 0; i < attachment_count; i++) {
@@ -100,10 +114,16 @@ static void video_gl_init_framebuffer(struct video_gl_framebuffer* fb, u32 flags
 		}
 	}
 
-	fb->colours = core_calloc(fb->colour_count, sizeof *fb->colours);
-	check_gl(glGenTextures(fb->colour_count, fb->colours));
+	if (fb->colour_count) {
+		fb->colours = core_calloc(fb->colour_count, sizeof *fb->colours);
+		check_gl(glGenTextures(fb->colour_count, fb->colours));
+
+		fb->flipped_colours = core_calloc(fb->colour_count, sizeof *fb->flipped_colours);
+	}
 
 	fb->colour_count = 0;
+
+	usize max_attachment_size = 0;
 
 	/* Colour attachments. */
 	for (usize i = 0; i < attachment_count; i++) {
@@ -117,20 +137,27 @@ static void video_gl_init_framebuffer(struct video_gl_framebuffer* fb, u32 flags
 			GLenum format = GL_RGBA;
 			GLenum type = GL_UNSIGNED_BYTE;
 
+			usize pixel_size = 4;
+
 			switch (desc->format) {
 				case framebuffer_format_rgba8i:
 					format = GL_RGBA;
 					type = GL_UNSIGNED_BYTE;
+					pixel_size = 4;
 					break;
 				case framebuffer_format_rgba16f:
 					format = GL_RGBA16F;
 					type = GL_HALF_FLOAT;
+					pixel_size = 8;
 					break;
 				case framebuffer_format_rgba32f:
 					format = GL_RGBA32F;
 					type = GL_FLOAT;
+					pixel_size = 16;
 					break;
 			}
+
+			max_attachment_size = cr_max((size.x * size.y * pixel_size), max_attachment_size);
 
 			check_gl(glTexImage2D(GL_TEXTURE_2D, 0, format, size.x, size.y, 0, GL_RGBA, type, null));
 
@@ -141,7 +168,25 @@ static void video_gl_init_framebuffer(struct video_gl_framebuffer* fb, u32 flags
 
 			check_gl(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + colour_index, GL_TEXTURE_2D, fb->colours[colour_index], 0));
 
-			table_set(fb->attachment_map, i, fb->colours[colour_index]);
+			u32 flipped;
+			check_gl(glGenTextures(1, &flipped));
+			check_gl(glBindTexture(GL_TEXTURE_2D, flipped));
+			check_gl(glTexImage2D(GL_TEXTURE_2D, 0, format, size.x, size.y, 0, GL_RGBA, type, null));
+			check_gl(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST));
+			check_gl(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST));
+			check_gl(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE));
+			check_gl(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE));
+
+			check_gl(glBindFramebuffer(GL_FRAMEBUFFER, fb->flipped_fb));
+			check_gl(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + colour_index, GL_TEXTURE_2D, flipped, 0));
+			check_gl(glBindFramebuffer(GL_FRAMEBUFFER, fb->id));
+
+			fb->flipped_colours[colour_index] = (struct video_gl_texture) {
+				.id = flipped,
+				.size = fb->size
+			};
+
+			table_set(fb->attachment_map, i, &fb->flipped_colours[colour_index]);
 		} else if (desc->type == framebuffer_attachment_depth) {
 			check_gl(glGenTextures(1, &fb->depth_attachment));
 			check_gl(glBindTexture(GL_TEXTURE_2D, fb->depth_attachment));
@@ -155,9 +200,29 @@ static void video_gl_init_framebuffer(struct video_gl_framebuffer* fb, u32 flags
 
 			check_gl(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_TEXTURE_2D, fb->depth_attachment, 0));
 
-			table_set(fb->attachment_map, i, fb->depth_attachment);
+			usize pixel_size = 4;
+
+			max_attachment_size = cr_max((size.x * size.y * pixel_size), max_attachment_size);
+
+			u32 flipped;
+			check_gl(glGenTextures(1, &flipped));
+			check_gl(glBindTexture(GL_TEXTURE_2D, flipped));
+			check_gl(glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH24_STENCIL8, size.x, size.y, 0, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, null));
+			check_gl(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST));
+			check_gl(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST));
+			check_gl(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE));
+			check_gl(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE));
+
+			check_gl(glBindFramebuffer(GL_FRAMEBUFFER, fb->flipped_fb));
+			check_gl(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_TEXTURE_2D, flipped, 0));
+			check_gl(glBindFramebuffer(GL_FRAMEBUFFER, fb->id));
+
+			table_set(fb->attachment_map, i, &fb->flipped_depth);
 		}
 	}
+
+	fb->pixel_buffer_size = max_attachment_size;
+	fb->pixel_buffer = core_alloc(max_attachment_size);
 
 	check_gl(u32 stat = glCheckFramebufferStatus(GL_FRAMEBUFFER));
 	if (stat != GL_FRAMEBUFFER_COMPLETE) {
@@ -169,6 +234,8 @@ static void video_gl_init_framebuffer(struct video_gl_framebuffer* fb, u32 flags
 
 static void video_gl_deinit_framebuffer(struct video_gl_framebuffer* fb) {
 	core_free(fb->colours);
+	core_free(fb->pixel_buffer);
+	core_free(fb->flipped_colours);
 	free_table(fb->attachment_map);
 }
 
@@ -177,6 +244,8 @@ struct framebuffer* video_gl_new_framebuffer(u32 flags, v2i size, const struct f
 
 	video_gl_init_framebuffer(fb, flags, size, attachments, attachment_count);
 
+	list_push(gctx.framebuffers, fb);
+
 	return (struct framebuffer*)fb;
 }
 
@@ -184,6 +253,8 @@ void video_gl_free_framebuffer(struct framebuffer* fb_) {
 	struct video_gl_framebuffer* fb = (struct video_gl_framebuffer*)fb_;
 
 	video_gl_deinit_framebuffer(fb);
+
+	list_remove(gctx.framebuffers, fb);
 
 	core_free(fb);
 }
@@ -230,7 +301,26 @@ void video_gl_begin_framebuffer(struct framebuffer* fb_) {
 	}
 }
 
-void video_gl_end_framebuffer(struct framebuffer* fb) {
+void video_gl_end_framebuffer(struct framebuffer* fb_) {
+	struct video_gl_framebuffer* fb = (struct video_gl_framebuffer*)fb_;
+
+	if (fb_ != gctx.default_fb) {
+		/* Flip the framebuffer. */
+		check_gl(glBindFramebuffer(GL_FRAMEBUFFER, fb->flipped_fb));
+		check_gl(glBindFramebuffer(GL_READ_FRAMEBUFFER, fb->id));
+
+		GLbitfield mask;
+		if (fb->colour_count > 0) {
+			mask |= GL_COLOR_BUFFER_BIT;
+		}
+
+		if (fb->has_depth) {
+			mask |= GL_DEPTH_BUFFER_BIT;
+		}
+
+		check_gl(glBlitFramebuffer(0, 0, fb->size.x, fb->size.y, 0, fb->size.y, fb->size.x, 0, mask, GL_NEAREST));
+	}
+
 	gctx.bound_fb = null;
 	check_gl(glBindFramebuffer(GL_FRAMEBUFFER, 0));
 }
@@ -239,8 +329,9 @@ struct framebuffer* video_gl_get_default_fb() {
 	return gctx.default_fb;
 }
 
-struct texture* video_gl_get_attachment(struct framebuffer* fb, u32 index) {
-	abort_with("Not implemented.");
+struct texture* video_gl_get_attachment(struct framebuffer* fb_, u32 index) {
+	struct video_gl_framebuffer* fb = (struct video_gl_framebuffer*)fb_;
+	return *(struct texture**)(table_get(fb->attachment_map, (usize)index));
 	return null;
 }
 
@@ -656,9 +747,62 @@ void video_gl_set_scissor(v4i rect) {
 	glScissor(rect.x, fb_size.y - (rect.y + rect.w), rect.z, rect.w);
 }
 
-static void init_texture(struct video_gl_texture* texture, const struct image* image, u32 flags) {
+static void init_texture(struct video_gl_texture* texture, const struct image* image, u32 flags, u32 format) {
 	texture->flags = flags;
 	texture->size = image->size;
+
+	GLenum gl_format = GL_RGBA;
+	GLenum gl_type = GL_UNSIGNED_BYTE;
+	switch (format) {
+		case texture_format_r8i:
+			gl_format = GL_RED;
+			gl_type = GL_UNSIGNED_BYTE;
+			break;
+		case texture_format_r16f:
+			gl_format = GL_RED;
+			gl_type = GL_HALF_FLOAT;
+			break;
+		case texture_format_r32f:
+			gl_format = GL_RED;
+			gl_type = GL_FLOAT;
+			break;
+		case texture_format_rg8i:
+			gl_format = GL_RG;
+			gl_type = GL_UNSIGNED_BYTE;
+			break;
+		case texture_format_rg16f:
+			gl_format = GL_RG;
+			gl_type = GL_HALF_FLOAT;
+			break;
+		case texture_format_rg32f:
+			gl_format = GL_RG;
+			gl_type = GL_FLOAT;
+			break;
+		case texture_format_rgb8i: 
+			gl_format = GL_RGB;
+			gl_type = GL_UNSIGNED_BYTE;
+			break;
+		case texture_format_rgb16f:
+			gl_format = GL_RGB;
+			gl_type = GL_HALF_FLOAT;
+			break;
+		case texture_format_rgb32f:
+			gl_format = GL_RGB;
+			gl_type = GL_FLOAT;
+			break;
+		case texture_format_rgba8i:
+			gl_format = GL_RGBA;
+			gl_type = GL_UNSIGNED_BYTE;
+			break;
+		case texture_format_rgba16f:
+			gl_format = GL_RGBA;
+			gl_type = GL_HALF_FLOAT;
+			break;
+		case texture_format_rgba32f:
+			gl_format = GL_RGBA;
+			gl_type = GL_FLOAT;
+			break;
+	}
 
 	u32 filter = flags & texture_flags_filter_linear ? GL_LINEAR : GL_NEAREST;
 
@@ -669,8 +813,8 @@ static void init_texture(struct video_gl_texture* texture, const struct image* i
 	check_gl(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT));
 	check_gl(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT));
 
-	check_gl(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, image->size.x, image->size.y, 0,
-		GL_RGBA, GL_UNSIGNED_BYTE, image->colours));
+	check_gl(glTexImage2D(GL_TEXTURE_2D, 0, gl_format, image->size.x, image->size.y, 0,
+		gl_format, gl_type, image->colours));
 }
 
 static void deinit_texture(struct video_gl_texture* texture) {
@@ -680,7 +824,7 @@ static void deinit_texture(struct video_gl_texture* texture) {
 struct texture* video_gl_new_texture(const struct image* image, u32 flags, u32 format) {
 	struct video_gl_texture* texture = core_calloc(1, sizeof *texture);
 
-	init_texture(texture, image, flags);
+	init_texture(texture, image, flags, format);
 
 	return (struct texture*)texture;
 }
@@ -811,7 +955,7 @@ static void texture_on_load(const char* filename, u8* raw, usize raw_size, void*
 	struct image image;
 	init_image_from_raw(&image, raw, raw_size);
 
-	init_texture(payload, &image, *(u32*)udata);
+	init_texture(payload, &image, *(u32*)udata, texture_format_rgba8i);
 }
 
 static void texture_on_unload(void* payload, usize payload_size) {

@@ -299,10 +299,14 @@ static void add_memcpy_cmd(struct update_queue* buf, void* target, const void* d
 struct gl_video_context {
 	struct framebuffer* default_fb;
 
+	bool want_recreate;
+
 	struct video_gl_pipeline* bound_pipeline;
 	const struct video_gl_vertex_buffer* bound_vb;
 	const struct video_gl_index_buffer*  bound_ib;
 	const struct video_gl_framebuffer*   bound_fb;
+
+	list(struct video_gl_framebuffer) framebuffers;
 
 	u32 draw_call_count;
 };
@@ -370,6 +374,8 @@ struct video_gl_texture {
 struct video_gl_framebuffer {
 	u32 id;
 
+	u32 flags;
+
 	bool has_depth;
 
 	v2i size;
@@ -379,5 +385,16 @@ struct video_gl_framebuffer {
 
 	u32 depth_attachment;
 
-	table(usize, u32) attachment_map; 
+	usize pixel_buffer_size;
+	u8* pixel_buffer;
+	u8* row_buffer;
+
+	u32 flipped_fb;
+	struct video_gl_texture* flipped_colours;
+	struct video_gl_texture flipped_depth;
+
+	table(usize, struct video_gl_texture*) attachment_map; 
+
+	struct video_gl_framebuffer* next;
+	struct video_gl_framebuffer* prev;
 };

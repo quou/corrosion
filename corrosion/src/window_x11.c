@@ -9,6 +9,7 @@
 
 #include "core.h"
 #include "video.h"
+#include "video_gl.h"
 #include "video_internal.h"
 #include "video_vk.h"
 #include "window.h"
@@ -273,6 +274,9 @@ void update_events() {
 
 					if (window.api == video_api_vulkan) {
 						video_vk_want_recreate();
+					} else if (window.api == video_api_opengl) {
+						video_gl_want_recreate();
+						info("hi");
 					}
 
 					struct window_event resize_event = {

@@ -2,7 +2,7 @@
 
 #include <corrosion/cr.h>
 
-//#if 0
+#if 0
 
 struct {
 	struct texture* texturea;
@@ -439,9 +439,9 @@ void cr_deinit() {
 	ui_deinit();
 }
 
-//#endif
+#endif
 
-#if 0
+//#if 0
 struct vertex {
 	v2f position;
 	v2f uv;
@@ -451,6 +451,9 @@ struct {
 	struct pipeline* pipeline;
 	struct vertex_buffer* tri_vb;
 	struct index_buffer* tri_ib;
+
+	struct framebuffer* fb;
+	struct pipeline* invert_pip;
 
 	struct texture* texture;
 
@@ -491,13 +494,28 @@ struct app_config cr_config() {
 
 void cr_init() {
 	const struct shader* shader = load_shader("shaders/test.csh");
+	const struct shader* invert_shader = load_shader("shaders/invert.csh");
 
 	app.texture = load_texture("res/chad.jpg", texture_flags_filter_linear);
+
+	app.fb = video.new_framebuffer(framebuffer_flags_headless | framebuffer_flags_fit, get_window_size(),
+		(struct framebuffer_attachment_desc[]) {
+			{
+				.type   = framebuffer_attachment_colour,
+				.format = framebuffer_format_rgba16f,
+				.clear_colour = make_rgba(0x010111, 255)
+			},
+			{
+				.type   = framebuffer_attachment_depth,
+				.format = framebuffer_format_depth,
+				.clear_colour = make_rgba(0x010111, 255)
+			}
+		}, 2);
 
 	app.pipeline = video.new_pipeline(
 		pipeline_flags_draw_tris | pipeline_flags_cull_back_face,
 		shader,
-		video.get_default_fb(),
+		app.fb,
 		(struct pipeline_attribute_bindings) {
 			.bindings = (struct pipeline_attribute_binding[]) {
 				{
@@ -595,11 +613,64 @@ void cr_init() {
 		}
 	);
 
+	app.invert_pip = video.new_pipeline(
+		pipeline_flags_draw_tris,
+		invert_shader,
+		video.get_default_fb(),
+		(struct pipeline_attribute_bindings) {
+			.bindings = (struct pipeline_attribute_binding[]) {
+				{
+					.attributes = (struct pipeline_attributes) {
+						.attributes = (struct pipeline_attribute[]) {
+							{
+								.name     = "position",
+								.location = 0,
+								.offset   = 0,
+								.type     = pipeline_attribute_vec2
+							},
+							{
+								.name     = "uv",
+								.location = 1,
+								.offset   = sizeof(v2f),
+								.type     = pipeline_attribute_vec2
+							},
+						},
+						.count = 2
+					},
+					.stride = sizeof(v2f) * 2,
+					.rate = pipeline_attribute_rate_per_vertex,
+					.binding = 0
+				}
+			},
+			.count = 1
+		},
+		(struct pipeline_descriptor_sets) {
+			.sets = (struct pipeline_descriptor_set[]) {
+				{
+					.name = "primary",
+					.descriptors = (struct pipeline_descriptor[]) {
+						{
+							.name     = "src",
+							.binding  = 0,
+							.stage    = pipeline_stage_fragment,
+							.resource = {
+								.type    = pipeline_resource_texture,
+								.texture = video.get_attachment(app.fb, 0)
+							}
+						},
+					},
+					.count = 1,
+				}
+			},
+			.count = 1
+		}
+	);
+
 	struct vertex verts[] = {
-		{ { -0.5f,  0.5f }, { 1.0f, 0.0f } },
-		{ { -0.5f, -0.5f }, { 1.0f, 1.0f } },
-		{ {  0.5f, -0.5f }, { 0.0f, 1.0f } },
-		{ {  0.5f,  0.5f }, { 0.0f, 0.0f } }
+		{ { -1.0f,  1.0f }, { 1.0f, 0.0f } },
+		{ { -1.0f, -1.0f }, { 1.0f, 1.0f } },
+		{ {  1.0f, -1.0f }, { 0.0f, 1.0f } },
+		{ {  1.0f,  1.0f }, { 0.0f, 0.0f } }
 	};
 
 	u16 indices[] = {
@@ -631,7 +702,7 @@ void cr_update(f64 ts) {
 	video.update_pipeline_uniform(app.pipeline, "fubdata", "FragmentConfig", &app.f_config);
 	video.update_pipeline_uniform(app.pipeline, "fubdata_blue", "FragmentConfig", &app.f_config_blue);
 
-	video.begin_framebuffer(video.get_default_fb());
+	video.begin_framebuffer(app.fb);
 		video.begin_pipeline(app.pipeline);
 			video.bind_pipeline_descriptor_set(app.pipeline, "primary", 0);
 			video.bind_pipeline_descriptor_set(app.pipeline, "ubdata", 1);
@@ -646,6 +717,15 @@ void cr_update(f64 ts) {
 			video.bind_index_buffer(app.tri_ib);
 			video.draw_indexed(6, 0, 1);
 		video.end_pipeline(app.pipeline);
+	video.end_framebuffer(app.fb);
+
+	video.begin_framebuffer(video.get_default_fb());
+		video.begin_pipeline(app.invert_pip);
+			video.bind_vertex_buffer(app.tri_vb, 0);
+			video.bind_index_buffer(app.tri_ib);
+			video.bind_pipeline_descriptor_set(app.invert_pip, "primary", 0);
+			video.draw_indexed(6, 0, 1);
+		video.end_pipeline(app.invert_pip);
 
 		gizmos_draw();
 	video.end_framebuffer(video.get_default_fb());
@@ -653,7 +733,9 @@ void cr_update(f64 ts) {
 
 void cr_deinit() {
 	video.free_pipeline(app.pipeline);
+	video.free_pipeline(app.invert_pip);
+	video.free_framebuffer(app.fb);
 	video.free_vertex_buffer(app.tri_vb);
 	video.free_index_buffer(app.tri_ib);
 }
-#endif
+//#endif
