@@ -309,6 +309,8 @@ struct gl_video_context {
 	list(struct video_gl_framebuffer) framebuffers;
 
 	u32 draw_call_count;
+
+	v4f default_clear;
 };
 
 struct video_gl_descriptor {
@@ -383,11 +385,12 @@ struct video_gl_framebuffer {
 	u32* colours;
 	usize colour_count;
 
+	v4f* clear_colours;
+
 	u32 depth_attachment;
 
-	usize pixel_buffer_size;
-	u8* pixel_buffer;
-	u8* row_buffer;
+	u32* colour_formats;
+	u32* colour_types;
 
 	u32 flipped_fb;
 	struct video_gl_texture* flipped_colours;

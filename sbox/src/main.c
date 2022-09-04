@@ -482,7 +482,7 @@ struct app_config cr_config() {
 #else
 			.enable_validation = false,
 #endif
-			.clear_colour = make_rgba(0x000000, 255)
+			.clear_colour = make_rgba(0xff0000, 255)
 		},
 		.window_config = (struct window_config) {
 			.title = "Sandbox",

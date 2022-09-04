@@ -276,7 +276,6 @@ void update_events() {
 						video_vk_want_recreate();
 					} else if (window.api == video_api_opengl) {
 						video_gl_want_recreate();
-						info("hi");
 					}
 
 					struct window_event resize_event = {

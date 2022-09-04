@@ -64,6 +64,7 @@ void video_gl_init(const struct video_config* config) {
 	info("GL_VERSION: \t%s.", glGetString(GL_VERSION));
 
 	gctx.default_fb = (void*)-1;
+	gctx.default_clear = config->clear_colour;
 }
 
 void video_gl_deinit() {
@@ -119,11 +120,13 @@ static void video_gl_init_framebuffer(struct video_gl_framebuffer* fb, u32 flags
 		check_gl(glGenTextures(fb->colour_count, fb->colours));
 
 		fb->flipped_colours = core_calloc(fb->colour_count, sizeof *fb->flipped_colours);
+
+		fb->colour_formats = core_calloc(fb->colour_count, sizeof *fb->colour_formats);
+		fb->colour_types = core_calloc(fb->colour_count, sizeof *fb->colour_types);
+		fb->clear_colours = core_calloc(fb->colour_count, sizeof *fb->clear_colours);
 	}
 
 	fb->colour_count = 0;
-
-	usize max_attachment_size = 0;
 
 	/* Colour attachments. */
 	for (usize i = 0; i < attachment_count; i++) {
@@ -157,8 +160,6 @@ static void video_gl_init_framebuffer(struct video_gl_framebuffer* fb, u32 flags
 					break;
 			}
 
-			max_attachment_size = cr_max((size.x * size.y * pixel_size), max_attachment_size);
-
 			check_gl(glTexImage2D(GL_TEXTURE_2D, 0, format, size.x, size.y, 0, GL_RGBA, type, null));
 
 			check_gl(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST));
@@ -186,6 +187,11 @@ static void video_gl_init_framebuffer(struct video_gl_framebuffer* fb, u32 flags
 				.size = fb->size
 			};
 
+			fb->colour_formats[colour_index] = format;
+			fb->colour_types[colour_index] = type;
+
+			fb->clear_colours[colour_index] = desc->clear_colour;
+
 			table_set(fb->attachment_map, i, &fb->flipped_colours[colour_index]);
 		} else if (desc->type == framebuffer_attachment_depth) {
 			check_gl(glGenTextures(1, &fb->depth_attachment));
@@ -201,8 +207,6 @@ static void video_gl_init_framebuffer(struct video_gl_framebuffer* fb, u32 flags
 			check_gl(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_TEXTURE_2D, fb->depth_attachment, 0));
 
 			usize pixel_size = 4;
-
-			max_attachment_size = cr_max((size.x * size.y * pixel_size), max_attachment_size);
 
 			u32 flipped;
 			check_gl(glGenTextures(1, &flipped));
@@ -221,9 +225,6 @@ static void video_gl_init_framebuffer(struct video_gl_framebuffer* fb, u32 flags
 		}
 	}
 
-	fb->pixel_buffer_size = max_attachment_size;
-	fb->pixel_buffer = core_alloc(max_attachment_size);
-
 	check_gl(u32 stat = glCheckFramebufferStatus(GL_FRAMEBUFFER));
 	if (stat != GL_FRAMEBUFFER_COMPLETE) {
 		abort_with("Failed to create framebuffer.");
@@ -234,8 +235,10 @@ static void video_gl_init_framebuffer(struct video_gl_framebuffer* fb, u32 flags
 
 static void video_gl_deinit_framebuffer(struct video_gl_framebuffer* fb) {
 	core_free(fb->colours);
-	core_free(fb->pixel_buffer);
 	core_free(fb->flipped_colours);
+	core_free(fb->colour_types);
+	core_free(fb->colour_formats);
+	core_free(fb->clear_colours);
 	free_table(fb->attachment_map);
 }
 
@@ -273,7 +276,24 @@ void video_gl_resize_framebuffer(struct framebuffer* fb_, v2i new_size) {
 	struct video_gl_framebuffer* fb = (struct video_gl_framebuffer*)fb_;
 
 	if (fb_ != gctx.default_fb && !v2i_eq(fb->size, new_size)) {
-		abort_with("Not implemented");
+		fb->size = new_size;
+
+		for (usize i = 0; i < fb->colour_count; i++) {
+			check_gl(glBindTexture(GL_TEXTURE_2D, fb->colours[i]));
+			check_gl(glTexImage2D(GL_TEXTURE_2D, 0, fb->colour_formats[i], new_size.x, new_size.y, 0, GL_RGBA, fb->colour_types[i], null));
+
+			check_gl(glBindTexture(GL_TEXTURE_2D, fb->flipped_colours[i].id));
+			check_gl(glTexImage2D(GL_TEXTURE_2D, 0, fb->colour_formats[i], new_size.x, new_size.y, 0, GL_RGBA, fb->colour_types[i], null));
+		}
+
+		if (fb->has_depth) {
+			check_gl(glBindTexture(GL_TEXTURE_2D, fb->depth_attachment));
+			check_gl(glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH24_STENCIL8, new_size.x, new_size.y, 0, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, null));
+
+
+			check_gl(glBindTexture(GL_TEXTURE_2D, fb->flipped_depth.id));
+			check_gl(glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH24_STENCIL8, new_size.x, new_size.y, 0, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, null));
+		}
 	}
 }
 
@@ -288,12 +308,23 @@ void video_gl_begin_framebuffer(struct framebuffer* fb_) {
 		check_gl(glBindFramebuffer(GL_FRAMEBUFFER, 0));
 		check_gl(glViewport(0, 0, (GLsizei)window_size.x, (GLsizei)window_size.y));
 
+		v4f c = gctx.default_clear;
+
+		check_gl(glClearColor(c.r, c.g, c.b, c.a));
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	} else {
 		check_gl(glBindFramebuffer(GL_FRAMEBUFFER, fb->id));
 		check_gl(glViewport(0, 0, fb->size.x, fb->size.y));
 
-		glClear(GL_COLOR_BUFFER_BIT);
+		for (usize i = 0; i < fb->colour_count; i++) {
+			v4f c = fb->clear_colours[i];
+
+			GLenum a = GL_COLOR_ATTACHMENT0 + i;
+
+			check_gl(glDrawBuffers(1, &a));
+			check_gl(glClearColor(c.r, c.g, c.b, c.a));
+			check_gl(glClear(GL_COLOR_BUFFER_BIT));
+		}
 		
 		if (fb->has_depth) {
 			glClear(GL_DEPTH_BUFFER_BIT);
