@@ -321,7 +321,8 @@ void video_gl_begin_framebuffer(struct framebuffer* fb_) {
 
 			GLenum a = GL_COLOR_ATTACHMENT0 + i;
 
-			check_gl(glDrawBuffers(1, &a));
+			/* TODO: Fix this */
+			//check_gl(glDrawBuffers(1, &a));
 			check_gl(glClearColor(c.r, c.g, c.b, c.a));
 			check_gl(glClear(GL_COLOR_BUFFER_BIT));
 		}
@@ -726,8 +727,17 @@ void video_gl_update_vertex_buffer(struct vertex_buffer* vb_, const void* data, 
 	check_gl(glBufferSubData(GL_ARRAY_BUFFER, offset, size, data));
 }
 
-void video_gl_copy_vertex_buffer(struct vertex_buffer* dst, usize dst_offset, const struct vertex_buffer* src, usize src_offset, usize size) {
-	abort_with("Not implemented");
+void video_gl_copy_vertex_buffer(struct vertex_buffer* dst_, usize dst_offset, const struct vertex_buffer* src_, usize src_offset, usize size) {
+	struct video_gl_vertex_buffer* dst = (struct video_gl_vertex_buffer*)dst_;
+	const struct video_gl_vertex_buffer* src = (const struct video_gl_vertex_buffer*)src_;
+
+	check_gl(glBindBuffer(GL_COPY_READ_BUFFER,  src->id));
+	check_gl(glBindBuffer(GL_COPY_WRITE_BUFFER, dst->id));
+
+	check_gl(glCopyBufferSubData(GL_COPY_READ_BUFFER, GL_COPY_WRITE_BUFFER, src_offset, dst_offset, size));
+
+	check_gl(glBindBuffer(GL_COPY_READ_BUFFER,  0));
+	check_gl(glBindBuffer(GL_COPY_WRITE_BUFFER, 0));
 }
 
 struct index_buffer* video_gl_new_index_buffer(void* elements, usize count, u32 flags) {
