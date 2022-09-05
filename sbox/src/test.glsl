@@ -9,7 +9,7 @@ layout (location = 0) out VSOut {
 	vec2 uv;
 } vs_out;
 
-layout (std140, set = 1, binding = 0) uniform VertexConfig {
+layout (std140, set = 0, binding = 1) uniform VertexConfig {
 	mat4 transform;
 };
 
@@ -27,7 +27,7 @@ layout (location = 0) out vec4 colour;
 
 layout (set = 0, binding = 0) uniform sampler2D image;
 
-layout (std140, set = 2, binding = 0) uniform FragmentConfig {
+layout (std140, set = 1, binding = 0) uniform FragmentConfig {
 	vec3 obj_colour;
 };
 

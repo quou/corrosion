@@ -504,13 +504,8 @@ void cr_init() {
 				.type   = framebuffer_attachment_colour,
 				.format = framebuffer_format_rgba16f,
 				.clear_colour = make_rgba(0x010111, 255)
-			},
-			{
-				.type   = framebuffer_attachment_depth,
-				.format = framebuffer_format_depth,
-				.clear_colour = make_rgba(0x010111, 255)
 			}
-		}, 2);
+		}, 1);
 
 	app.pipeline = video.new_pipeline(
 		pipeline_flags_draw_tris | pipeline_flags_cull_back_face,
@@ -556,15 +551,9 @@ void cr_init() {
 								.texture = app.texture
 							}
 						},
-					},
-					.count = 1,
-					.name = "primary"
-				},
-				{
-					.descriptors = (struct pipeline_descriptor[]) {
 						{
 							.name = "VertexConfig",
-							.binding = 0,
+							.binding = 1,
 							.stage = pipeline_stage_vertex,
 							.resource = {
 								.type = pipeline_resource_uniform_buffer,
@@ -572,9 +561,8 @@ void cr_init() {
 							}
 						}
 					},
-					.count = 1,
-					.name = "ubdata"
-
+					.count = 2,
+					.name = "primary"
 				},
 				{
 					.descriptors = (struct pipeline_descriptor[]) {
@@ -609,7 +597,7 @@ void cr_init() {
 
 				}
 			},
-			.count = 4
+			.count = 3
 		}
 	);
 
@@ -698,19 +686,18 @@ void cr_update(f64 ts) {
 	gizmo_colour(make_rgba(0x00ffff, 255));
 	gizmo_box(make_v3f(1.0f, -1.0f, 3.0f), make_v3f(1.0f, 1.0f, 1.0f), euler(make_v3f(0.0f, 25.0f, 0.0f)));
 
-	video.update_pipeline_uniform(app.pipeline, "ubdata", "VertexConfig", &app.v_config);
+	video.update_pipeline_uniform(app.pipeline, "primary", "VertexConfig", &app.v_config);
 	video.update_pipeline_uniform(app.pipeline, "fubdata", "FragmentConfig", &app.f_config);
 	video.update_pipeline_uniform(app.pipeline, "fubdata_blue", "FragmentConfig", &app.f_config_blue);
 
 	video.begin_framebuffer(app.fb);
 		video.begin_pipeline(app.pipeline);
 			video.bind_pipeline_descriptor_set(app.pipeline, "primary", 0);
-			video.bind_pipeline_descriptor_set(app.pipeline, "ubdata", 1);
 
 			if (key_pressed(key_space)) {
-				video.bind_pipeline_descriptor_set(app.pipeline, "fubdata_blue", 2);
+				video.bind_pipeline_descriptor_set(app.pipeline, "fubdata_blue", 1);
 			} else {
-				video.bind_pipeline_descriptor_set(app.pipeline, "fubdata", 2);
+				video.bind_pipeline_descriptor_set(app.pipeline, "fubdata", 1);
 			}
 
 			video.bind_vertex_buffer(app.tri_vb, 0);

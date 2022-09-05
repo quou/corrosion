@@ -112,8 +112,6 @@ struct ShaderComputeHeader {
 struct ShaderHeader {
 	char header[3];
 	u8 is_compute;
-	u64 bind_table_count;
-	u64 bind_table_offset;
 
 	union {
 		ShaderRasterHeader raster_header;
@@ -134,16 +132,7 @@ struct DescSet {
 	std::vector<Desc> bindings;
 };
 
-struct DescID {
-	u32 set;
-	u32 binding;
-};
-
-/* Maps an ID optained from hashing a DescID to actual shader bindings, for OpenGL. */
-std::unordered_map<u64, u32> set_bindings;
 std::unordered_map<u32, DescSet> sets;
-
-u32 current_binding = 0;
 
 static std::string convert_filename(const std::string& path, const std::string& name) {
 	usize slash = path.find_last_of("/");
@@ -156,13 +145,7 @@ static void compute_set_bindings() {
 		auto& set = sp.second;
 
 		for (auto& desc : set.bindings) {
-			u32 binding = current_binding++;
-
-			desc.compiler.set_decoration((spirv_cross::ID)desc.id, spv::DecorationBinding, binding);
-
-			DescID did{ id, desc.binding };
-
-			set_bindings[elf_hash(reinterpret_cast<u8*>(&did), sizeof did)] = binding;
+			desc.compiler.set_decoration((spirv_cross::ID)desc.id, spv::DecorationBinding, id * 16 + desc.binding);
 		}
 	}
 }
@@ -357,11 +340,6 @@ i32 main(i32 argc, const char** argv) {
 		header.header[1] = 'S';
 		header.header[2] = 'H';
 
-		header.bind_table_count = 0;
-		for (const auto& sbp : set_bindings) {
-			header.bind_table_count++;
-		}
-
 		header.is_compute = 0;
 
 		ShaderRasterHeader& r_header = header.raster_header;
@@ -375,8 +353,6 @@ i32 main(i32 argc, const char** argv) {
 		r_header.v_gl_offset = r_header.f_offset + r_header.f_size;
 		r_header.f_gl_offset = r_header.v_gl_offset + r_header.v_gl_size;
 
-		header.bind_table_offset = r_header.f_gl_offset + r_header.f_gl_size;
-
 		fwrite(&header, 1, sizeof header, outfile);
 		fwrite(&vert_data[0], 1, r_header.v_size, outfile);
 		fwrite(&frag_data[0], 1, r_header.f_size, outfile);
@@ -385,12 +361,6 @@ i32 main(i32 argc, const char** argv) {
 		fwrite("\0", 1, 1, outfile);
 		fwrite(frag_opengl_src.c_str(), 1, frag_opengl_src.size(), outfile);
 		fwrite("\0", 1, 1, outfile);
-
-		/* Write the binding table, for the OpenGL backend. */
-		for (const auto& sbp : set_bindings) {
-			fwrite(&sbp.first, 1, sizeof sbp.first, outfile);
-			fwrite(&sbp.second, 1, sizeof sbp.second, outfile);
-		}
 
 		fclose(outfile);
 	} else {
@@ -423,11 +393,6 @@ i32 main(i32 argc, const char** argv) {
 		header.header[1] = 'S';
 		header.header[2] = 'H';
 
-		header.bind_table_count = 0;
-		for (const auto& sbp : set_bindings) {
-			header.bind_table_count++;
-		}
-
 		header.is_compute = 1;
 
 		ShaderComputeHeader& c_header = header.compute_header;
@@ -437,16 +402,9 @@ i32 main(i32 argc, const char** argv) {
 		c_header.gl_size = gl_src.size() + 1;
 		c_header.gl_offset = c_header.offset + c_header.size;
 
-		header.bind_table_offset = c_header.gl_offset + c_header.gl_size;
-
 		fwrite(&header, 1, sizeof header, outfile);
 		fwrite(&com_data[0], 1, com_data.size() * sizeof(u32), outfile);
 		fwrite(gl_src.c_str(), 1, gl_src.size() + 1, outfile);
-
-		for (const auto& sbp : set_bindings) {
-			fwrite(&sbp.first, 1, sizeof sbp.first, outfile);
-			fwrite(&sbp.second, 1, sizeof sbp.second, outfile);
-		}
 
 		fclose(outfile);
 	}

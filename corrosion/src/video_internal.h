@@ -32,8 +32,6 @@ struct shader_compute_header {
 struct shader_header {
 	char header[3];
 	u8 is_compute;
-	u64 bind_table_count;
-	u64 bind_table_offset;
 
 	union {
 		struct shader_raster_header raster_header;
@@ -323,6 +321,7 @@ struct video_gl_descriptor {
 };
 
 struct video_gl_descriptor_set {
+	u32 index;
 	table(u64, struct video_gl_descriptor) descriptors;
 	usize count;
 };
@@ -348,8 +347,6 @@ struct video_gl_desc_id {
 
 struct video_gl_shader {
 	u32 program;
-
-	table(u64, u32) bind_map;
 };
 
 struct video_gl_vertex_buffer {
@@ -392,11 +389,17 @@ struct video_gl_framebuffer {
 	u32* colour_formats;
 	u32* colour_types;
 
+	u32* draw_buffers;
+	u32* draw_buffers2;
+
 	u32 flipped_fb;
 	struct video_gl_texture* flipped_colours;
 	struct video_gl_texture flipped_depth;
 
-	table(usize, struct video_gl_texture*) attachment_map; 
+	table(usize, struct video_gl_texture*) attachment_map;
+
+	struct framebuffer_attachment_desc* attachment_descs;
+	usize attachment_count;
 
 	struct video_gl_framebuffer* next;
 	struct video_gl_framebuffer* prev;
