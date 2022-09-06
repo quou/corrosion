@@ -404,3 +404,6 @@ struct video_gl_framebuffer {
 	struct video_gl_framebuffer* next;
 	struct video_gl_framebuffer* prev;
 };
+
+void copy_pipeline_descriptor(struct pipeline_descriptor* dst, const struct pipeline_descriptor* src);
+void copy_pipeline_descriptor_set(struct pipeline_descriptor_set* dst, const struct pipeline_descriptor_set* src);

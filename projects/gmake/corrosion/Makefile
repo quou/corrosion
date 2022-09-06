@@ -66,6 +66,7 @@ sources =                            \
           $(srcdir)/ui.c             \
           $(srcdir)/ui_render.c      \
           $(srcdir)/video.c          \
+          $(srcdir)/video_common.c   \
           $(srcdir)/video_vk.c       \
           $(srcdir)/video_gl.c       \
           $(srcdir)/window_common.c  \

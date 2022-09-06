@@ -17,6 +17,7 @@ layout (location = 0) out VSOut {
 	float radius;
 	vec4 rect;
 	float z;
+	vec2 frag_pos;
 } vs_out;
 
 layout (std140, binding = 0) uniform VertexUniformData {
@@ -31,7 +32,11 @@ void main() {
 	vs_out.rect = rect;
 	vs_out.z = z;
 
-	gl_Position = projection * vec4(position, 0.0, 1.0);
+	vec4 p = (projection * vec4(position, 0.0, 1.0));
+
+	vs_out.frag_pos = p.xy / p.z;
+
+	gl_Position = p;
 }
 
 #end vertex
@@ -47,6 +52,7 @@ layout (location = 0) in VSOut {
 	float radius;
 	vec4 rect;
 	float z;
+	vec2 frag_pos;
 } fs_in;
 
 layout (binding = 1) uniform sampler2D atlas;
@@ -56,7 +62,7 @@ float rounded_box_sdf(vec2 pos, vec2 size, float r) {
 }
 
 void main() {
-	vec4 texture_colour = vec4(0.0);
+	vec4 texture_colour = vec4(1.0);
 
 	vec2 position   = fs_in.rect.xy;
 	vec2 dimentions = fs_in.rect.zw;
@@ -65,7 +71,7 @@ void main() {
 
 	float r = fs_in.radius;
 
-	float d = rounded_box_sdf(gl_FragCoord.xy - position - (dimentions * 0.5), dimentions * 0.5, r);
+	float d = rounded_box_sdf(fs_in.frag_pos - position - (dimentions * 0.5), dimentions * 0.5, r);
 	float a = 1.0 - smoothstep(0.0, softness * 2.0, d);
 
 	if (fs_in.use_texture > 0.0f) {
@@ -73,9 +79,6 @@ void main() {
 	}
 
 	colour = mix(vec4(0.0), texture_colour * fs_in.colour, a);
-
-	colour = texture(atlas, fs_in.uv) * fs_in.colour;
-//	colour = texture_colour;
 
 	gl_FragDepth = fs_in.z;
 }
