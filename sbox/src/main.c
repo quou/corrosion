@@ -470,6 +470,8 @@ struct {
 	} f_config_blue;
 
 	f64 time;
+
+	struct ui* ui;
 } app;
 
 struct app_config cr_config() {
@@ -486,13 +488,16 @@ struct app_config cr_config() {
 		},
 		.window_config = (struct window_config) {
 			.title = "Sandbox",
-			.size = make_v2i(1366, 768),
+			.size = make_v2i(800, 600),
 			.resizable = true
 		}
 	};
 }
 
 void cr_init() {
+	ui_init();
+	app.ui = new_ui(video.get_default_fb());
+
 	const struct shader* shader = load_shader("shaders/test.csh");
 	const struct shader* invert_shader = load_shader("shaders/invert.csh");
 
@@ -673,6 +678,10 @@ void cr_init() {
 void cr_update(f64 ts) {
 	app.time += ts;
 
+	ui_begin(app.ui);
+	ui_label(app.ui, "Hello, world");
+	ui_end(app.ui);
+
 	app.v_config.transform = m4f_rotation(euler(make_v3f(0.0f, 0.0f, (f32)app.time * 10.0f)));
 	app.f_config.colour = make_rgb(0xff0000);
 	app.f_config_blue.colour = make_rgb(0x0000ff);
@@ -715,6 +724,7 @@ void cr_update(f64 ts) {
 		video.end_pipeline(app.invert_pip);
 
 		gizmos_draw();
+		ui_draw(app.ui);
 	video.end_framebuffer(video.get_default_fb());
 }
 
@@ -724,5 +734,7 @@ void cr_deinit() {
 	video.free_framebuffer(app.fb);
 	video.free_vertex_buffer(app.tri_vb);
 	video.free_index_buffer(app.tri_ib);
+	free_ui(app.ui);
+	ui_deinit();
 }
 //#endif

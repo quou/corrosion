@@ -36,7 +36,8 @@ layout (location = 0) in VSOut {
 } fs_in;
 
 void main() {
-	colour = vec4(obj_colour, 1.0) * texture(image, fs_in.uv);
+//	colour = vec4(obj_colour, 1.0) * texture(image, fs_in.uv);
+	colour = vec4(obj_colour, 1.0);
 }
 
 #end fragment

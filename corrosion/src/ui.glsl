@@ -56,7 +56,7 @@ float rounded_box_sdf(vec2 pos, vec2 size, float r) {
 }
 
 void main() {
-	vec4 texture_colour = vec4(1.0);
+	vec4 texture_colour = vec4(0.0);
 
 	vec2 position   = fs_in.rect.xy;
 	vec2 dimentions = fs_in.rect.zw;
@@ -73,6 +73,9 @@ void main() {
 	}
 
 	colour = mix(vec4(0.0), texture_colour * fs_in.colour, a);
+
+	colour = texture(atlas, fs_in.uv) * fs_in.colour;
+//	colour = texture_colour;
 
 	gl_FragDepth = fs_in.z;
 }
