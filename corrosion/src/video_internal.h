@@ -305,6 +305,7 @@ struct gl_video_context {
 	const struct video_gl_framebuffer*   bound_fb;
 
 	list(struct video_gl_framebuffer) framebuffers;
+	list(struct video_gl_pipeline) pipelines;
 
 	u32 draw_call_count;
 
@@ -331,13 +332,21 @@ struct video_gl_pipeline {
 
 	table(u32, struct pipeline_attribute_binding) attribute_bindings;
 	table(u64, struct video_gl_descriptor_set) descriptor_sets;
+	vector(struct pipeline_descriptor_set) copy_descriptor_sets;
+	struct pipeline_attribute_bindings bindings;
 
 	const struct video_gl_shader* shader;
+	const struct video_gl_framebuffer* framebuffer;
+
+	struct pipeline_config config;
 
 	u32 vao;
 	u32 mode;
 
 	vector(u32) to_enable;
+
+	struct video_gl_pipeline* next;
+	struct video_gl_pipeline* prev;
 };
 
 struct video_gl_desc_id {

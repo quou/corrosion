@@ -82,6 +82,13 @@ void video_gl_begin() {
 			framebuffer = framebuffer->next;
 		}
 
+		struct video_gl_pipeline* pipeline = gctx.pipelines.head;
+		while (pipeline) {
+			video_gl_recreate_pipeline((struct pipeline*)pipeline);
+
+			pipeline = pipeline->next;
+		}
+
 		gctx.want_recreate = false;
 	}
 }
@@ -375,41 +382,20 @@ struct texture* video_gl_get_attachment(struct framebuffer* fb_, u32 index) {
 
 struct pipeline* video_gl_new_pipeline(u32 flags, const struct shader* shader, const struct framebuffer* framebuffer,
 	struct pipeline_attribute_bindings attrib_bindings, struct pipeline_descriptor_sets descriptor_sets) {
-	return video_gl_new_pipeline_ex(flags, shader, framebuffer, attrib_bindings, descriptor_sets, null);
+	struct pipeline_config default_config = default_pipeline_config();
+
+	return video_gl_new_pipeline_ex(flags, shader, framebuffer, attrib_bindings, descriptor_sets, &default_config);
 }
 
-struct pipeline* video_gl_new_pipeline_ex(u32 flags, const struct shader* shader, const struct framebuffer* framebuffer,
+static void init_pipeline(struct video_gl_pipeline* pipeline, u32 flags, const struct shader* shader, const struct framebuffer* framebuffer,
 	struct pipeline_attribute_bindings attrib_bindings, struct pipeline_descriptor_sets descriptor_sets, const struct pipeline_config* config) {
-	
-	struct video_gl_pipeline* pipeline = core_calloc(1, sizeof *pipeline);
 
 	pipeline->flags = flags;
 
 	pipeline->shader = (const struct video_gl_shader*)shader;
+	pipeline->framebuffer = (const struct video_gl_framebuffer*)framebuffer;
 
-	/* Copy attribute bindings. */
-	for (usize i = 0; i < attrib_bindings.count; i++) {
-		struct pipeline_attribute_binding dst = { 0 };
-		const struct pipeline_attribute_binding* src = attrib_bindings.bindings + i;
-
-		dst.rate    = src->rate;
-		dst.stride  = src->stride;
-		dst.binding = src->binding;
-		dst.attributes.count = src->attributes.count;
-		dst.attributes.attributes = core_calloc(dst.attributes.count, sizeof(struct pipeline_attribute));
-
-		for (usize j = 0; j < dst.attributes.count; j++) {
-			struct pipeline_attribute* attrib = (void*)(dst.attributes.attributes + j);
-			const struct pipeline_attribute* other = src->attributes.attributes + j;
-
-			attrib->name     = null;
-			attrib->location = other->location;
-			attrib->offset   = other->offset;
-			attrib->type     = other->type;
-		}
-
-		table_set(pipeline->attribute_bindings, dst.binding, dst);
-	}
+	pipeline->config = *config;
 
 	/* Copy descriptor sets. */
 	for (usize i = 0; i < descriptor_sets.count; i++) {
@@ -467,18 +453,9 @@ struct pipeline* video_gl_new_pipeline_ex(u32 flags, const struct shader* shader
 	}
 
 	check_gl(glGenVertexArrays(1, &pipeline->vao));
-
-	return (struct pipeline*)pipeline;
 }
 
-struct pipeline* video_gl_new_compute_pipeline(u32 flags, const struct shader* shader, struct pipeline_descriptor_sets descriptor_sets) {
-	abort_with("Not implemented.");
-	return null;
-}
-
-void video_gl_free_pipeline(struct pipeline* pipeline_) {
-	struct video_gl_pipeline* pipeline = (struct video_gl_pipeline*)pipeline_;
-
+static void deinit_pipeline(struct video_gl_pipeline* pipeline) {
 	check_gl(glDeleteVertexArrays(1, &pipeline->vao));
 
 	free_vector(pipeline->to_enable);
@@ -498,12 +475,124 @@ void video_gl_free_pipeline(struct pipeline* pipeline_) {
 	}
 
 	free_table(pipeline->descriptor_sets);
+}
+
+struct pipeline* video_gl_new_pipeline_ex(u32 flags, const struct shader* shader, const struct framebuffer* framebuffer,
+	struct pipeline_attribute_bindings attrib_bindings, struct pipeline_descriptor_sets descriptor_sets, const struct pipeline_config* config) {
+	
+	struct video_gl_pipeline* pipeline = core_calloc(1, sizeof *pipeline);
+
+	/* Copy attribute bindings. */
+	for (usize i = 0; i < attrib_bindings.count; i++) {
+		struct pipeline_attribute_binding dst = { 0 };
+		const struct pipeline_attribute_binding* src = attrib_bindings.bindings + i;
+
+		dst.rate    = src->rate;
+		dst.stride  = src->stride;
+		dst.binding = src->binding;
+		dst.attributes.count = src->attributes.count;
+		dst.attributes.attributes = core_calloc(dst.attributes.count, sizeof(struct pipeline_attribute));
+
+		for (usize j = 0; j < dst.attributes.count; j++) {
+			struct pipeline_attribute* attrib = (void*)(dst.attributes.attributes + j);
+			const struct pipeline_attribute* other = src->attributes.attributes + j;
+
+			attrib->name     = null;
+			attrib->location = other->location;
+			attrib->offset   = other->offset;
+			attrib->type     = other->type;
+		}
+
+		table_set(pipeline->attribute_bindings, dst.binding, dst);
+	}
+
+	if (descriptor_sets.count > 0) {
+		vector_allocate(pipeline->copy_descriptor_sets, descriptor_sets.count);
+
+		for (usize i = 0; i < descriptor_sets.count; i++) {
+			struct pipeline_descriptor_set set = { 0 };
+			const struct pipeline_descriptor_set* other = descriptor_sets.sets + i;
+
+			copy_pipeline_descriptor_set(&set, other);
+
+			vector_push(pipeline->copy_descriptor_sets, set);
+		}
+	}
+
+	if (~flags & pipeline_flags_compute) {
+		pipeline->bindings.count = attrib_bindings.count;
+		pipeline->bindings.bindings = core_calloc(attrib_bindings.count, sizeof *pipeline->bindings.bindings);
+
+		for (usize i = 0; i < pipeline->bindings.count; i++) {
+			struct pipeline_attribute_binding* dst = (void*)(pipeline->bindings.bindings + i);
+			const struct pipeline_attribute_binding* src = attrib_bindings.bindings + i;
+
+			dst->rate    = src->rate;
+			dst->stride  = src->stride;
+			dst->binding = src->binding;
+			dst->attributes.count = src->attributes.count;
+			dst->attributes.attributes = core_calloc(dst->attributes.count, sizeof(struct pipeline_attribute));
+
+			for (usize j = 0; j < dst->attributes.count; j++) {
+				struct pipeline_attribute* attrib = (void*)(dst->attributes.attributes + j);
+				const struct pipeline_attribute* other = src->attributes.attributes + j;
+
+				attrib->name     = null;
+				attrib->location = other->location;
+				attrib->offset   = other->offset;
+				attrib->type     = other->type;
+			}
+		}
+	}
+
+	list_push(gctx.pipelines, pipeline);
+
+	init_pipeline(pipeline, flags, shader, framebuffer, attrib_bindings, descriptor_sets, config);
+
+	return (struct pipeline*)pipeline;
+}
+
+struct pipeline* video_gl_new_compute_pipeline(u32 flags, const struct shader* shader, struct pipeline_descriptor_sets descriptor_sets) {
+	abort_with("Not implemented.");
+	return null;
+}
+
+void video_gl_free_pipeline(struct pipeline* pipeline_) {
+	struct video_gl_pipeline* pipeline = (struct video_gl_pipeline*)pipeline_;
+
+	deinit_pipeline(pipeline);
 
 	for (u32* i = table_first(pipeline->attribute_bindings); i; i = table_next(pipeline->attribute_bindings, *i)) {
 		struct pipeline_attribute_binding* ab = table_get(pipeline->attribute_bindings, *i);
 
 		core_free(ab->attributes.attributes);
 	}
+
+	for (usize i = 0; i < vector_count(pipeline->copy_descriptor_sets); i++) {
+		struct pipeline_descriptor_set* set = (void*)(pipeline->copy_descriptor_sets + i);
+
+		core_free((void*)set->name);
+
+		for (usize ii = 0; ii < set->count; ii++) {
+			core_free((void*)set->descriptors[ii].name);
+		}
+
+		free_vector(set->descriptors);
+	}
+
+	if (~pipeline->flags & pipeline_flags_compute) {
+		for (usize i = 0; i < pipeline->bindings.count; i++) {
+			struct pipeline_attribute_binding* binding = (void*)(pipeline->bindings.bindings + i);
+
+			core_free(binding->attributes.attributes);
+		}
+
+		core_free(pipeline->bindings.bindings);
+	}
+
+	list_remove(gctx.pipelines, pipeline);
+
+	free_vector(pipeline->copy_descriptor_sets);
 
 	free_table(pipeline->attribute_bindings);
 
@@ -570,8 +659,25 @@ void video_gl_invoke_compute(v3u count) {
 	abort_with("Not implemented.");
 }
 
-void video_gl_recreate_pipeline(struct pipeline* pipeline) {
+void video_gl_recreate_pipeline(struct pipeline* pipeline_) {
+	struct video_gl_pipeline* pipeline = (struct video_gl_pipeline*)pipeline_;
 
+	deinit_pipeline(pipeline);
+
+	if (pipeline->flags & pipeline_flags_compute) {
+	/*	init_compute_pipeline(pipeline, pipeline->flags,
+			(const struct video_vk_shader*)pipeline->shader,
+			&(struct pipeline_descriptor_sets) {
+				.sets = pipeline->descriptor_sets,
+				.count = vector_count(pipeline->descriptor_sets)
+			});*/
+	} else {
+		init_pipeline(pipeline, pipeline->flags, (const struct shader*)pipeline->shader, (const struct framebuffer*)pipeline->framebuffer,
+			pipeline->bindings, (struct pipeline_descriptor_sets) {
+				.sets = pipeline->copy_descriptor_sets,
+				.count = vector_count(pipeline->copy_descriptor_sets)
+			}, &pipeline->config);
+	}
 }
 
 void video_gl_update_pipeline_uniform(struct pipeline* pipeline_, const char* set, const char* descriptor, const void* data) {

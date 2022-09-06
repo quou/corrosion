@@ -680,6 +680,28 @@ void cr_update(f64 ts) {
 
 	ui_begin(app.ui);
 	ui_label(app.ui, "Hello, world");
+
+	ui_begin_container(app.ui, make_v4f(0.5f, 0.0f, 0.5f, 1.0f), true);
+
+	if (ui_tree_node(app.ui, "Layout", false)) {
+		ui_columns(app.ui, 2, (f32[]) { 0.5f, 0.5f });
+
+		ui_label(app.ui, "Hello, world.");
+		ui_label(app.ui, "Hello, world.");
+		ui_label(app.ui, "Hello, world.");
+		ui_label(app.ui, "Hello, world.");
+		if (ui_button(app.ui, "Button A")) {
+			info("Button A pressed.");
+		}
+		if (ui_button(app.ui, "Button B")) {
+			info("Button B pressed.");
+		}
+
+		ui_tree_pop(app.ui);
+	}
+
+	ui_end_container(app.ui);
+
 	ui_end(app.ui);
 
 	app.v_config.transform = m4f_rotation(euler(make_v3f(0.0f, 0.0f, (f32)app.time * 10.0f)));
