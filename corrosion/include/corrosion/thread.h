@@ -7,7 +7,17 @@ struct thread;
 typedef void (*thread_worker_t)(struct thread* thread);
 
 #if defined(_WIN32)
-#error Not supported
+struct thread {
+	u64 handle;
+	u64 id;
+	void* uptr;
+	bool working;
+	thread_worker_t worker;
+};
+
+struct mutex {
+	u64 handle;
+};
 #else
 #include <pthread.h>
 

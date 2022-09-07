@@ -189,6 +189,7 @@
     <ClCompile Include="..\..\..\corrosion\src\res_windows.c" />
     <ClCompile Include="..\..\..\corrosion\src\simplerenderer.c" />
     <ClCompile Include="..\..\..\corrosion\src\stb.c" />
+    <ClCompile Include="..\..\..\corrosion\src\thread_windows.c" />
     <ClCompile Include="..\..\..\corrosion\src\timer_windows.c" />
     <ClCompile Include="..\..\..\corrosion\src\ui.c" />
     <ClCompile Include="..\..\..\corrosion\src\ui_render.c" />
@@ -213,6 +214,7 @@
     <ClInclude Include="..\..\..\corrosion\include\corrosion\render_util.h" />
     <ClInclude Include="..\..\..\corrosion\include\corrosion\res.h" />
     <ClInclude Include="..\..\..\corrosion\include\corrosion\simplerenderer.h" />
+    <ClInclude Include="..\..\..\corrosion\include\corrosion\thread.h" />
     <ClInclude Include="..\..\..\corrosion\include\corrosion\timer.h" />
     <ClInclude Include="..\..\..\corrosion\include\corrosion\ui.h" />
     <ClInclude Include="..\..\..\corrosion\include\corrosion\ui_render.h" />
