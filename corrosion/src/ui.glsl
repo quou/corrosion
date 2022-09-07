@@ -34,7 +34,7 @@ void main() {
 
 	vec4 p = (projection * vec4(position, 0.0, 1.0));
 
-	vs_out.frag_pos = p.xy / p.z;
+	vs_out.frag_pos = position;
 
 	gl_Position = p;
 }

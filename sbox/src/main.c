@@ -478,7 +478,7 @@ struct app_config cr_config() {
 	return (struct app_config) {
 		.name = "Sandbox",
 		.video_config = (struct video_config) {
-			.api = video_api_opengl,
+			.api = video_api_vulkan,
 #ifdef debug
 			.enable_validation = true,
 #else
@@ -726,6 +726,11 @@ void cr_update(f64 ts) {
 			}
 		});
 	}
+
+	static f32 test = 50.0f;
+
+
+	ui_knob(app.ui, &test, 0.0f, 100.0f);
 
 	ui_end_container(app.ui);
 
