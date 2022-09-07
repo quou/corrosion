@@ -789,11 +789,17 @@ struct index_buffer* video_gl_new_index_buffer(void* elements, usize count, u32 
 
 	ib->flags = flags;
 
-	usize el_size = ib->flags & index_buffer_flags_u32 ? sizeof(u32) : sizeof(u16);
+	if (ib->flags & index_buffer_flags_u32) {
+		ib->el_size = sizeof(u32);
+		ib->type = GL_UNSIGNED_INT;
+	} else {
+		ib->el_size = sizeof(u16);
+		ib->type = GL_UNSIGNED_SHORT;
+	}
 
 	check_gl(glGenBuffers(1, &ib->id));
 	check_gl(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ib->id));
-	check_gl(glBufferData(GL_ELEMENT_ARRAY_BUFFER, count * el_size, elements, GL_STATIC_DRAW));
+	check_gl(glBufferData(GL_ELEMENT_ARRAY_BUFFER, count * ib->el_size, elements, GL_STATIC_DRAW));
 
 	return (struct index_buffer*)ib;
 }
@@ -821,8 +827,7 @@ void video_gl_draw(usize count, usize offset, usize instances) {
 
 void video_gl_draw_indexed(usize count, usize offset, usize instances) {
 	check_gl(glDrawElementsInstanced(gctx.bound_pipeline->mode, count,
-		gctx.bound_vb->flags & index_buffer_flags_u32 ? GL_UNSIGNED_INT : GL_UNSIGNED_SHORT,
-		(void*)offset, instances));
+		gctx.bound_ib->type, (void*)(offset * gctx.bound_ib->el_size), instances));
 	gctx.draw_call_count++;
 }
 

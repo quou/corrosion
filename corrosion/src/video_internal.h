@@ -366,6 +366,9 @@ struct video_gl_vertex_buffer {
 struct video_gl_index_buffer {
 	u32 flags;
 	u32 id;
+
+	u32 type;
+	usize el_size;
 };
 
 struct video_gl_texture {
