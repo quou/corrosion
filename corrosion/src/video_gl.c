@@ -72,6 +72,8 @@ void video_gl_deinit() {
 }
 
 void video_gl_begin() {
+	gctx.draw_call_count = 0;
+
 	if (gctx.want_recreate) {
 		struct video_gl_framebuffer* framebuffer = gctx.framebuffers.head;
 		while (framebuffer) {
@@ -100,7 +102,7 @@ static void video_gl_populate_framebuffer(struct video_gl_framebuffer* fb) {
 
 	/* Colour attachments. */
 	check_gl(glGenTextures(fb->colour_count, fb->colours));
-	for (usize i = 0; i < fb->attachment_count; i++) {
+	for (usize i = 0; i < fb->colour_count; i++) {
 		GLenum format = fb->colour_formats[i];
 		GLenum type = fb->colour_types[i];
 
@@ -142,6 +144,7 @@ static void video_gl_populate_framebuffer(struct video_gl_framebuffer* fb) {
 		check_gl(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE));
 		check_gl(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE));
 
+		check_gl(glBindFramebuffer(GL_FRAMEBUFFER, fb->id));
 		check_gl(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_TEXTURE_2D, fb->depth_attachment, 0));
 
 		u32 flipped;
@@ -155,7 +158,6 @@ static void video_gl_populate_framebuffer(struct video_gl_framebuffer* fb) {
 
 		check_gl(glBindFramebuffer(GL_FRAMEBUFFER, fb->flipped_fb));
 		check_gl(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_TEXTURE_2D, flipped, 0));
-		check_gl(glBindFramebuffer(GL_FRAMEBUFFER, fb->id));
 
 		fb->flipped_depth.id = flipped;
 		fb->flipped_depth.size = fb->size;

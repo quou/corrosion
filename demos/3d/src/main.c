@@ -24,7 +24,7 @@ struct {
 
 struct app_config cr_config() {
 	return (struct app_config) {
-		.name = "Shooter",
+		.name = "3D Renderer",
 		.video_config = (struct video_config) {
 			.api = video_api_opengl,
 #ifdef debug
