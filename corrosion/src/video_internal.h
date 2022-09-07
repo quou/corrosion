@@ -332,8 +332,6 @@ struct video_gl_pipeline {
 
 	table(u32, struct pipeline_attribute_binding) attribute_bindings;
 	table(u64, struct video_gl_descriptor_set) descriptor_sets;
-	vector(struct pipeline_descriptor_set) copy_descriptor_sets;
-	struct pipeline_attribute_bindings bindings;
 
 	const struct video_gl_shader* shader;
 	const struct video_gl_framebuffer* framebuffer;
@@ -405,10 +403,9 @@ struct video_gl_framebuffer {
 	struct video_gl_texture* flipped_colours;
 	struct video_gl_texture flipped_depth;
 
-	table(usize, struct video_gl_texture*) attachment_map;
-
-	struct framebuffer_attachment_desc* attachment_descs;
 	usize attachment_count;
+
+	table(usize, struct video_gl_texture*) attachment_map;
 
 	struct video_gl_framebuffer* next;
 	struct video_gl_framebuffer* prev;
