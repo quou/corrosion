@@ -700,6 +700,33 @@ void cr_update(f64 ts) {
 		ui_tree_pop(app.ui);
 	}
 
+	ui_linebreak(app.ui);
+
+	ui_columns(app.ui, 2, (f32[]) { 0.5f, 0.5f });
+	ui_label(app.ui, "Current API:");
+	ui_label(app.ui, video.get_api_name());
+
+	ui_columns(app.ui, 1, (f32[]) { 1.0f });
+	if (ui_button(app.ui, "Switch API")) {
+		reconfigure_app((struct app_config) {
+			.name = "Sandbox",
+			.video_config = (struct video_config) {
+				.api = video.api == video_api_vulkan ? video_api_opengl : video_api_vulkan,
+#ifdef debug
+				.enable_validation = true,
+#else
+				.enable_validation = false,
+#endif
+				.clear_colour = make_rgba(0xff0000, 255)
+			},
+			.window_config = (struct window_config) {
+				.title = "Sandbox",
+				.size = make_v2i(800, 600),
+				.resizable = true
+			}
+		});
+	}
+
 	ui_end_container(app.ui);
 
 	ui_end(app.ui);

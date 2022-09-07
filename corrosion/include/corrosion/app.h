@@ -21,3 +21,5 @@ struct app_config {
 	struct video_config video_config;
 	struct window_config window_config;
 };
+
+void reconfigure_app(struct app_config config);

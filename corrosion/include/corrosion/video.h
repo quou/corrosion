@@ -302,6 +302,7 @@ struct video {
 
 	/* Misc */
 	u32 (*get_draw_call_count)();
+	const char* (*get_api_name)();
 };
 
 extern struct video video;

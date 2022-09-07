@@ -308,8 +308,8 @@ struct res {
 	bool ok;
 };
 
-table(u64, struct res_config) res_registry = { 0 };
-table(u64, struct res)        res_cache    = { 0 };
+table(u64, struct res_config) res_registry;
+table(u64, struct res)        res_cache;
 
 static void image_on_load(const char* filename, u8* raw, usize raw_size, void* payload, usize payload_size, void* udata) {
 	struct image* image = payload;
@@ -341,6 +341,9 @@ static void ttf_on_unload(void* payload, usize payload_size) {
 
 void res_init(const char* argv0) {
 	bound_pak = null;
+
+	memset(&res_registry, 0, sizeof res_registry);
+	memset(&res_cache, 0, sizeof res_cache);
 
 	reg_res_type("image", &(struct res_config) {
 		.payload_size = sizeof(struct image),

@@ -512,6 +512,10 @@ static void stylesheet_on_unload(void* payload, usize payload_size) {
 }
 
 void ui_init() {
+	memset(&default_stylesheet.normal,  0, sizeof default_stylesheet.normal);
+	memset(&default_stylesheet.active,  0, sizeof default_stylesheet.active);
+	memset(&default_stylesheet.hovered, 0, sizeof default_stylesheet.hovered);
+
 	table_set(default_stylesheet.normal, hash_string("label"), ((struct ui_style) {
 		.text_colour       = { true, make_rgba(0xffffff, 255) },
 		.background_colour = { true, make_rgba(0x111111, 0) },

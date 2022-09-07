@@ -839,6 +839,13 @@ static void validated_set_scissor(v4i rect) {
 	abort();
 }
 
+static const char* impl_get_api_name() {
+	return
+		video.api == video_api_vulkan ? "Vulkan" :
+		video.api == video_api_opengl ? "OpenGL ES" :
+		"<Unkown API>";
+}
+
 static void find_procs(u32 api, bool enable_validation) {
 #define get_v_proc(n_) \
 	enable_validation ? cat(validated_, n_) : get_api_proc(n_)
@@ -902,6 +909,7 @@ static void find_procs(u32 api, bool enable_validation) {
 	video.free_shader = get_api_proc(free_shader);
 
 	video.get_draw_call_count = get_api_proc(get_draw_call_count);
+	video.get_api_name = impl_get_api_name;
 
 #undef get_v_proc
 }
