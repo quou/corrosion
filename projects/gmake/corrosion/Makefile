@@ -27,6 +27,30 @@ shader_compiler = ../shadercompiler/bin/$(config)/shadercompiler
 
 deps += ../shadercompiler
 
+sources =                            \
+          $(srcdir)/alloc.c          \
+          $(srcdir)/atlas.c          \
+          $(srcdir)/bir.c            \
+          $(srcdir)/core.c           \
+          $(srcdir)/dtable.c         \
+          $(srcdir)/entrypoint.c     \
+          $(srcdir)/font.c           \
+          $(srcdir)/gizmo.c          \
+          $(srcdir)/log.c            \
+          $(srcdir)/render_util.c    \
+          $(srcdir)/res.c            \
+          $(srcdir)/simplerenderer.c \
+          $(srcdir)/stb.c            \
+          $(srcdir)/ui.c             \
+          $(srcdir)/ui_render.c      \
+          $(srcdir)/video.c          \
+          $(srcdir)/video_common.c   \
+          $(srcdir)/video_vk.c       \
+          $(srcdir)/video_gl.c       \
+          $(srcdir)/window_common.c  \
+
+sourcespp = $(srcdir)/vma.cpp
+
 ifeq ($(config),debug)
   target_dir = bin/debug
   target = $(target_dir)/lib$(target_name).a
@@ -45,33 +69,25 @@ ifeq ($(config),release)
   objdir = obj/release
 endif
 
-all: $(target)
+ifeq ($(config),emscripten)
+  target_dir = bin/emscripten
+  target = $(target_dir)/lib$(target_name).a
+  defines += -Dndebug -Dcr_no_vulkan
+  cflags +=
+  cppflags +=
+  objdir = obj/emscripten
+  sources += $(srcdir)/window_emscripten.c \
+      $(srcdir)/timer_emscripten.c         \
+      $(srcdir)/thread_emscripten.c        \
+      $(srcdir)/res_emscripten.c
+else
+  sources += $(srcdir)/window_x11.c \
+      $(srcdir)/timer_posix.c       \
+      $(srcdir)/thread_posix.c      \
+      $(srcdir)/res_posix.c
+endif
 
-sources =                            \
-          $(srcdir)/alloc.c          \
-          $(srcdir)/atlas.c          \
-          $(srcdir)/bir.c            \
-          $(srcdir)/core.c           \
-          $(srcdir)/dtable.c         \
-          $(srcdir)/entrypoint.c     \
-          $(srcdir)/font.c           \
-          $(srcdir)/gizmo.c          \
-          $(srcdir)/log.c            \
-          $(srcdir)/render_util.c    \
-          $(srcdir)/res.c            \
-          $(srcdir)/res_posix.c      \
-          $(srcdir)/simplerenderer.c \
-          $(srcdir)/stb.c            \
-          $(srcdir)/timer_posix.c    \
-          $(srcdir)/thread_posix.c   \
-          $(srcdir)/ui.c             \
-          $(srcdir)/ui_render.c      \
-          $(srcdir)/video.c          \
-          $(srcdir)/video_common.c   \
-          $(srcdir)/video_vk.c       \
-          $(srcdir)/video_gl.c       \
-          $(srcdir)/window_common.c  \
-          $(srcdir)/window_x11.c     \
+all: $(target)
 
 shaders =                       \
           $(srcdir)/line.glsl   \
@@ -79,8 +95,6 @@ shaders =                       \
           $(srcdir)/ui.glsl     \
           $(srcdir)/simple.glsl \
           $(srcdir)/error.glsl \
-
-sourcespp = $(srcdir)/vma.cpp
 
 objects   = $(sources:$(srcdir)%.c=$(objdir)%.o)
 objectspp = $(sourcespp:$(srcdir)%.cpp=$(objdir)%.o)
