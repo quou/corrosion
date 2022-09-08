@@ -26,9 +26,15 @@ struct {
 	table(const struct pipeline*, struct pipeline_val_meta) pipeline_meta;
 } validation_state;
 
+#if defined(cr_no_vulkan)
+#define get_api_proc(n_) cat(video_gl_, n_)
+#elif defined(cr_no_opengl)
+#define get_api_proc(n_) cat(video_vk_, n_)
+#else
 #define get_api_proc(n_) ( \
 	video.api == video_api_vulkan ? cat(video_vk_, n_) : \
 	video.api == video_api_opengl ? cat(video_gl_, n_) : null)
+#endif
 
 #define get_v_proc(n_) \
 	enable_validation ? cat(validated_, n_) : get_api_proc(n_)
@@ -927,6 +933,7 @@ void init_video(const struct video_config* config) {
 	}
 
 	switch (config->api) {
+#ifndef cr_no_vulkan
 	case video_api_vulkan:
 		info("Using API: Vulkan.");
 
@@ -936,6 +943,12 @@ void init_video(const struct video_config* config) {
 
 		video_vk_register_resources();
 		break;
+#else
+	case video_api_vulkan:
+		abort_with("Compiled without Vulkan support.");
+		break;
+#endif
+#ifndef cr_no_opengl
 	case video_api_opengl:
 		info("Using API: OpenGL ES.");
 
@@ -945,6 +958,11 @@ void init_video(const struct video_config* config) {
 
 		video_gl_register_resources();
 		break;
+#else
+	case video_api_opengl:
+		abort_with("Compiled without OpenGL support.");
+		break;
+#endif
 	}
 }
 

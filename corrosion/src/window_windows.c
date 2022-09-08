@@ -1,6 +1,7 @@
+#ifndef cr_no_vulkan
 #define VK_USE_PLATFORM_WIN32_KHR
-
 #include <vulkan/vulkan.h>
+#endif
 
 #include <Windows.h>
 
@@ -335,6 +336,7 @@ void init_window(const struct window_config* config, u32 api) {
 	window.open = true;
 }
 
+#ifndef cr_no_vulkan
 void window_create_vk_surface(VkInstance instance) {
 	if (vkCreateWin32SurfaceKHR(instance, &(VkWin32SurfaceCreateInfoKHR) {
 			.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR,
@@ -357,6 +359,7 @@ void window_get_vk_extensions(vector(const char*)* extensions) {
 VkSurfaceKHR get_window_vk_surface() {
 	return window.surface;
 }
+#endif
 
 void window_create_gl_context() {
 	abort_with("Not implemented.");
@@ -416,9 +419,11 @@ void update_events() {
 
 		window.size = window.new_size;
 
+#ifndef cr_no_vulkan
 		if (window.api == video_api_vulkan) {
 			video_vk_want_recreate();
 		}
+#endif
 
 		struct window_event resize_event = {
 			.type = window_event_size_changed,

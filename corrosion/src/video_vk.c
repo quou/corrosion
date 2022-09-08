@@ -1,4 +1,6 @@
+#ifndef cr_no_vulkan
 #include <vulkan/vulkan.h>
+#endif
 
 #include "core.h"
 #include "bir.h"
@@ -18,6 +20,7 @@
  * to ensure updates to uniform, index and vertex buffers only get applied to the correct
  * frames, and not to each frame in flight at once, which ~~may~~ will cause visual bugs. */
 
+#ifndef cr_no_vulkan
 static void add_memcpy_cmd(struct update_queue* buf, void* target, const void* data, usize size) {
 	usize cmd_size = sizeof(struct update_cmd_memcpy) + size;
 
@@ -3184,3 +3187,5 @@ u32 video_vk_query_features() {
 		video_feature_storage |
 		video_feature_barrier;
 }
+
+#endif /* cr_no_vulkan */

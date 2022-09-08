@@ -1,3 +1,5 @@
+#ifndef cr_no_opengl
+
 #define GLAD_GLES2_IMPLEMENTATION
 #include "gles2.h"
 
@@ -1100,3 +1102,5 @@ u32 video_gl_get_draw_call_count() {
 u32 video_gl_query_features() {
 	return video_feature_base;
 }
+
+#endif /* cr_no_opengl */

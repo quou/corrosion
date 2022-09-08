@@ -1,6 +1,8 @@
 #pragma once
 
+#ifndef cr_no_vulkan
 #include <vulkan/vulkan.h>
+#endif
 
 #include "core.h"
 #include "maths.h"
@@ -36,16 +38,20 @@ struct window {
 #elif defined(__linux__) || defined(__FreeBSD__)
 	Window window;
 
+#ifndef cr_no_opengl
 	/* Context handle is a void pointer and not a GLXContext because
 	 * including `GL/glx.h' will cause conflicts with Glad. */
 	void* context;
+#endif
 
 	table(KeySym, u32) keymap;
 
 	v2i last_mouse;
 #endif
 
+#ifndef cr_no_vulkan
 	VkSurfaceKHR surface;
+#endif
 
 	bool held_keys[key_count];
 	bool pressed_keys[key_count];
@@ -68,15 +74,19 @@ struct window {
 	vector(window_event_handler_t) event_handlers[window_event_count];
 };
 
+#ifndef cr_no_vulkan
 void window_create_vk_surface(VkInstance instance);
 void window_destroy_vk_surface(VkInstance instance);
 void window_get_vk_extensions(vector(const char*)* extensions);
 
 VkSurfaceKHR get_window_vk_surface();
+#endif
 
+#ifndef cr_no_opengl
 void window_create_gl_context();
 void window_destroy_gl_context();
 void* window_get_gl_proc(const char* name);
 void window_gl_swap();
+#endif
 
 void dispatch_event(const struct window_event* event);

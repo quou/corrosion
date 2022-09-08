@@ -1,14 +1,15 @@
 #pragma once
 
+#ifndef cr_no_vulkan
 #include <vulkan/vulkan.h>
 
 #define VMA_VULKAN_VERSION 1002000
 
+#include "vk_mem_alloc.h"
+#endif
+
 #include "common.h"
 #include "video.h"
-#include "vk_mem_alloc.h"
-
-#define max_frames_in_flight 3
 
 #pragma pack(push, 1)
 struct shader_raster_header {
@@ -39,6 +40,12 @@ struct shader_header {
 	};
 };
 #pragma pack(pop)
+
+void copy_pipeline_descriptor(struct pipeline_descriptor* dst, const struct pipeline_descriptor* src);
+void copy_pipeline_descriptor_set(struct pipeline_descriptor_set* dst, const struct pipeline_descriptor_set* src);
+
+#ifndef cr_no_vulkan
+#define max_frames_in_flight 3
 
 struct queue_families {
 	i32 graphics_compute;
@@ -294,6 +301,9 @@ struct update_cmd_memcpy {
 
 static void add_memcpy_cmd(struct update_queue* buf, void* target, const void* data, usize size);
 
+#endif /* cr_no_vulkan */
+
+#ifndef cr_no_opengl
 struct gl_video_context {
 	struct framebuffer* default_fb;
 
@@ -417,5 +427,4 @@ struct video_gl_framebuffer {
 	struct video_gl_framebuffer* prev;
 };
 
-void copy_pipeline_descriptor(struct pipeline_descriptor* dst, const struct pipeline_descriptor* src);
-void copy_pipeline_descriptor_set(struct pipeline_descriptor_set* dst, const struct pipeline_descriptor_set* src);
+#endif /* cr_no_opengl */

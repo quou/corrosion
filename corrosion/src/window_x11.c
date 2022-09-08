@@ -1,6 +1,7 @@
+#ifndef cr_no_vulkan
 #define VK_USE_PLATFORM_XLIB_KHR
-
 #include <vulkan/vulkan.h>
+#endif
 
 #include <X11/X.h>
 #include <X11/Xlib.h>
@@ -15,8 +16,10 @@
 #include "window.h"
 #include "window_internal.h"
 
+#ifndef cr_no_opengl
 typedef GLXContext (*create_context_func)
 	(Display*, GLXFBConfig, GLXContext, Bool, const int*);
+#endif
 
 Display* display;
 Atom wm_delete_window_id, wm_protocols_id;
@@ -151,6 +154,7 @@ void init_window(const struct window_config* config, u32 api) {
 	table_set(window.keymap, XK_9, key_9);
 }
 
+#ifndef cr_no_vulkan
 void window_create_vk_surface(VkInstance instance) {
 	if (vkCreateXlibSurfaceKHR(instance, &(VkXlibSurfaceCreateInfoKHR){
 			.sType = VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR,
@@ -173,6 +177,9 @@ void window_get_vk_extensions(vector(const char*)* extensions) {
 VkSurfaceKHR get_window_vk_surface() {
 	return window.surface;
 }
+#endif
+
+#ifndef cr_no_opengl
 
 void window_create_gl_context() {
 	int visual_attribs[] = {
@@ -230,6 +237,8 @@ void window_gl_swap() {
 	glXSwapBuffers(display, window.window);
 }
 
+#endif
+
 void deinit_window() {
 	XDestroyWindow(display, window.window);
 
@@ -271,12 +280,17 @@ void update_events() {
 				if (gwa.width != window.size.x || gwa.height != window.size.y) {
 					window.size.x = gwa.width;
 					window.size.y = gwa.height;
-
+#ifndef cr_no_vulkan
 					if (window.api == video_api_vulkan) {
 						video_vk_want_recreate();
 					} else if (window.api == video_api_opengl) {
+#endif
+#ifndef cr_no_opengl
 						video_gl_want_recreate();
+#endif
+#ifndef cr_no_vulkan
 					}
+#endif
 
 					struct window_event resize_event = {
 						.type = window_event_size_changed,
