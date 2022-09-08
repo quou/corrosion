@@ -36,12 +36,6 @@ static void gl_log(u32 line, const char* file) {
 			case GL_OUT_OF_MEMORY:
 				name = "GL_OUT_OF_MEMORY";
 				break;
-			case GL_STACK_OVERFLOW:
-				name = "GL_STACK_OVERFLOW";
-				break;
-			case GL_STACK_UNDERFLOW:
-				name = "GL_STACK_UNDERFLOW";
-				break;
 		}
 
 		error("from %s:%u: glError returned %s", file, line, name);
@@ -903,6 +897,9 @@ static void init_texture(struct video_gl_texture* texture, const struct image* i
 			break;
 	}
 
+	texture->format = gl_format;
+	texture->type = gl_type;
+
 	u32 filter = flags & texture_flags_filter_linear ? GL_LINEAR : GL_NEAREST;
 
 	check_gl(glGenTextures(1, &texture->id));
@@ -941,13 +938,34 @@ void video_gl_texture_copy(struct texture* dst_, v2i dst_offset, const struct te
 	struct video_gl_texture* dst = (struct video_gl_texture*)dst_;
 	struct video_gl_texture* src = (struct video_gl_texture*)src_;
 
-	//dst_offset.y = dst->size.y - (dst_offset.y + dimensions.y);
 	src_offset.y = src->size.y - (src_offset.y + dimensions.y);
 
-	check_gl(glCopyImageSubData(
-		src->id, GL_TEXTURE_2D, 0, src_offset.x, src_offset.y, 0,
-		dst->id, GL_TEXTURE_2D, 0, dst_offset.x, dst_offset.y, 0,
-		dimensions.x, dimensions.y, 1));
+	u32 old_fb, old_texture;
+	check_gl(glGetIntegerv(GL_FRAMEBUFFER_BINDING, &old_fb));
+	check_gl(glGetIntegerv(GL_TEXTURE_BINDING_2D, &old_texture));
+
+	/* Who knew copying a region of a texture could be so awful?
+	 *
+	 * Of course, in OpenGL 4.3+, glCopyImageSubData exists to make this a lot better,
+	 * but we aren't using that. */
+	u32 fb;
+	check_gl(glGenFramebuffers(1, &fb));
+	check_gl(glBindFramebuffer(GL_FRAMEBUFFER, fb));
+
+	check_gl(glBindTexture(GL_TEXTURE_2D, src->id));
+	check_gl(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, src->id, 0));
+
+	check_gl(glReadBuffer(GL_COLOR_ATTACHMENT0));
+
+	check_gl(glBindTexture(GL_TEXTURE_2D, dst->id));
+	check_gl(glCopyTexSubImage2D(GL_TEXTURE_2D, 0, dst_offset.x, dst_offset.y, src_offset.x, src_offset.y, dimensions.x, dimensions.y));
+
+	check_gl(glDeleteFramebuffers(1, &fb));
+
+	check_gl(glReadBuffer(GL_NONE));
+
+	check_gl(glBindFramebuffer(GL_FRAMEBUFFER, old_fb));
+	check_gl(glBindTexture(GL_TEXTURE_2D, old_texture));
 }
 
 void video_gl_texture_barrier(struct texture* texture, u32 state) {

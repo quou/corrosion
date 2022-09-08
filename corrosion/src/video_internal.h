@@ -378,6 +378,9 @@ struct video_gl_texture {
 	u32 state;
 
 	v2i size;
+
+	u32 format;
+	u32 type;
 };
 
 struct video_gl_framebuffer {
