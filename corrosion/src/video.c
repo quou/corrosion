@@ -910,6 +910,7 @@ static void find_procs(u32 api, bool enable_validation) {
 
 	video.get_draw_call_count = get_api_proc(get_draw_call_count);
 	video.get_api_name = impl_get_api_name;
+	video.query_features = get_api_proc(query_features);
 
 #undef get_v_proc
 }

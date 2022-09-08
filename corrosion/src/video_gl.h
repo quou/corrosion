@@ -69,3 +69,4 @@ void video_gl_free_shader(struct shader* shader);
 
 u32 video_gl_get_draw_call_count();
 
+u32 video_gl_query_features();

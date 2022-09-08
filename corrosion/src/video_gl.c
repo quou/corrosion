@@ -535,7 +535,8 @@ struct pipeline* video_gl_new_pipeline_ex(u32 flags, const struct shader* shader
 }
 
 struct pipeline* video_gl_new_compute_pipeline(u32 flags, const struct shader* shader, struct pipeline_descriptor_sets descriptor_sets) {
-	abort_with("Not implemented.");
+	abort_with("Compute pipelines are not suppported in the %s backend. "
+		"Query the available backend features with video.query_features.", video.get_api_name(video.api));
 	return null;
 }
 
@@ -614,7 +615,8 @@ void video_gl_end_pipeline(const struct pipeline* pipeline_) {
 }
 
 void video_gl_invoke_compute(v3u count) {
-	abort_with("Not implemented.");
+	abort_with("Compute shaders are not suppported in the %s backend. "
+		"Query the available backend features with video.query_features.", video.get_api_name(video.api));
 }
 
 void video_gl_recreate_pipeline(struct pipeline* pipeline_) {
@@ -706,32 +708,39 @@ static void pipeline_setup_va(struct video_gl_pipeline* pipeline, u32 binding) {
 }
 
 struct storage* video_gl_new_storage(u32 flags, usize size, void* initial_data) {
-	abort_with("Not implemented.");
+	abort_with("Storage buffers are not suppported in the %s backend. "
+		"Query the available backend features with video.query_features.", video.get_api_name(video.api));
 	return null;
 }
 
 void video_gl_update_storage(struct storage* storage, void* data) {
-	abort_with("Not implemented.");
+	abort_with("Storage buffers are not suppported in the %s backend. "
+		"Query the available backend features with video.query_features.", video.get_api_name(video.api));
 }
 
 void video_gl_update_storage_region(struct storage* storage, void* data, usize offset, usize size) {
-	abort_with("Not implemented.");
+	abort_with("Storage buffers are not suppported in the %s backend. "
+		"Query the available backend features with video.query_features.", video.get_api_name(video.api));
 }
 
 void video_gl_free_storage(struct storage* storage) {
-	abort_with("Not implemented.");
+	abort_with("Storage buffers are not suppported in the %s backend. "
+		"Query the available backend features with video.query_features.", video.get_api_name(video.api));
 }
 
 void video_gl_copy_storage(struct storage* dst, usize dst_offset, const struct storage* src, usize src_offset, usize size) {
-	abort_with("Not implemented.");
+	abort_with("Storage buffers are not suppported in the %s backend. "
+		"Query the available backend features with video.query_features.", video.get_api_name(video.api));
 }
 
 void video_gl_storage_barrier(struct storage* storage, u32 state) {
-	abort_with("Not implemented.");
+	abort_with("Storage buffers are not suppported in the %s backend. "
+		"Query the available backend features with video.query_features.", video.get_api_name(video.api));
 }
 
 void video_gl_storage_bind_as(const struct storage* storage, u32 as, u32 point) {
-	abort_with("Not implemented.");
+	abort_with("Storage buffers are not suppported in the %s backend. "
+		"Query the available backend features with video.query_features.", video.get_api_name(video.api));
 }
 
 struct vertex_buffer* video_gl_new_vertex_buffer(void* verts, usize size, u32 flags) {
@@ -932,6 +941,7 @@ void video_gl_texture_copy(struct texture* dst_, v2i dst_offset, const struct te
 	struct video_gl_texture* dst = (struct video_gl_texture*)dst_;
 	struct video_gl_texture* src = (struct video_gl_texture*)src_;
 
+	//dst_offset.y = dst->size.y - (dst_offset.y + dimensions.y);
 	src_offset.y = src->size.y - (src_offset.y + dimensions.y);
 
 	check_gl(glCopyImageSubData(
@@ -963,7 +973,8 @@ static u32 init_shader_section(u32 section, const char* src) {
 
 static void init_shader(struct video_gl_shader* shader, const struct shader_header* header, const u8* data) {
 	if (header->is_compute) {
-		abort_with("Not implemented");
+		abort_with("Compute shaders are not suppported in the %s backend. "
+			"Query the available backend features with video.query_features.", video.get_api_name(video.api));
 	} else {
 		const char* vert_src = (const char*)data + header->raster_header.v_gl_offset;
 		const char* frag_src = (const char*)data + header->raster_header.f_gl_offset;
@@ -1066,4 +1077,8 @@ void video_gl_register_resources() {
 
 u32 video_gl_get_draw_call_count() {
 	return gctx.draw_call_count;
+}
+
+u32 video_gl_query_features() {
+	return video_feature_base;
 }

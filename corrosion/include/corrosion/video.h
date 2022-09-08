@@ -219,6 +219,13 @@ enum {
 	storage_state_dont_care,
 };
 
+enum {
+	video_feature_base    = 1 << 0,
+	video_feature_compute = 1 << 1,
+	video_feature_storage = 1 << 2,
+	video_feature_barrier = 1 << 3
+};
+
 m4f get_camera_view(const struct camera* camera);
 m4f get_camera_projection(const struct camera* camera, f32 aspect);
 
@@ -304,6 +311,7 @@ struct video {
 	/* Misc */
 	u32 (*get_draw_call_count)();
 	const char* (*get_api_name)();
+	u32 (*query_features)();
 };
 
 extern struct video video;

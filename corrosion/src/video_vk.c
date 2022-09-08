@@ -3176,3 +3176,11 @@ void video_vk_register_resources() {
 u32 video_vk_get_draw_call_count() {
 	return vctx.draw_call_count;
 }
+
+u32 video_vk_query_features() {
+	return
+		video_feature_base |
+		video_feature_compute |
+		video_feature_storage |
+		video_feature_barrier;
+}

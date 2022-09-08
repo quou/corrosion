@@ -2,7 +2,7 @@
 
 #include <corrosion/cr.h>
 
-#if 0
+//#if 0
 
 struct {
 	struct texture* texturea;
@@ -439,9 +439,9 @@ void cr_deinit() {
 	ui_deinit();
 }
 
-#endif
+//#endif
 
-//#if 0
+#if 0
 struct vertex {
 	v2f position;
 	v2f uv;
@@ -478,7 +478,7 @@ struct app_config cr_config() {
 	return (struct app_config) {
 		.name = "Sandbox",
 		.video_config = (struct video_config) {
-			.api = video_api_vulkan,
+			.api = video_api_opengl,
 #ifdef debug
 			.enable_validation = true,
 #else
@@ -791,4 +791,4 @@ void cr_deinit() {
 	free_ui(app.ui);
 	ui_deinit();
 }
-//#endif
+#endif
