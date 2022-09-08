@@ -4,14 +4,13 @@ C graphics framework for GNU/Linux and Windows.
 
 ## Notes
  - Functional Vulkan backend that uses the dynamic rendering extension.
- - WIP OpenGL ES backend. Currently it isn't functional at all, but most of the groundwork is there.
+ - OpenGL ES backend. Some features (like compute shaders) are not supported on this backend.
+ - Emscripten support coming soon.
 
 ## Build Instructions
 
 ### Prerequisites
- - A graphics processor that supports at least Vulkan 1.2 and the following extensions:
- 	- VK_KHR_dynamic_rendering
- 	- VK_KHR_swapchain
+ - A graphics processor that supports at least Vulkan 1.2 and the VK_KHR_dynamic_rendering extension.
  - Vulkan SDK, including shaderc and SPIRV-Cross.
  - Vulkan validation layers (optional but highly recommended).
  - On GNU/Linux:
