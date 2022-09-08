@@ -1,6 +1,7 @@
 #include <stdlib.h>
 
 #include "core.h"
+#include "thread.h"
 
 #ifdef debug
 usize memory_usage = 0;
@@ -11,7 +12,9 @@ usize memory_usage = 0;
  * and adding that struct to a linked list each time a block is allocated,
  * with the struct being removed from the list on each deallocation.
  * The leak_check function traverses the list and anything that's still
- * in the list is reported as leaked memory. */
+ * in the list is reported as leaked memory.
+ *
+ * This allocator is thread-safe. */
 
 struct alloc_info {
 	const char* file;
@@ -23,26 +26,40 @@ struct alloc_info {
 };
 
 list(struct alloc_info) alloc_list;
+struct mutex list_mutex;
 
 void alloc_init() {
 	memset(&alloc_list, 0, sizeof alloc_list);
+	init_mutex(&list_mutex);
 }
 
 void alloc_deinit() {
-
+	deinit_mutex(&list_mutex);
 }
 
 static void alloc_insert(struct alloc_info* node, struct alloc_info* new_node) {
+	lock_mutex(&list_mutex);
 	list_insert(alloc_list, node, new_node);
+	unlock_mutex(&list_mutex);
 }
 
 static void alloc_add(struct alloc_info* info) {
+	lock_mutex(&list_mutex);
+
 	heap_allocation_count++;
+	memory_usage += info->size;
 	list_push(alloc_list, info);
+
+	unlock_mutex(&list_mutex);
 }
 
 static void alloc_remove(struct alloc_info* node) {
+	lock_mutex(&list_mutex);
+
+	memory_usage -= node->size;
 	list_remove(alloc_list, node);
+
+	unlock_mutex(&list_mutex);
 }
 
 void* _core_alloc(usize size, struct alloc_code_info cinfo) {
@@ -58,8 +75,6 @@ void* _core_alloc(usize size, struct alloc_code_info cinfo) {
 	info->size = size;
 
 	alloc_add(info);
-
-	memory_usage += size;
 
 	void* r = ptr + sizeof *info;
 
@@ -84,8 +99,6 @@ void* _core_calloc(usize count, usize size, struct alloc_code_info cinfo) {
 
 	alloc_add(info);
 
-	memory_usage += alloc_size;
-
 	void* r = ptr + sizeof *info;
 
 	return r;
@@ -96,7 +109,6 @@ void* _core_realloc(void* p, usize size, struct alloc_code_info cinfo) {
 
 	if (ptr) {
 		struct alloc_info* old_info = (void*)(ptr - sizeof *old_info);
-		memory_usage -= old_info->size;
 		alloc_remove(old_info);
 	}
 
@@ -113,8 +125,6 @@ void* _core_realloc(void* p, usize size, struct alloc_code_info cinfo) {
 
 	alloc_add(info);
 
-	memory_usage += size;
-
 	void* r = new_ptr + sizeof *info;
 
 	return r;
@@ -126,7 +136,6 @@ void _core_free(void* p, struct alloc_code_info info) {
 	u8* ptr = p;
 
 	struct alloc_info* old_info = (void*)(ptr - sizeof *old_info);
-	memory_usage -= old_info->size;
 
 	alloc_remove(old_info);
 
@@ -139,12 +148,16 @@ usize core_get_memory_usage() {
 
 void leak_check() {
 	if (core_get_memory_usage() != 0) {
+		lock_mutex(&list_mutex);
+
 		struct alloc_info* node = alloc_list.head;
 		while (node) {
 			warning("Leaked block of %llu bytes allocated at: %s:%u", node->size, node->file, node->line);
 
 			node = node->next;
 		}
+
+		unlock_mutex(&list_mutex);
 
 		info("Total leaked memory: %llu", memory_usage);
 	} else {

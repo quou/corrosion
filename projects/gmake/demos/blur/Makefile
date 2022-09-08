@@ -14,7 +14,7 @@ includes = -I../../../../corrosion/include
 target_name = blur
 deps =
 srcdir = ../../../../demos/blur/src
-libs = -lm -lX11 -lXi -lvulkan -lGL
+libs = -lm -lX11 -lXi -lvulkan -lGL -lpthread
 defines =
 
 ifeq ($(config),debug)

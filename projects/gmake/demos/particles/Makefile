@@ -14,7 +14,7 @@ includes = -I../../../../corrosion/include
 target_name = particles
 deps =
 srcdir = ../../../../demos/particles/src
-libs = -lm -lX11 -lXi -lvulkan -lGL
+libs = -lm -lX11 -lXi -lvulkan -lGL -lpthread
 defines =
 
 ifeq ($(config),debug)

@@ -932,7 +932,6 @@ void video_gl_texture_copy(struct texture* dst_, v2i dst_offset, const struct te
 	struct video_gl_texture* dst = (struct video_gl_texture*)dst_;
 	struct video_gl_texture* src = (struct video_gl_texture*)src_;
 
-	//dst_offset.y = dst->size.y - (dst_offset.y + dimensions.y);
 	src_offset.y = src->size.y - (src_offset.y + dimensions.y);
 
 	check_gl(glCopyImageSubData(
@@ -942,7 +941,7 @@ void video_gl_texture_copy(struct texture* dst_, v2i dst_offset, const struct te
 }
 
 void video_gl_texture_barrier(struct texture* texture, u32 state) {
-	abort_with("Not implemented.");
+
 }
 
 static u32 init_shader_section(u32 section, const char* src) {

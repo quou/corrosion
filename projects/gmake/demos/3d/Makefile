@@ -14,7 +14,7 @@ includes = -I../../../../corrosion/include
 target_name = 3d
 deps =
 srcdir = ../../../../demos/3d/src
-libs = -lm -lX11 -lXi -lvulkan -lGL
+libs = -lm -lX11 -lXi -lvulkan -lGL -lpthread
 defines =
 
 ifeq ($(config),debug)

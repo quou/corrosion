@@ -63,6 +63,7 @@ sources =                            \
           $(srcdir)/simplerenderer.c \
           $(srcdir)/stb.c            \
           $(srcdir)/timer_posix.c    \
+          $(srcdir)/thread_posix.c   \
           $(srcdir)/ui.c             \
           $(srcdir)/ui_render.c      \
           $(srcdir)/video.c          \

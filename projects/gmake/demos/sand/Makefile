@@ -14,7 +14,7 @@ includes = -I../../../../corrosion/include
 target_name = sand
 deps =
 srcdir = ../../../../demos/sand/src
-libs = -lm -lX11 -lXi -lvulkan -lGL
+libs = -lm -lX11 -lXi -lvulkan -lGL -lpthread
 defines =
 
 ifeq ($(config),debug)

@@ -228,6 +228,7 @@ struct index_buffer;
 struct shader;
 struct texture;
 struct storage;
+struct render_worker;
 
 struct video {
 	u32 api;

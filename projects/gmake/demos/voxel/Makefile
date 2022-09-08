@@ -14,7 +14,7 @@ includes = -I../../../../corrosion/include
 target_name = voxel
 deps =
 srcdir = ../../../../demos/voxel/src
-libs = -lm -lX11 -lXi -lvulkan -lGL
+libs = -lm -lX11 -lXi -lvulkan -lGL -lpthread
 defines =
 
 ifeq ($(config),debug)
