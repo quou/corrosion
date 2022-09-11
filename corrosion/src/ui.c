@@ -1411,7 +1411,7 @@ bool ui_selectable_tree_node_ex(struct ui* ui, const char* class, const char* te
 	struct ui_style background_style = ui_get_style(ui, "tree_header", class, ui_style_variant_none);
 
 	const v2f background_dimensions = make_v2f(
-		container->rect.z - button_dimensions.x - (container->padding.x + container->padding.z),
+		container->rect.z - (header_pos.x - container->rect.x) - container->padding.z,
 		text_dimensions.y + background_style.padding.value.y + background_style.padding.value.w);
 
 	ui_draw_rect(ui, header_pos, z_layer_1,
