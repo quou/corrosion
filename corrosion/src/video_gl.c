@@ -839,6 +839,13 @@ void video_gl_draw_indexed(usize count, usize offset, usize instances) {
 void video_gl_set_scissor(v4i rect) {
 	v2i fb_size = video_gl_get_framebuffer_size((const struct framebuffer*)gctx.bound_fb);
 
+	v2i d = make_v2i(rect.x < 0 ? -rect.x : 0, rect.y < 0 ? -rect.y : 0);	
+
+	rect.x = cr_max(rect.x, 0);
+	rect.y = cr_max(rect.y, 0);
+	rect.z = cr_max(rect.z - d.x, 1);
+	rect.w = cr_max(rect.w - d.x, 1);
+
 	glScissor(rect.x, fb_size.y - (rect.y + rect.w), rect.z, rect.w);
 }
 

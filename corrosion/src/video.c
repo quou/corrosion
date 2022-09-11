@@ -827,16 +827,6 @@ static void validated_set_scissor(v4i rect) {
 		ok = false;
 	}
 
-	if (rect.x < 0 || rect.y < 0) {
-		error("video.set_scissor: rect position (x and y) must be larger than or equal to zero");
-		ok = false;
-	}
-
-	if (rect.z < 0 || rect.w < 0) {
-		error("video.set_scissor: rect dimensions (z and w) must be larger than or equal to zero");
-		ok = false;
-	}
-
 	if (ok) {
 		get_api_proc(set_scissor)(rect);
 		return;
