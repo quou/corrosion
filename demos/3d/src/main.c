@@ -90,10 +90,10 @@ void cr_init() {
 
 	for (usize i = 0; i < 200; i++) {
 		struct entity* light = new_entity(app.world, eb_light);
-		light->light.range = 10.0f;
+		light->light.range = 1.0f;
 		light->light.diffuse = make_rgb(0xffffff);
 		light->light.specular = make_rgb(0xffffff);
-		light->light.intensity = 1.0f;
+		light->light.intensity = 10.0f;
 		light->light.position = make_v3f(rand_flt() * 100.0f, rand_flt() * 100.0f, rand_flt() * 100.0f);
 	}
 

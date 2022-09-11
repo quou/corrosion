@@ -46,9 +46,12 @@ layout (std140, set = 0, binding = 3) uniform LightingBuffer {
 };
 
 void main() {
+	const float gamma = 2.2;
+
 	vec3 normal = texture(normals, fs_in.uv).rgb;
 	vec3 position = texture(positions, fs_in.uv).rgb;
 	colour = texture(colours, fs_in.uv);
+	colour.rgb = pow(colour.rgb, vec3(gamma));
 
 	vec3 view_dir = normalize(camera_pos - position);
 
@@ -81,6 +84,9 @@ void main() {
 	}
 
 	colour = vec4(lighting_result, 1.0);
+
+	/* Gamma correct */
+	colour.rgb = pow(colour.rgb, 1.0 / vec3(gamma));
 }
 
 #end fragment
