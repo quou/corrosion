@@ -225,6 +225,8 @@ void main() {
 			normal = vnorm;
 			position = (view * vec4(vpos, 1.0)).xyz;
 
+			vec3 view_dir = normalize(camera_position - vpos);
+
 			/* Apply lighting. */
 			vec3 lighting = vcol * vec3(0.1);
 			for (uint i = 0; i < light_count; i++) {
@@ -239,7 +241,23 @@ void main() {
 				if (!raytrace(light_ray, chunk_bound, dist, hcol, hnorm, hpos)) {
 					float attenuation = 1.0 / (pow(dist, 2.0) + 1);
 
-					lighting += (vcol * vec3(0.1)) + vcol * attenuation * light.power * light.colour;
+					dist = length(light.position - vpos);
+					vec3 light_dir = normalize(light.position - vpos);
+					vec3 reflect_dir = reflect(-light_dir, normal);
+
+					lighting +=
+						((vcol * vec3(0.1)) + vcol) *
+						(
+							attenuation *
+							light.power *
+							light.colour *
+							max(dot(light_dir, normal), 0.0) +
+
+							attenuation *
+							light.power *
+							light.colour *
+							pow(max(dot(view_dir, reflect_dir), 0.0), 8.0)
+						);
 				}
 			}
 
