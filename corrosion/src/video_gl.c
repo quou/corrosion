@@ -96,6 +96,8 @@ static void video_gl_populate_framebuffer(struct video_gl_framebuffer* fb) {
 	check_gl(glGenFramebuffers(1, &fb->id));
 	check_gl(glGenFramebuffers(1, &fb->flipped_fb));
 
+	fb->colour_count = 0;
+
 	/* Colour attachments. */
 	check_gl(glGenTextures(fb->colour_count, fb->colours));
 	for (usize i = 0; i < fb->colour_count; i++) {
@@ -265,13 +267,17 @@ static void video_gl_init_framebuffer(struct video_gl_framebuffer* fb, u32 flags
 
 static void video_gl_deinit_framebuffer(struct video_gl_framebuffer* fb) {
 	video_gl_unpopulate_framebuffer(fb);
-	core_free(fb->colours);
-	core_free(fb->flipped_colours);
-	core_free(fb->colour_types);
-	core_free(fb->colour_formats);
-	core_free(fb->draw_buffers);
-	core_free(fb->draw_buffers2);
-	core_free(fb->clear_colours);
+
+	if (fb->colour_count > 0) {
+		core_free(fb->colours);
+		core_free(fb->flipped_colours);
+		core_free(fb->colour_types);
+		core_free(fb->colour_formats);
+		core_free(fb->clear_colours);
+		core_free(fb->draw_buffers);
+		core_free(fb->draw_buffers2);
+	}
+
 	free_table(fb->attachment_map);
 }
 
