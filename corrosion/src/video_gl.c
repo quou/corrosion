@@ -96,8 +96,6 @@ static void video_gl_populate_framebuffer(struct video_gl_framebuffer* fb) {
 	check_gl(glGenFramebuffers(1, &fb->id));
 	check_gl(glGenFramebuffers(1, &fb->flipped_fb));
 
-	fb->colour_count = 0;
-
 	/* Colour attachments. */
 	check_gl(glGenTextures(fb->colour_count, fb->colours));
 	for (usize i = 0; i < fb->colour_count; i++) {
