@@ -945,7 +945,7 @@ void ui_end_container(struct ui* ui) {
 		if (meta->scroll.y > 0.0f) {
 			meta->scroll.y = 0.0f;
 		}
-		
+
 		if (meta->scroll.x < -max_scroll.x) {
 			meta->scroll.x = -max_scroll.x;
 		}
@@ -1059,6 +1059,8 @@ bool ui_label_ex(struct ui* ui, const char* class, const char* text) {
 
 	bool hovered = container->interactable && mouse_over_rect(rect_cmd->position, dimensions);
 	if (ui_get_style_variant(ui, &style, "label", class, hovered, false)) {
+		ui->hovered = hash_string(text);
+
 		rect_cmd->position = get_ui_el_position(ui, &style, dimensions);
 		rect_cmd->radius   = style.radius.value;
 		text_cmd->position = v2f_add(rect_cmd->position, style.padding.value);
@@ -1658,6 +1660,10 @@ bool ui_colour_picker_ex(struct ui* ui, const char* class, v4f* colour, u64 id) 
 	ui_advance(ui, make_v2f(dimensions.x, dimensions.y + container->spacing));
 
 	return changed;
+}
+
+bool ui_anything_hovered(struct ui* ui) {
+	return ui->hovered != 0;
 }
 
 void ui_draw(const struct ui* ui) {
