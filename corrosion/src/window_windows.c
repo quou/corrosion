@@ -4,6 +4,9 @@
 #endif
 
 #include <Windows.h>
+#include <ShellScalingApi.h>
+
+#pragma comment(lib, "shcore.lib")
 
 #include "core.h"
 #include "video.h"
@@ -242,15 +245,17 @@ void init_window(const struct window_config* config, u32 api) {
 		dw_style |= WS_THICKFRAME | WS_MAXIMIZEBOX;
 	}
 
-	window.size = config->size;
-
-	RECT win_rect = { 0, 0, window.size.x, window.size.y };
+	RECT win_rect = { 0, 0, config->size.x, config->size.y };
 	AdjustWindowRectEx(&win_rect, dw_style, FALSE, dw_ex_style);
 	i32 create_width = win_rect.right - win_rect.left;
 	i32 create_height = win_rect.bottom - win_rect.top;
 
+	window.size = make_v2i(create_width, create_height);
+
 	window.hwnd = CreateWindowExA(dw_ex_style, "corrosion", config->title, dw_style, 0, 0,
 			create_width, create_height, null, null, GetModuleHandle(null), null);
+
+	SetProcessDpiAwareness(PROCESS_PER_MONITOR_DPI_AWARE);
 
 	/* For some reason this only sets the first character. Investigate. */
 	SetWindowTextA(window.hwnd, config->title);
