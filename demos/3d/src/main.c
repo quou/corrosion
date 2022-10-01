@@ -58,8 +58,6 @@ void cr_init() {
 	app.world = new_world(app.renderer);
 	app.world->draw_debug = false;
 
-	srand(time(null));
-
 	for (usize i = 0; i < 30000; i++) {
 		struct entity* obj = new_entity(app.world, eb_mesh | eb_spin);
 		obj->transform = m4f_translation(make_v3f(rand_flt() * 100.0f, rand_flt() * 100.0f, rand_flt() * 100.0f));

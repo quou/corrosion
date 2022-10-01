@@ -22,7 +22,7 @@ static bool run(i32 argc, const char** argv) {
 
 	init_timer();
 
-	srand(time(0));
+	srand((u32)time(0));
 
 	init_window(&cfg->window_config, cfg->video_config.api);
 

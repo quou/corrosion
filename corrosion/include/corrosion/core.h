@@ -426,5 +426,5 @@ force_inline f32 random_float(f32 min, f32 max) {
 }
 
 force_inline i32 random_int(i32 min, i32 max) {
-	return (f32)random_float((f32)min, (f32)(max + 1));
+	return (i32)random_float((f32)min, (f32)(max + 1));
 }

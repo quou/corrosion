@@ -97,7 +97,7 @@ static void video_gl_populate_framebuffer(struct video_gl_framebuffer* fb) {
 	check_gl(glGenFramebuffers(1, &fb->flipped_fb));
 
 	/* Colour attachments. */
-	check_gl(glGenTextures(fb->colour_count, fb->colours));
+	check_gl(glGenTextures((GLsizei)fb->colour_count, fb->colours));
 	for (usize i = 0; i < fb->colour_count; i++) {
 		GLenum format = fb->colour_formats[i];
 		GLenum type = fb->colour_types[i];
@@ -111,7 +111,7 @@ static void video_gl_populate_framebuffer(struct video_gl_framebuffer* fb) {
 		check_gl(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE));
 
 		check_gl(glBindFramebuffer(GL_FRAMEBUFFER, fb->id));
-		check_gl(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i, GL_TEXTURE_2D, fb->colours[i], 0));
+		check_gl(glFramebufferTexture2D(GL_FRAMEBUFFER, (GLenum)(GL_COLOR_ATTACHMENT0 + i), GL_TEXTURE_2D, fb->colours[i], 0));
 
 		u32 flipped;
 		check_gl(glGenTextures(1, &flipped));
@@ -126,7 +126,7 @@ static void video_gl_populate_framebuffer(struct video_gl_framebuffer* fb) {
 		fb->flipped_colours[i].size = fb->size;
 
 		check_gl(glBindFramebuffer(GL_FRAMEBUFFER, fb->flipped_fb));
-		check_gl(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i, GL_TEXTURE_2D, flipped, 0));
+		check_gl(glFramebufferTexture2D(GL_FRAMEBUFFER, (GLenum)(GL_COLOR_ATTACHMENT0 + i), GL_TEXTURE_2D, flipped, 0));
 	}
 
 	if (fb->has_depth) {
@@ -168,7 +168,7 @@ static void video_gl_populate_framebuffer(struct video_gl_framebuffer* fb) {
 }
 
 static void video_gl_unpopulate_framebuffer(struct video_gl_framebuffer* fb) {
-	check_gl(glDeleteTextures(fb->colour_count, fb->colours));
+	check_gl(glDeleteTextures((GLsizei)fb->colour_count, fb->colours));
 	for (usize i = 0; i < fb->colour_count; i++) {
 		check_gl(glDeleteTextures(1, &fb->flipped_colours[i].id));
 	}
@@ -242,7 +242,7 @@ static void video_gl_init_framebuffer(struct video_gl_framebuffer* fb, u32 flags
 					break;
 			}
 
-			fb->draw_buffers[colour_index] = GL_COLOR_ATTACHMENT0 + colour_index;
+			fb->draw_buffers[colour_index] = (u32)(GL_COLOR_ATTACHMENT0 + colour_index);
 
 			fb->flipped_colours[colour_index] = (struct video_gl_texture) {
 				.id = 0,
@@ -337,16 +337,16 @@ void video_gl_begin_framebuffer(struct framebuffer* fb_) {
 		check_gl(glBindFramebuffer(GL_FRAMEBUFFER, fb->id));
 		check_gl(glViewport(0, 0, fb->size.x, fb->size.y));
 
-		check_gl(glDrawBuffers(fb->colour_count, fb->draw_buffers));
+		check_gl(glDrawBuffers((GLsizei)fb->colour_count, fb->draw_buffers));
 
 		for (usize i = 0; i < fb->colour_count; i++) {
 			v4f c = fb->clear_colours[i];
 
-			GLenum a = GL_COLOR_ATTACHMENT0 + i;
+			GLenum a = (GLenum)(GL_COLOR_ATTACHMENT0 + i);
 
 			float colour[] = { c.r, c.g, c.b, c.a };
 
-			check_gl(glClearBufferfv(GL_COLOR, i, colour));
+			check_gl(glClearBufferfv(GL_COLOR, (GLint)i, colour));
 		}
 		
 		if (fb->has_depth) {
@@ -364,7 +364,7 @@ void video_gl_end_framebuffer(struct framebuffer* fb_) {
 		check_gl(glBindFramebuffer(GL_READ_FRAMEBUFFER, fb->id));
 
 		for (usize i = 0; i < fb->colour_count; i++) {
-			u32 a = GL_COLOR_ATTACHMENT0 + i;
+			u32 a = (u32)(GL_COLOR_ATTACHMENT0 + i);
 
 			for (usize j = 0; j < fb->colour_count; j++) {
 				fb->draw_buffers2[j] = GL_NONE;
@@ -372,7 +372,7 @@ void video_gl_end_framebuffer(struct framebuffer* fb_) {
 
 			fb->draw_buffers2[i] = a;
 
-			check_gl(glDrawBuffers(fb->colour_count, fb->draw_buffers2));
+			check_gl(glDrawBuffers((GLsizei)fb->colour_count, fb->draw_buffers2));
 			check_gl(glReadBuffer(a));
 
 			check_gl(glBlitFramebuffer(0, 0, fb->size.x, fb->size.y, 0, fb->size.y, fb->size.x, 0, GL_COLOR_BUFFER_BIT, GL_NEAREST));
@@ -657,7 +657,7 @@ void video_gl_bind_pipeline_descriptor_set(struct pipeline* pipeline_, const cha
 	for (u64* i = table_first(desc_set->descriptors); i; i = table_next(desc_set->descriptors, *i)) {
 		struct video_gl_descriptor* desc = table_get(desc_set->descriptors, *i);
 
-		u32 binding = target * 16 + desc->binding;
+		u32 binding = (u32)(target * 16 + desc->binding);
 
 		switch (desc->resource.type) {
 			case pipeline_resource_texture: {
@@ -702,7 +702,7 @@ static void pipeline_setup_va(struct video_gl_pipeline* pipeline, u32 binding) {
 		}
 
 		check_gl(glEnableVertexAttribArray(attr->location));
-		check_gl(glVertexAttribPointer(attr->location, size, GL_FLOAT, GL_FALSE, ab->stride, (void*)attr->offset));
+		check_gl(glVertexAttribPointer(attr->location, size, GL_FLOAT, GL_FALSE, (GLsizei)ab->stride, (void*)attr->offset));
 		check_gl(glVertexAttribDivisor(attr->location, divisor));
 	}
 }
@@ -830,13 +830,13 @@ void video_gl_bind_index_buffer(const struct index_buffer* ib_) {
 }
 
 void video_gl_draw(usize count, usize offset, usize instances) {
-	check_gl(glDrawArraysInstanced(gctx.bound_pipeline->mode, offset, count, instances));
+	check_gl(glDrawArraysInstanced(gctx.bound_pipeline->mode, (GLsizei)offset, (GLsizei)count, (GLsizei)instances));
 	gctx.draw_call_count++;
 }
 
 void video_gl_draw_indexed(usize count, usize offset, usize instances) {
-	check_gl(glDrawElementsInstanced(gctx.bound_pipeline->mode, count,
-		gctx.bound_ib->type, (void*)(offset * gctx.bound_ib->el_size), instances));
+	check_gl(glDrawElementsInstanced(gctx.bound_pipeline->mode, (GLsizei)count,
+		gctx.bound_ib->type, (void*)(offset * gctx.bound_ib->el_size), (GLsizei)instances));
 	gctx.draw_call_count++;
 }
 

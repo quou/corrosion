@@ -123,7 +123,7 @@ struct ShaderHeader {
 struct Desc {
 	spirv_cross::CompilerGLSL& compiler;
 	u32 binding;
-	u64 id;
+	u32 id;
 };
 
 struct DescSet {

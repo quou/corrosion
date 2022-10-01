@@ -164,7 +164,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ProjectReference Include="..\corrosion\corrosion.vcxproj">
+    <ProjectReference Include="..\..\corrosion\corrosion.vcxproj">
       <Project>{c4aec280-1b24-4db7-9999-39ddc89a6077}</Project>
     </ProjectReference>
   </ItemGroup>

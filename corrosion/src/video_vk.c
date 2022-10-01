@@ -1341,9 +1341,9 @@ void video_vk_begin_framebuffer(struct framebuffer* framebuffer) {
 	vctx.vkCmdBeginRenderingKHR(vctx.command_buffers[vctx.current_frame], &rendering_info);
 	vkCmdSetViewport(vctx.command_buffers[vctx.current_frame], 0, 1, &(VkViewport) {
 		.x = 0,
-		.y = fb->size.y,
-		.width = fb->size.x,
-		.height = -fb->size.y
+		.y = (f32)fb->size.y,
+		.width = (f32)fb->size.x,
+		.height = (f32)-fb->size.y
 	});
 
 	vkCmdSetScissor(vctx.command_buffers[vctx.current_frame], 0, 1, &(VkRect2D) {
@@ -1967,7 +1967,7 @@ static void init_pipeline(struct video_vk_pipeline* pipeline, u32 flags, const s
 			.layout = pipeline->layout,
 			.pNext = &(VkPipelineRenderingCreateInfoKHR) {
 				.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR,
-				.colorAttachmentCount = framebuffer->colour_count,
+				.colorAttachmentCount = (u32)framebuffer->colour_count,
 				.pColorAttachmentFormats = framebuffer->colour_formats,
 				.depthAttachmentFormat = framebuffer->depth_format
 			}
@@ -2417,7 +2417,6 @@ void video_vk_storage_barrier(struct storage* storage_, u32 state) {
 	struct video_vk_storage* storage = (struct video_vk_storage*)storage_;
 
 	VkAccessFlags src_access, dst_access;
-	u32 src_queue, dst_queue;
 	VkPipelineStageFlags src_stage, dst_stage;
 
 	switch (storage->state) {

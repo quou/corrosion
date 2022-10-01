@@ -227,8 +227,6 @@ static f32 rand_flt() {
 }
 
 void cr_init() {
-	srand(time(0));
-
 	app.fps_timer = 0.0;
 
 	ui_init();

@@ -64,8 +64,6 @@ static f32 rand_flt() {
 }
 
 void cr_init() {
-	srand(time(null));
-
 	ui_init();
 
 	app.ui = new_ui(video.get_default_fb());

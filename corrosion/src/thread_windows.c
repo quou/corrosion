@@ -29,14 +29,14 @@ void thread_execute(struct thread* thread) {
 		return;
 	}
 
-	thread->handle = CreateThread(null, 0, _thread_worker, thread, 0, &thread->id);
+	thread->handle = (u64)CreateThread(null, 0, _thread_worker, thread, 0, (u32*)&thread->id);
 }
 
 void thread_join(struct thread* thread) {
 	if (!thread->handle) { return; }
 
-	WaitForSingleObject(thread->handle, INFINITE);
-	CloseHandle(thread->handle);
+	WaitForSingleObject((HANDLE)thread->handle, INFINITE);
+	CloseHandle((HANDLE)thread->handle);
 	thread->handle = 0;
 }
 
@@ -53,17 +53,17 @@ void set_thread_uptr(struct thread* thread, void* ptr) {
 }
 
 void init_mutex(struct mutex* mutex) {
-	mutex->handle = CreateMutex(null, false, null);
+	mutex->handle = (u64)CreateMutex(null, false, null);
 }
 
 void deinit_mutex(struct mutex* mutex) {
-	CloseHandle(mutex->handle);
+	CloseHandle((HANDLE)mutex->handle);
 }
 
 void lock_mutex(struct mutex* mutex) {
-	WaitForSingleObject(mutex->handle, INFINITE);
+	WaitForSingleObject((HANDLE)mutex->handle, INFINITE);
 }
 
 void unlock_mutex(struct mutex* mutex) {
-	ReleaseMutex(mutex->handle);
+	ReleaseMutex((HANDLE)mutex->handle);
 }
