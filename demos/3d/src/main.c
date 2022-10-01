@@ -26,7 +26,7 @@ struct app_config cr_config() {
 	return (struct app_config) {
 		.name = "3D Renderer",
 		.video_config = (struct video_config) {
-			.api = video_api_opengl,
+			.api = video_api_vulkan,
 #ifdef debug
 			.enable_validation = true,
 #else
@@ -35,8 +35,8 @@ struct app_config cr_config() {
 			.clear_colour = make_rgba(0x000000, 255)
 		},
 		.window_config = (struct window_config) {
-			.title = "Shooter",
-			.size = make_v2i(800, 600),
+			.title = "3D Renderer",
+			.size = make_v2i(1920, 1080),
 			.resizable = true
 		}
 	};
