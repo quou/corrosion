@@ -25,11 +25,27 @@ make config=debug run_sbox
 
 ### Windows
 The Windows platform layer is still work in progress, so some things don't work properly
-or aren't implemented at all.
+or aren't implemented at all. Only Vulkan is supported on Windows for now.
 
 #### Visual Studio
 Open `corrosion.sln` in the `projects/vs2022` directory in Visual Studio 2022, right click
 the solution in the Solution Explorer and click "Build Solution".
+
+## Demos
+<figure>
+	<img src="media/demos/sand.png" alt="Compute Shader Sand Simulation">
+	<figcaption>Compute Shader Sand Simulation</figcaption>
+</figure>
+
+<figure>
+	<img src="media/demos/voxel.png" alt="Voxel Raytracer">
+	<figcaption>Voxel Raytracer</figcaption>
+</figure>
+
+<figure>
+	<img src="media/demos/3d.png" alt="3D Renderer">
+	<figcaption>Simple 3D Renderer.</figcaption>
+</figure>
 
 ## Note for GitHub users
 This repository is hosted on Codeberg and mirrored on GitHub. Issues and pull requests should be
