@@ -18,6 +18,15 @@ layout (binding = 2) buffer TempParticleBuffer {
 
 layout (binding = 3, rgba8) uniform image2D result;
 
+/* Used to get random colours for the sand to make it look nicer. */
+float rand(vec2 co){
+	return fract(sin(dot(co, vec2(12.9898, 78.233))) * 43758.5453);
+}
+
+float map(float v, float min1, float max1, float min2, float max2) {
+	return min2 + (max2 - min2) * (v - min1) / (max1 - min1);
+}
+
 void update_sand(ivec2 coords, uint idx) {
 	groupMemoryBarrier();
 
@@ -52,42 +61,18 @@ void update_sand(ivec2 coords, uint idx) {
 	}
 }
 
-void update_water(ivec2 coords, uint idx) {
+void update_rock(ivec2 coords, uint idx) {
 	groupMemoryBarrier();
 
 	ivec2 bottom_coords = ivec2(coords.x, coords.y + 1);
-	ivec2 bottom_left_coords = ivec2(coords.x - 1, coords.y + 1);
-	ivec2 bottom_right_coords = ivec2(coords.x + 1, coords.y + 1);
-	ivec2 left_coords = ivec2(coords.x - 1, coords.y);
-	ivec2 right_coords = ivec2(coords.x + 1, coords.y);
 
 	if (bottom_coords.y >= config.sim_size.y) { return;	}
-	if (bottom_left_coords.x < 0) { return;	}
-	if (bottom_right_coords.x >= config.sim_size.x) {return; }
-	if (right_coords.x >= config.sim_size.x) { return; }
-	if (left_coords.x < 0) { return; }
 
 	int bottom_idx = bottom_coords.x + bottom_coords.y * config.sim_size.x;
-	int bottom_left_idx = bottom_left_coords.x + bottom_left_coords.y * config.sim_size.x;
-	int bottom_right_idx = bottom_right_coords.x + bottom_right_coords.y * config.sim_size.x;
-	int left_idx = left_coords.x + left_coords.y * config.sim_size.x;
-	int right_idx = right_coords.x + right_coords.y * config.sim_size.x;
 
 	if (temp_particles[bottom_idx] == 0) {
 		particles[idx] = 0;
 		particles[bottom_idx] = 2;
-	} else if (temp_particles[bottom_left_idx] == 0) {
-		particles[idx] = 0;
-		particles[bottom_left_idx] = 2;
-	} else if (temp_particles[bottom_right_idx] == 0) {
-		particles[idx] = 0;
-		particles[bottom_right_idx] = 2;
-	} else if (temp_particles[right_idx] == 0) {
-		particles[idx] = 0;
-		particles[right_idx] = 2;
-	} else if (temp_particles[left_idx] == 0) {
-		particles[idx] = 0;
-		particles[left_idx] = 2;
 	}
 }
 
@@ -103,14 +88,16 @@ void main() {
 	if (type == 1) {
 		update_sand(coords, idx);
 	} else if (type == 2) {
-		update_water(coords, idx);
+		update_rock(coords, idx);
 	}
 
 	type = particles[idx];
 	if (type == 2) {
-		col = vec4(0.1, 0.1, 1.0, 1.0);
+		col = vec4(0.5, 0.5, 0.5, 1.0);
 	} else if (type == 1) {
-		col = vec4(0.666, 0.576, 0.313, 1.0);
+		col = vec4(vec3(0.666, 0.576, 0.313) * map(rand(vec2(coords)), 0.0, 1.0, 0.9, 1.0), 1.0);
+	} else if (type == 3) {
+		col = vec4(vec3(0.278, 0.169, 0.082) * map(rand(vec2(coords)), 0.0, 1.0, 0.9, 1.0), 1.0);
 	}
 
 	imageStore(result, coords, col);

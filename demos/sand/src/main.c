@@ -2,6 +2,8 @@
 
 #define sim_size make_v2i(400, 250)
 #define pixel_size 4
+#define timestep (1.0 / 60.0)
+#define paint_radius 4
 
 struct vertex {
 	v2f position;
@@ -9,6 +11,8 @@ struct vertex {
 };
 
 struct {
+	struct ui* ui;
+
 	struct texture* result;
 	struct storage* particles;
 	struct storage* temp_particles;
@@ -22,6 +26,13 @@ struct {
 	struct {
 		v2i size;
 	} config;
+
+	f64 timer1;
+	f64 timer2;
+
+	i32 current_type;
+
+	char fps_buf[32];
 } app;
 
 struct app_config cr_config() {
@@ -45,6 +56,12 @@ struct app_config cr_config() {
 }
 
 void cr_init() {
+	ui_init();
+
+	app.current_type = 1;
+
+	app.ui = new_ui(video.get_default_fb());
+
 	const struct shader* draw_shader = load_shader("shaders/quad.csh");
 	const struct shader* process_shader = load_shader("shaders/process.csh");
 
@@ -173,45 +190,90 @@ void cr_init() {
 	app.ib = video.new_index_buffer(indices, 6, index_buffer_flags_u16);
 }
 
-void cr_update() {
-	app.config.size = sim_size;
+void cr_update(f64 ts) {
+	app.timer1 += ts;
+	app.timer2 += ts;
 
-	if (mouse_btn_pressed(mouse_btn_left)) {
+	if (app.timer2 >= 1.0) {
+		app.timer2 = 0.0;
+
+		sprintf(app.fps_buf, "FPS: %.2f", 1.0 / ts);
+	}
+
+	ui_begin(app.ui);
+
+	ui_begin_floating_container(app.ui, make_v4f(10.0f, 10.0f, 100.0f, 200.0f), true);
+	ui_label(app.ui, app.fps_buf);
+
+	if (ui_button(app.ui, "Sand")) {
+		app.current_type = 1;
+	}
+
+	if (ui_button(app.ui, "Rock")) {
+		app.current_type = 2;
+	}
+
+	if (ui_button(app.ui, "Wood")) {
+		app.current_type = 3;
+	}
+
+	if (ui_button(app.ui, "Air")) {
+		app.current_type = 0;
+	}
+
+	if (!ui_anything_hovered(app.ui) && mouse_btn_pressed(mouse_btn_left)) {
 		v2i mp = get_mouse_pos();
 
 		v2i mapped_mp = v2i_div(mp, make_v2i(pixel_size, pixel_size));
 		if (mp.x >= 0 && mp.y >= 0 && mapped_mp.x < app.config.size.x && mapped_mp.y < app.config.size.y) {
-			i32 val = 1;
 
-			i32 offset = mapped_mp.x + mapped_mp.y * app.config.size.x;
+			v2i start = make_v2i(
+				clamp(mapped_mp.x - paint_radius, 0, app.config.size.x),
+				clamp(mapped_mp.y - paint_radius, 0, app.config.size.y)
+			);
 
-			video.update_storage_region(app.particles, &val, sizeof val * (usize)offset, sizeof val);
-		}
-	} else if (mouse_btn_pressed(mouse_btn_right)) {
-		v2i mp = get_mouse_pos();
+			v2i end = make_v2i(
+				clamp(mapped_mp.x + paint_radius, 0, app.config.size.x),
+				clamp(mapped_mp.y + paint_radius, 0, app.config.size.y)
+			);
 
-		v2i mapped_mp = v2i_div(mp, make_v2i(pixel_size, pixel_size));
-		if (mp.x >= 0 && mp.y >= 0 && mapped_mp.x < app.config.size.x && mapped_mp.y < app.config.size.y) {
-			i32 val = 2;
+			for (i32 y = start.y; y < end.y; y++) {
+				for (i32 x = start.x; x < end.x; x++) {
 
-			i32 offset = mapped_mp.x + mapped_mp.y * app.config.size.x;
+					if (v2_mag_sqrd(v2f_sub(make_v2f((f32)x, (f32)y), make_v2f((f32)mapped_mp.x, (f32)mapped_mp.y))) <= (f32)(paint_radius * paint_radius)) {
+						i32 offset = x + y * app.config.size.x;
 
-			video.update_storage_region(app.particles, &val, sizeof val * (usize)offset, sizeof val);
+						video.update_storage_region(app.particles, &app.current_type,
+							sizeof app.current_type * (usize)offset,
+							sizeof app.current_type);
+					}
+				}
+			}
 		}
 	}
 
-	video.copy_storage(app.temp_particles, 0, app.particles, 0, sim_size.x * sim_size.y * sizeof(i32));
+	ui_end_container(app.ui);
 
-	video.update_pipeline_uniform(app.process_pip, "primary", "config", &app.config);
+	ui_end(app.ui);
 
-	video.texture_barrier(app.result, texture_state_shader_write);
+	app.config.size = sim_size;
 
-	video.begin_pipeline(app.process_pip);
+	if (app.timer1 >= timestep) {
+		app.timer1 = 0.0;
+
+		video.copy_storage(app.temp_particles, 0, app.particles, 0, sim_size.x * sim_size.y * sizeof(i32));
+
+		video.update_pipeline_uniform(app.process_pip, "primary", "config", &app.config);
+
+		video.texture_barrier(app.result, texture_state_shader_write);
+
+		video.begin_pipeline(app.process_pip);
 		video.bind_pipeline_descriptor_set(app.process_pip, "primary", 0);
 		video.invoke_compute(make_v3u((u32)app.config.size.x / 16, (u32)app.config.size.y + 1 / 16, 1));
-	video.end_pipeline(app.process_pip);
+		video.end_pipeline(app.process_pip);
 
-	video.texture_barrier(app.result, texture_state_shader_graphics_read);
+		video.texture_barrier(app.result, texture_state_shader_graphics_read);
+	}
 
 	video.begin_framebuffer(video.get_default_fb());
 		video.begin_pipeline(app.draw_pip);
@@ -220,6 +282,7 @@ void cr_update() {
 			video.bind_pipeline_descriptor_set(app.draw_pip, "primary", 0);
 			video.draw_indexed(6, 0, 1);
 		video.end_pipeline(app.draw_pip);
+		ui_draw(app.ui);
 	video.end_framebuffer(video.get_default_fb());
 }
 
@@ -233,4 +296,8 @@ void cr_deinit() {
 	video.free_storage(app.particles);
 	video.free_storage(app.temp_particles);
 	video.free_texture(app.result);
+
+	free_ui(app.ui);
+
+	ui_deinit();
 }
