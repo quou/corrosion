@@ -252,13 +252,12 @@ void init_window(const struct window_config* config, u32 api) {
 
 	window.size = make_v2i(create_width, create_height);
 
+	SetProcessDpiAwareness(PROCESS_PER_MONITOR_DPI_AWARE);
+
 	window.hwnd = CreateWindowExA(dw_ex_style, "corrosion", config->title, dw_style, 0, 0,
 			create_width, create_height, null, null, GetModuleHandle(null), null);
 
-	SetProcessDpiAwareness(PROCESS_PER_MONITOR_DPI_AWARE);
-
-	/* For some reason this only sets the first character. Investigate. */
-	SetWindowTextA(window.hwnd, config->title);
+	SetWindowTextW(window.hwnd, config->title);
 
 	ShowWindow(window.hwnd, SW_SHOWNORMAL);
 
