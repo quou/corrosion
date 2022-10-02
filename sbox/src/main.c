@@ -55,7 +55,7 @@ struct app_config cr_config() {
 		.video_config = (struct video_config) {
 			.api = video_api_vulkan,
 #ifdef debug
-			.enable_validation = true,
+			.enable_validation = false,
 #else
 			.enable_validation = false,
 #endif
@@ -86,7 +86,7 @@ void cr_init() {
 		app.numbers[i] = 40.0f;
 	}
 
-	app.dejavusans = load_font("res/DejaVuSans.ttf", 24.0f);
+	app.dejavusans = load_font("res/DejaVuSans.ttf", 24);
 
 	app.ui = new_ui(video.get_default_fb());
 

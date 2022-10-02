@@ -89,6 +89,12 @@ bool write_pak(const char* outname, struct pak_write_file* files, usize file_cou
 struct res_config {
 	usize payload_size;
 
+	/* The user data is included in the ID of a resource so that
+	 * resources loaded with different user data are not confused
+	 * in the cache. This behaviour can be effectively disabled by
+	 * setting this parameter to zero. */
+	usize udata_size;
+
 	/* If true, frees the raw data immediately after on_load
 	 * has executed. Otherwise, the raw data is kept alive for
 	 * the entire lifetime of the resource. If false, the user
@@ -119,7 +125,7 @@ void* res_load(const char* type, const char* filename, void* udata);
 void res_unload(const char* filename);
 
 struct texture* load_texture(const char* filename, u32 flags);
-struct font*    load_font(const char* filename, f32 size);
+struct font*    load_font(const char* filename, i32 size);
 struct shader*  load_shader(const char* filename);
 
 /* Primitive resources. */

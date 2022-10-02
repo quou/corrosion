@@ -327,7 +327,7 @@ static void ttf_on_load(const char* filename, u8* raw, usize raw_size, void* pay
 	f32 size = 14.0f;
 
 	if (udata) {
-		size = *(f32*)udata;
+		size = (f32)(*(i32*)udata);
 	}
 
 	init_font(payload, raw, raw_size, size);
@@ -357,6 +357,7 @@ void res_init(const char* argv0) {
 
 	reg_res_type("true type font", &(struct res_config) {
 		.payload_size = font_struct_size(),
+		.udata_size = sizeof(i32),
 		.free_raw_on_load = false,
 		.terminate_raw = false,
 		.alt_raw = bir_DejaVuSans_ttf,
@@ -385,11 +386,24 @@ void reg_res_type(const char* type, struct res_config* config) {
 	table_set(res_registry, hash_string(type), *config);
 }
 
+/* Get a unique ID buffer for each resource, based on the config type and the user data. This allows
+ * the same filename to be used for different resource types and with different user data configs without
+ * the system confusing them for each other in the resource cache. */
+static void get_resource_id_bytebuffer(u8* bb, usize bb_max_size, usize* bb_size, const char* filename,
+	const void* udata, u64 config_id, const struct res_config* config) {
+
+	usize end_size = config->udata_size + sizeof config_id;
+
+	usize filename_len = strlen(filename);
+	*bb_size = end_size + filename_len;
+
+	memcpy(bb, filename, cr_max(filename_len, bb_max_size - end_size));
+	memcpy(bb + filename_len, &config_id, sizeof config_id);
+	memcpy(bb + filename_len + sizeof config_id, udata, config->udata_size);
+}
+
 void* res_load(const char* type, const char* filename, void* udata) {
 	u64 config_id = hash_string(type);
-
-	struct res* got = table_get(res_cache, hash_string(filename) + config_id);
-	if (got) { return got->payload; }
 
 	struct res_config* config = table_get(res_registry, config_id);
 
@@ -397,6 +411,15 @@ void* res_load(const char* type, const char* filename, void* udata) {
 		error("Loading `%s': No resource handler registered for this type of file (%s).", filename, type);
 		return null;
 	}
+
+	usize resource_id_bb_size;
+	u8 resource_id_bb[1024];
+	get_resource_id_bytebuffer(resource_id_bb, sizeof resource_id_bb, &resource_id_bb_size,
+		filename, udata, config_id, config);
+	u64 resource_id = elf_hash(resource_id_bb, resource_id_bb_size);
+
+	struct res* got = table_get(res_cache, resource_id);
+	if (got) {return got->payload; }
 
 	struct res new_res = {
 		.payload = core_calloc(1, config->payload_size),
@@ -434,9 +457,7 @@ void* res_load(const char* type, const char* filename, void* udata) {
 		core_free(raw);
 	}
 
-	u64 cache_key = hash_string(filename) + config_id;
-
-	table_set(res_cache, cache_key, new_res);
+	table_set(res_cache, resource_id, new_res);
 
 	return new_res.payload;
 }
@@ -460,7 +481,7 @@ struct texture* load_texture(const char* filename, u32 flags) {
 	return res_load("texture", filename, &flags);
 }
 
-struct font* load_font(const char* filename, f32 size) {
+struct font* load_font(const char* filename, i32 size) {
 	return res_load("true type font", filename, &size);
 }
 

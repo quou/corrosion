@@ -1097,6 +1097,7 @@ void video_gl_register_resources() {
 
 	reg_res_type("texture", &(struct res_config) {
 		.payload_size = sizeof(struct video_gl_texture),
+		.udata_size = sizeof(u32),
 		.free_raw_on_load = true,
 		.terminate_raw = false,
 		.alt_raw = bir_error_png,

@@ -14,7 +14,7 @@
  * setup using this exact API, so you can simply call simple_renderer_push_text
  * or ui_renderer_push_text.
  * 
- *     struct font* font = load_font("Arial.ttf", 14.0f);
+ *     struct font* font = load_font("Arial.ttf", 14);
  * 
  *     static void draw_char(void*, const struct texture* atlas, v2f pos, v4f rect, v4f col) {
  *         render_sprite(atlas, pos, rect, col);
