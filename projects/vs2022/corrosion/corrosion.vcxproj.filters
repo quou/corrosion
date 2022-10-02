@@ -24,9 +24,6 @@
     <ClCompile Include="..\..\..\corrosion\src\dtable.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\..\corrosion\src\entrypoint.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\corrosion\src\font.c">
       <Filter>Source Files</Filter>
     </ClCompile>

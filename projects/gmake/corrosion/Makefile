@@ -33,7 +33,6 @@ sources =                            \
           $(srcdir)/bir.c            \
           $(srcdir)/core.c           \
           $(srcdir)/dtable.c         \
-          $(srcdir)/entrypoint.c     \
           $(srcdir)/font.c           \
           $(srcdir)/gizmo.c          \
           $(srcdir)/log.c            \

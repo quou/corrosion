@@ -181,7 +181,6 @@
     <ClCompile Include="..\..\..\corrosion\src\bir.c" />
     <ClCompile Include="..\..\..\corrosion\src\core.c" />
     <ClCompile Include="..\..\..\corrosion\src\dtable.c" />
-    <ClCompile Include="..\..\..\corrosion\src\entrypoint.c" />
     <ClCompile Include="..\..\..\corrosion\src\font.c" />
     <ClCompile Include="..\..\..\corrosion\src\gizmo.c" />
     <ClCompile Include="..\..\..\corrosion\src\log.c" />

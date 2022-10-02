@@ -1,3 +1,5 @@
+#define cr_entrypoint
+
 #include <corrosion/cr.h>
 
 #define sim_size make_v2i(400, 250)

@@ -1,5 +1,7 @@
 #include <stdio.h>
 
+#define cr_managed_app
+
 #include <corrosion/cr.h>
 
 //#if 0

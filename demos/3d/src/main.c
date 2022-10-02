@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <time.h>
 
+#define cr_managed_app
+
 #include <corrosion/cr.h>
 
 #include "entity.h"

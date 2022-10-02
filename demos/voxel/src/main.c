@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <time.h>
 
+#define cr_entrypoint
+
 #include <corrosion/cr.h>
 
 #include "chunk.h"

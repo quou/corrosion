@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <time.h>
 
+#define cr_entrypoint
+
 #include <corrosion/cr.h>
 
 #define dispatch_size 256
