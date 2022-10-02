@@ -24,7 +24,7 @@ struct app_config {
 	struct window_config window_config;
 };
 
-#ifndef cr_entrypoint
+#ifdef cr_entrypoint
 
 #include "window.h"
 #include "res.h"

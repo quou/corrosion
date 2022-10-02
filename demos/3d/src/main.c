@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <time.h>
 
-#define cr_managed_app
+#define cr_entrypoint
 
 #include <corrosion/cr.h>
 
