@@ -19,5 +19,6 @@
     <CustomBuild Include="..\..\..\corrosion\src\error.glsl" />
     <CustomBuild Include="..\..\..\corrosion\src\line.glsl" />
     <CustomBuild Include="..\..\..\corrosion\src\simple.glsl" />
+    <CustomBuild Include="..\..\..\corrosion\src\line2d.glsl" />
   </ItemGroup>
 </Project>

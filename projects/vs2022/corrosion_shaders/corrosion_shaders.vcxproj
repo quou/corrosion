@@ -175,6 +175,10 @@
       <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(SolutionDir)shadercompiler\bin\$(Configuration)\shadercompiler.exe $(SolutionDir)..\..\corrosion\src\%(FileName)%(Extension) $(SolutionDir)..\..\corrosion\bir\%(Filename).csh</Command>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(SolutionDir)..\..\corrosion\bir\%(Filename).csh</Outputs>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(SolutionDir)..\..\corrosion\bir\%(Filename).csh</Outputs>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">%(Filename)%(Extension)</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">%(Filename)%(Extension)</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">%(Filename)%(Extension)</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(Filename)%(Extension)</Message>
     </CustomBuild>
     <CustomBuild Include="..\..\..\corrosion\src\line.glsl">
       <FileType>Document</FileType>
@@ -186,6 +190,10 @@
       <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(SolutionDir)shadercompiler\bin\$(Configuration)\shadercompiler.exe $(SolutionDir)..\..\corrosion\src\%(FileName)%(Extension) $(SolutionDir)..\..\corrosion\bir\%(Filename).csh</Command>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(SolutionDir)..\..\corrosion\bir\%(Filename).csh</Outputs>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(SolutionDir)..\..\corrosion\bir\%(Filename).csh</Outputs>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">%(Filename)%(Extension)</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">%(Filename)%(Extension)</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">%(Filename)%(Extension)</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(Filename)%(Extension)</Message>
     </CustomBuild>
     <CustomBuild Include="..\..\..\corrosion\src\line2d.glsl">
       <FileType>Document</FileType>
@@ -197,6 +205,10 @@
       <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(SolutionDir)shadercompiler\bin\$(Configuration)\shadercompiler.exe $(SolutionDir)..\..\corrosion\src\%(FileName)%(Extension) $(SolutionDir)..\..\corrosion\bir\%(Filename).csh</Command>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(SolutionDir)..\..\corrosion\bir\%(Filename).csh</Outputs>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(SolutionDir)..\..\corrosion\bir\%(Filename).csh</Outputs>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">%(Filename)%(Extension)</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">%(Filename)%(Extension)</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">%(Filename)%(Extension)</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(Filename)%(Extension)</Message>
     </CustomBuild>
     <CustomBuild Include="..\..\..\corrosion\src\simple.glsl">
       <FileType>Document</FileType>
@@ -208,6 +220,10 @@
       <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(SolutionDir)shadercompiler\bin\$(Configuration)\shadercompiler.exe $(SolutionDir)..\..\corrosion\src\%(FileName)%(Extension) $(SolutionDir)..\..\corrosion\bir\%(Filename).csh</Command>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(SolutionDir)..\..\corrosion\bir\%(Filename).csh</Outputs>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(SolutionDir)..\..\corrosion\bir\%(Filename).csh</Outputs>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">%(Filename)%(Extension)</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">%(Filename)%(Extension)</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">%(Filename)%(Extension)</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(Filename)%(Extension)</Message>
     </CustomBuild>
     <CustomBuild Include="..\..\..\corrosion\src\ui.glsl">
       <FileType>Document</FileType>
@@ -219,6 +235,10 @@
       <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(SolutionDir)shadercompiler\bin\$(Configuration)\shadercompiler.exe $(SolutionDir)..\..\corrosion\src\%(FileName)%(Extension) $(SolutionDir)..\..\corrosion\bir\%(Filename).csh</Command>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(SolutionDir)..\..\corrosion\bir\%(Filename).csh</Outputs>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(SolutionDir)..\..\corrosion\bir\%(Filename).csh</Outputs>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">%(Filename)%(Extension)</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">%(Filename)%(Extension)</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">%(Filename)%(Extension)</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(Filename)%(Extension)</Message>
     </CustomBuild>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

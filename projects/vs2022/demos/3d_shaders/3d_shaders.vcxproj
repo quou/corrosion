@@ -187,6 +187,10 @@
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(SolutionDir)..\..\demos\3d\shaders\%(Filename).csh</Outputs>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(SolutionDir)..\..\demos\3d\shaders\%(Filename).csh</Outputs>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(SolutionDir)..\..\demos\3d\shaders\%(Filename).csh</Outputs>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">%(Filename)%(Extension)</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">%(Filename)%(Extension)</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">%(Filename)%(Extension)</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(Filename)%(Extension)</Message>
     </CustomBuild>
     <CustomBuild Include="..\..\..\..\demos\3d\src\lit.glsl">
       <FileType>Document</FileType>
@@ -198,6 +202,10 @@
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(SolutionDir)..\..\demos\3d\shaders\%(Filename).csh</Outputs>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(SolutionDir)..\..\demos\3d\shaders\%(Filename).csh</Outputs>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(SolutionDir)..\..\demos\3d\shaders\%(Filename).csh</Outputs>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">%(Filename)%(Extension)</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">%(Filename)%(Extension)</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">%(Filename)%(Extension)</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(Filename)%(Extension)</Message>
     </CustomBuild>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
