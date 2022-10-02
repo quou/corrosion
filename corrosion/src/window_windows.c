@@ -223,7 +223,7 @@ static LRESULT CALLBACK win32_event_callback(HWND hwnd, UINT msg, WPARAM wparam,
 void init_window(const struct window_config* config, u32 api) {
 	memset(&window, 0, sizeof window);
 
-	WNDCLASSW wc = { 0 };
+	WNDCLASSA wc = { 0 };
 	wc.hIcon = LoadIcon(null, IDI_APPLICATION);
 	wc.hCursor = LoadCursor(null, IDC_ARROW);
 	wc.style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC;
@@ -233,8 +233,8 @@ void init_window(const struct window_config* config, u32 api) {
 	wc.cbWndExtra = 0;
 	wc.lpszMenuName = null;
 	wc.hbrBackground = null;
-	wc.lpszClassName = L"corrosion";
-	RegisterClassW(&wc);
+	wc.lpszClassName = "corrosion";
+	RegisterClassA(&wc);
 
 	DWORD dw_ex_style = WS_EX_APPWINDOW | WS_EX_WINDOWEDGE;
 	DWORD dw_style = WS_CAPTION | WS_SYSMENU |
@@ -256,8 +256,6 @@ void init_window(const struct window_config* config, u32 api) {
 
 	window.hwnd = CreateWindowExA(dw_ex_style, "corrosion", config->title, dw_style, 0, 0,
 			create_width, create_height, null, null, GetModuleHandle(null), null);
-
-	SetWindowTextW(window.hwnd, config->title);
 
 	ShowWindow(window.hwnd, SW_SHOWNORMAL);
 
