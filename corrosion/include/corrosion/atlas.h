@@ -5,6 +5,12 @@
 #include "res.h"
 #include "video.h"
 
+/* The atlas is a structure that allows combining textures into a
+ * single texture and acessing them by pointer. For this to work,
+ * textures must be kept alive for the entire period that they are
+ * to be accessed by an atlas, which is wasteful on memory. This
+ * therefore shouldn't be used for large textures. */
+
 struct atlas {
 	struct texture* texture;
 	v2i size;

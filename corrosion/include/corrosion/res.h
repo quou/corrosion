@@ -38,6 +38,11 @@ void free_dir_iter(struct dir_iter* it);
 struct dir_entry* dir_iter_cur(struct dir_iter* it);
 bool dir_iter_next(struct dir_iter* it);
 
+/* Helper macro to iterate a directory. Usage example:
+ *     for_dir("res", i, {
+ *         info("%s", i->name);
+ *     });
+ * Using break to exit the loop will cause a memory leak. */
 #define for_dir(n_, v_, c_) \
 	do { \
 		struct dir_iter* cat(v_, __LINE__) = new_dir_iter(n_); \
@@ -45,10 +50,15 @@ bool dir_iter_next(struct dir_iter* it);
 			struct dir_entry* v_ = dir_iter_cur(cat(v_, __LINE__)); \
 			c_ \
 		} \
+		free_dir_iter(cat(v_, __LINE__)); \
 	} while (0)
 
 bool get_file_info(const char* path, struct file_info* info);
 
+/* If a PAK archive is currently
+ * bound, read_raw and read_raw_text will read from the currently
+ * bound PAK archive. Otherwise, they read from a file.
+ */
 bool read_raw(const char* path, u8** buf, usize* size);
 bool write_raw(const char* path, const u8* buf, usize size);
 bool read_raw_text(const char* path, char** buf);
@@ -57,6 +67,11 @@ bool write_raw_text(const char* path, const char* buf);
 void res_init(const char* argv0);
 void res_deinit();
 
+/* PAK archive read and writer. Use the res_use_pak function to
+ * bind a PAK archive once opened. If a PAK archive is currently
+ * bound, read_raw and read_raw_text will read from the currently
+ * bound PAK archive. Otherwise, they read from a file.
+ */
 struct res_pak;
 
 void res_use_pak(const struct res_pak* pak);
@@ -73,8 +88,23 @@ bool write_pak(const char* outname, struct pak_write_file* files, usize file_cou
 
 struct res_config {
 	usize payload_size;
+
+	/* If true, frees the raw data immediately after on_load
+	 * has executed. Otherwise, the raw data is kept alive for
+	 * the entire lifetime of the resource. If false, the user
+	 * is responsible for freeing the raw data when she sees
+	 * fit. */
 	bool free_raw_on_load;
+
+	/* If true, adds a null terminator to the end of the
+	 * data when loading from a file. Useful when loading
+	 * textual data. */
 	bool terminate_raw;
+
+	/* alt_raw and alt_raw_size are used if loading the file
+	 * failed. This is useful for adding error resources to
+	 * avoid simply crashing if a file is deleted by accident.
+	 */
 	const void* alt_raw;
 	usize alt_raw_size;
 

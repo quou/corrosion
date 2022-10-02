@@ -68,6 +68,33 @@ struct dtable new_colour_dtable(const char* name, v4f value) {
 	return r;
 }
 
+struct dtable new_v2_dtable(const char* name, v2f value) {
+	struct dtable r = new_dtable(name);
+
+	r.value.type = dtable_v2;
+	r.value.as.v2 = value;
+
+	return r;
+}
+
+struct dtable new_v3_dtable(const char* name, v3f value) {
+	struct dtable r = new_dtable(name);
+
+	r.value.type = dtable_v3;
+	r.value.as.v3 = value;
+
+	return r;
+}
+
+struct dtable new_v4_dtable(const char* name, v4f value) {
+	struct dtable r = new_dtable(name);
+
+	r.value.type = dtable_v4;
+	r.value.as.v4 = value;
+
+	return r;
+}
+
 void dtable_add_child(struct dtable* dt, const struct dtable* child) {
 	vector_push(dt->children, *child);
 }

@@ -29,6 +29,8 @@ void vwarning(const char* fmt, va_list args);
 #define cat2(x, y) x ## y
 #define cat(x, y) cat2(x, y)
 
+/* Inserts a byte array of size s_ for
+ * structures */
 #define pad(s_) \
 	u8 cat(padding_, __LINE__)[s_]
 

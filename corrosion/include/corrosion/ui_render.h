@@ -1,6 +1,8 @@
 #pragma once
 
-/* Simple 2-D batched renderer. */
+/* Similar to the simple renderer, but with
+ * features such as edge rounding and gradients.
+ * The IMGUI is rendered using this renderer. */
 #include "atlas.h"
 #include "common.h"
 #include "font.h"
