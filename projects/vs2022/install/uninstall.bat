@@ -1,0 +1,1 @@
+rmdir /s /q "C:\Program Files\corrosion"

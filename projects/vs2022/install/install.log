@@ -1,0 +1,1 @@
+﻿C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Microsoft\VC\v170\Microsoft.CppClean.targets(77,5): error MSB4044: The "CppClean" task was not given a value for the required parameter "FoldersToClean".

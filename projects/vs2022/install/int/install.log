@@ -1,0 +1,31 @@
+﻿  C:\dev\corrosion\projects\vs2022\..\..\corrosion\include\
+  C:\dev\corrosion\projects\vs2022\..\..\corrosion\include\corrosion\app.h
+  C:\dev\corrosion\projects\vs2022\..\..\corrosion\include\corrosion\atlas.h
+  C:\dev\corrosion\projects\vs2022\..\..\corrosion\include\corrosion\common.h
+  C:\dev\corrosion\projects\vs2022\..\..\corrosion\include\corrosion\core.h
+  C:\dev\corrosion\projects\vs2022\..\..\corrosion\include\corrosion\cr.h
+  C:\dev\corrosion\projects\vs2022\..\..\corrosion\include\corrosion\dtable.h
+  C:\dev\corrosion\projects\vs2022\..\..\corrosion\include\corrosion\font.h
+  C:\dev\corrosion\projects\vs2022\..\..\corrosion\include\corrosion\gizmo.h
+  C:\dev\corrosion\projects\vs2022\..\..\corrosion\include\corrosion\maths.h
+  C:\dev\corrosion\projects\vs2022\..\..\corrosion\include\corrosion\render_util.h
+  C:\dev\corrosion\projects\vs2022\..\..\corrosion\include\corrosion\res.h
+  C:\dev\corrosion\projects\vs2022\..\..\corrosion\include\corrosion\simplerenderer.h
+  C:\dev\corrosion\projects\vs2022\..\..\corrosion\include\corrosion\thread.h
+  C:\dev\corrosion\projects\vs2022\..\..\corrosion\include\corrosion\timer.h
+  C:\dev\corrosion\projects\vs2022\..\..\corrosion\include\corrosion\ui.h
+  C:\dev\corrosion\projects\vs2022\..\..\corrosion\include\corrosion\ui_render.h
+  C:\dev\corrosion\projects\vs2022\..\..\corrosion\include\corrosion\video.h
+  C:\dev\corrosion\projects\vs2022\..\..\corrosion\include\corrosion\window.h
+  18 File(s) copied
+  C:\dev\corrosion\projects\vs2022\corrosion\bin\Debug\corrosion.lib
+  1 File(s) copied
+          1 file(s) copied.
+  
+  SUCCESS: Specified value was saved.
+  
+  SUCCESS: Specified value was saved.
+  
+  SUCCESS: Specified value was saved.
+  
+  SUCCESS: Specified value was saved.
