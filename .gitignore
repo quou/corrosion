@@ -20,12 +20,14 @@ tags
 
 bin
 obj
+int
 sbox/shaders
 
 *.exe
 *.pdb
 .vs
 *.csh
+*.log
 
 corrosion/src/bir.h
 corrosion/buildbir
