@@ -47,6 +47,11 @@ the solution in the Solution Explorer and click "Build Solution".
 	<figcaption>Simple 3D Renderer.</figcaption>
 </figure>
 
+<figure>
+	<img src="media/demos/volume.png" alt="Volumetric Rendering">
+	<figcaption>Volumetric Rendering</figcaption>
+</figure>
+
 ## Note for GitHub users
 This repository is hosted on Codeberg and mirrored on GitHub. Issues and pull requests should be
 made on the [Codeberg repository](https://codeberg.org/quou/corrosion).
