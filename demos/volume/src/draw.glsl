@@ -67,7 +67,7 @@ void main() {
 
 	/* Sample the first layer of the volume texture to use
 	 * as 2D noise for the background. */
-	float bnoise = texture(volume, vec3(fs_in.uv + time * 0.01, 0.0)).r;
+	float bnoise = texture(volume, vec3(fs_in.uv + time * 0.01, time * 0.01)).r;
 
 	vec4 background_colour = vec4(0.0);
 
