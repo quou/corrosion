@@ -30,7 +30,7 @@ runnables =           \
     debug_volume      \
     memcheck_volume   \
 
-.PHONY: all clean $(projects) $(runnables)
+.PHONY: all clean $(projects) $(runnables) install
 
 all: $(projects)
 
@@ -143,3 +143,16 @@ clean:
 	$(silent) make --no-print-directory -C demos/particles clean
 	$(silent) make --no-print-directory -C demos/voxel clean
 	$(silent) make --no-print-directory -C demos/volume clean
+
+installheaderdir = /usr/include/corrosion
+installlibdir = /usr/lib64
+installbindir = /usr/bin
+
+install: shadercompiler corrosion
+	install -d $(installheaderdir)
+	install -d $(installlibdir)
+	install -d $(installbindir)
+	install -m 777 ./shadercompiler/bin/$(config)/shadercompiler $(installbindir)/cshc
+	install ./../../corrosion/include/corrosion/* $(installheaderdir)
+	install ./corrosion/bin/$(config)/libcr.a $(installlibdir)/libcorrosion.a
+	install ./corrosion.pc $(installlibdir)/pkgconfig/corrosion.pc
