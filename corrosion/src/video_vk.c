@@ -698,9 +698,7 @@ no_validation:
 		}, 2);
 }
 
-void video_vk_deinit() {
-	vkDeviceWaitIdle(vctx.device);
-
+static void free_free_queue() {
 	for (usize i = 0; i < vector_count(vctx.free_queue); i++) {
 		struct free_queue_item* item = vctx.free_queue + i;
 
@@ -714,11 +712,26 @@ void video_vk_deinit() {
 			case video_vk_object_framebuffer:
 				video_vk_free_framebuffer(item->as.framebuffer);
 				break;
+			case video_vk_object_storage:
+				video_vk_free_storage(item->as.storage);
+				break;
+			case video_vk_object_vertex_buffer:
+				video_vk_free_vertex_buffer(item->as.vertex_buffer);
+				break;
+			case video_vk_object_index_buffer:
+				video_vk_free_index_buffer(item->as.index_buffer);
+				break;
 			default: break;
 		}
 	}
 
 	vector_clear(vctx.free_queue);
+}
+
+void video_vk_deinit() {
+	vkDeviceWaitIdle(vctx.device);
+
+	free_free_queue();
 
 	free_vector(vctx.free_queue);
 
@@ -844,24 +857,7 @@ void video_vk_end() {
 
 	vctx.in_frame = false;
 
-	for (usize i = 0; i < vector_count(vctx.free_queue); i++) {
-		struct free_queue_item* item = vctx.free_queue + i;
-
-		switch (item->type) {
-			case video_vk_object_texture:
-				video_vk_free_texture(item->as.texture);
-				break;
-			case video_vk_object_pipeline:
-				video_vk_free_pipeline(item->as.pipeline);
-				break;
-			case video_vk_object_framebuffer:
-				video_vk_free_framebuffer(item->as.framebuffer);
-				break;
-			default: break;
-		}
-	}
-
-	vector_clear(vctx.free_queue);
+	free_free_queue();
 
 	vctx.prev_frame = vctx.current_frame;
 	vctx.current_frame = (vctx.current_frame + 1) % max_frames_in_flight;
@@ -2520,6 +2516,14 @@ void video_vk_storage_bind_as(const struct storage* storage_, u32 as, u32 point)
 void video_vk_free_storage(struct storage* storage_) {
 	struct video_vk_storage* storage = (struct video_vk_storage*)storage_;
 
+	if (vctx.in_frame) {
+		vector_push(vctx.free_queue, ((struct free_queue_item) {
+			.type = video_vk_object_storage,
+			.as.storage = storage_
+		}));
+		return;
+	}
+
 	vkDeviceWaitIdle(vctx.device);
 
 	if (storage->flags & storage_flags_cpu_readable || storage->flags & storage_flags_cpu_writable) {
@@ -2580,6 +2584,14 @@ struct vertex_buffer* video_vk_new_vertex_buffer(void* verts, usize size, u32 fl
 
 void video_vk_free_vertex_buffer(struct vertex_buffer* vb_) {
 	struct video_vk_vertex_buffer* vb = (struct video_vk_vertex_buffer*)vb_;
+
+	if (vctx.in_frame) {
+		vector_push(vctx.free_queue, ((struct free_queue_item) {
+			.type = video_vk_object_vertex_buffer,
+			.as.vertex_buffer = vb_
+		}));
+		return;
+	}
 
 	vkDeviceWaitIdle(vctx.device);
 
@@ -2718,6 +2730,14 @@ struct index_buffer* video_vk_new_index_buffer(void* elements, usize count, u32 
 
 void video_vk_free_index_buffer(struct index_buffer* ib_) {
 	struct video_vk_index_buffer* ib = (struct video_vk_index_buffer*)ib_;
+
+	if (vctx.in_frame) {
+		vector_push(vctx.free_queue, ((struct free_queue_item) {
+			.type = video_vk_object_index_buffer,
+			.as.index_buffer = ib_
+		}));
+		return;
+	}
 
 	vkDeviceWaitIdle(vctx.device);
 
@@ -2934,7 +2954,7 @@ static void init_texture_3d(struct video_vk_texture* texture, v3i size, u32 flag
 		},
 		.mipLevels = 1,
 		.arrayLayers = 1,
-		.format = format,
+		.format = format_data.format,
 		.tiling = VK_IMAGE_TILING_OPTIMAL,
 		.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
 		.usage = usage,
@@ -2947,7 +2967,23 @@ static void init_texture_3d(struct video_vk_texture* texture, v3i size, u32 flag
 		abort_with("Failed to create image.");
 	}
 
-	texture->view = new_image_view(texture->image, format_data.format, VK_IMAGE_ASPECT_COLOR_BIT);
+	if (vkCreateImageView(vctx.device, &(VkImageViewCreateInfo) {
+			.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+			.image = texture->image,
+			.viewType = VK_IMAGE_VIEW_TYPE_3D,
+			.format = format_data.format,
+			.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+			.subresourceRange.baseMipLevel = 0,
+			.subresourceRange.levelCount = 1,
+			.subresourceRange.baseArrayLayer = 0,
+			.subresourceRange.layerCount = 1
+		}, null, &texture->view) != VK_SUCCESS) {
+		abort_with("Failed to create image view.");
+	}
+
+	change_image_layout(texture->image, format_data.format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, false);
+
+	texture->state = texture_state_shader_graphics_read;
 
 	VkSamplerAddressMode address_mode = VK_SAMPLER_ADDRESS_MODE_REPEAT;
 	if (flags & texture_flags_clamp) {

@@ -61,7 +61,10 @@ struct update_queue {
 enum {
 	video_vk_object_texture = 0,
 	video_vk_object_pipeline,
-	video_vk_object_framebuffer
+	video_vk_object_framebuffer,
+	video_vk_object_storage,
+	video_vk_object_vertex_buffer,
+	video_vk_object_index_buffer
 };
 
 
@@ -72,6 +75,9 @@ struct free_queue_item {
 		struct texture* texture;
 		struct pipeline* pipeline;
 		struct framebuffer* framebuffer;
+		struct storage* storage;
+		struct vertex_buffer* vertex_buffer;
+		struct index_buffer* index_buffer;
 	} as;
 };
 
