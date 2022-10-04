@@ -2909,6 +2909,69 @@ static void init_texture(struct video_vk_texture* texture, const struct image* i
 	}
 }
 
+static void init_texture_3d(struct video_vk_texture* texture, v3i size, u32 flags, u32 format) {
+	texture->size = make_v2i(size.x, size.y);
+	texture->depth = size.z;
+	texture->is_3d = true;
+
+	texture->state = texture_state_shader_graphics_read;
+
+	struct texture_format_data format_data = get_texture_format_data(format);
+
+	u32 usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+
+	if (flags & texture_flags_storage) {
+		usage |= VK_IMAGE_USAGE_STORAGE_BIT;
+	}
+
+	if (vmaCreateImage(vctx.allocator, &(VkImageCreateInfo) {
+		.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+		.imageType = VK_IMAGE_TYPE_3D,
+		.extent = {
+			.width = (u32)texture->size.x,
+			.height = (u32)texture->size.y,
+			.depth = (u32)texture->depth
+		},
+		.mipLevels = 1,
+		.arrayLayers = 1,
+		.format = format,
+		.tiling = VK_IMAGE_TILING_OPTIMAL,
+		.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+		.usage = usage,
+		.samples = VK_SAMPLE_COUNT_1_BIT,
+		.sharingMode = VK_SHARING_MODE_EXCLUSIVE
+	}, & (VmaAllocationCreateInfo) {
+		.usage = VMA_MEMORY_USAGE_AUTO,
+		.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
+	}, &texture->image, &texture->memory, null) != VK_SUCCESS) {
+		abort_with("Failed to create image.");
+	}
+
+	texture->view = new_image_view(texture->image, format_data.format, VK_IMAGE_ASPECT_COLOR_BIT);
+
+	VkSamplerAddressMode address_mode = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	if (flags & texture_flags_clamp) {
+		address_mode = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+	}
+
+	if (vkCreateSampler(vctx.device, &(VkSamplerCreateInfo) {
+		.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+		.magFilter = (flags & texture_flags_filter_linear) ? VK_FILTER_LINEAR : VK_FILTER_NEAREST,
+		.minFilter = (flags & texture_flags_filter_linear) ? VK_FILTER_LINEAR : VK_FILTER_NEAREST,
+		.addressModeU = address_mode,
+		.addressModeV = address_mode,
+		.addressModeW = address_mode,
+		.anisotropyEnable = VK_FALSE,
+		.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK,
+		.unnormalizedCoordinates = VK_FALSE,
+		.compareEnable = VK_FALSE,
+		.compareOp = VK_COMPARE_OP_ALWAYS,
+		.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR
+	}, null, & texture->sampler) != VK_SUCCESS) {
+		abort_with("Failed to create texture sampler.");
+	}
+}
+
 static void deinit_texture(struct video_vk_texture* texture) {
 	vkDeviceWaitIdle(vctx.device);
 
@@ -2921,6 +2984,14 @@ struct texture* video_vk_new_texture(const struct image* image, u32 flags, u32 f
 	struct video_vk_texture* texture = core_calloc(1, sizeof(struct video_vk_texture));
 
 	init_texture(texture, image, flags, format);
+
+	return (struct texture*)texture;
+}
+
+struct texture* video_vk_new_texture_3d(v3i size, u32 flags, u32 format) {
+	struct video_vk_texture* texture = core_calloc(1, sizeof(struct video_vk_texture));
+
+	init_texture_3d(texture, size, flags, format);
 
 	return (struct texture*)texture;
 }
@@ -2945,7 +3016,20 @@ v2i video_vk_get_texture_size(const struct texture* texture) {
 	return ((const struct video_vk_texture*)texture)->size;
 }
 
-void video_vk_texture_copy(struct texture* dst_, v2i dst_offset, const struct texture* src_, v2i src_offset, v2i dimensions) {
+v3i video_vk_get_texture_3d_size(const struct texture* texture_) {
+	const struct video_vk_texture* texture = (struct video_vk_texture*)texture_;
+
+	return make_v3i(texture->size.x, texture->size.y, texture->depth);
+}
+
+void video_vk_texture_copy(struct texture* dst, v2i dst_offset, const struct texture* src, v2i src_offset, v2i dimensions) {
+	video_vk_texture_copy_3d(
+		dst, make_v3i(dst_offset.x, dst_offset.y, 0),
+		src, make_v3i(src_offset.x, src_offset.y, 0),
+		make_v3i(dimensions.x, dimensions.y, 1));
+}
+
+void video_vk_texture_copy_3d(struct texture* dst_, v3i dst_offset, const struct texture* src_, v3i src_offset, v3i dimensions) {
 	struct video_vk_texture* dst = (struct video_vk_texture*)dst_;
 	const struct video_vk_texture* src = (const struct video_vk_texture*)src_;
 
@@ -2954,7 +3038,7 @@ void video_vk_texture_copy(struct texture* dst_, v2i dst_offset, const struct te
 	/* Transition src to VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL. */
 	vkCmdPipelineBarrier(command_buffer,
 		VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
-		0, 0, null, 0, null, 1, 
+		0, 0, null, 0, null, 1,
 		&(VkImageMemoryBarrier) {
 			.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
 			.image = src->image,
@@ -2965,12 +3049,12 @@ void video_vk_texture_copy(struct texture* dst_, v2i dst_offset, const struct te
 			.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT,
 			.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
 			.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED
-		});
-	
+	});
+
 	/* Transition dst to VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL. */
 	vkCmdPipelineBarrier(command_buffer,
 		VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
-		0, 0, null, 0, null, 1, 
+		0, 0, null, 0, null, 1,
 		&(VkImageMemoryBarrier) {
 			.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
 			.image = dst->image,
@@ -2981,7 +3065,7 @@ void video_vk_texture_copy(struct texture* dst_, v2i dst_offset, const struct te
 			.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
 			.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
 			.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED
-		});
+	});
 
 	vkCmdCopyImage(
 		command_buffer,
@@ -2993,16 +3077,16 @@ void video_vk_texture_copy(struct texture* dst_, v2i dst_offset, const struct te
 			{
 				.srcSubresource = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 },
 				.dstSubresource = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 },
-				.srcOffset = { src_offset.x, src_offset.y, 0 },
-				.dstOffset = { dst_offset.x, dst_offset.y, 0 },
-				.extent    = { dimensions.x, dimensions.y, 1 }
+				.srcOffset = { src_offset.x, src_offset.y, src_offset.z },
+				.dstOffset = { dst_offset.x, dst_offset.y, src_offset.z },
+				.extent = { dimensions.x, dimensions.y, dimensions.z }
 			}
-		});
-	
+	});
+
 	/* Transition src to VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL. */
 	vkCmdPipelineBarrier(command_buffer,
 		VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT,
-		0, 0, null, 0, null, 1, 
+		0, 0, null, 0, null, 1,
 		&(VkImageMemoryBarrier) {
 			.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
 			.image = src->image,
@@ -3013,12 +3097,12 @@ void video_vk_texture_copy(struct texture* dst_, v2i dst_offset, const struct te
 			.dstAccessMask = VK_ACCESS_SHADER_READ_BIT,
 			.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
 			.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED
-		});
-	
+	});
+
 	/* Transition dst to VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL. */
 	vkCmdPipelineBarrier(command_buffer,
 		VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT,
-		0, 0, null, 0, null, 1, 
+		0, 0, null, 0, null, 1,
 		&(VkImageMemoryBarrier) {
 			.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
 			.image = dst->image,
@@ -3029,7 +3113,7 @@ void video_vk_texture_copy(struct texture* dst_, v2i dst_offset, const struct te
 			.dstAccessMask = VK_ACCESS_SHADER_READ_BIT,
 			.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
 			.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED
-		});
+	});
 
 	end_temp_command_buffer(command_buffer, vctx.command_pool, vctx.graphics_compute_queue);
 }

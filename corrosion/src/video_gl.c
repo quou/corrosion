@@ -938,6 +938,11 @@ struct texture* video_gl_new_texture(const struct image* image, u32 flags, u32 f
 	return (struct texture*)texture;
 }
 
+struct texture* video_gl_new_texture_3d(v3i size, u32 flags, u32 format) {
+	abort_with("3D textures are not supported in OpenGL.");
+	return null;
+}
+
 void video_gl_free_texture(struct texture* texture) {
 	deinit_texture((struct video_gl_texture*)texture);
 	core_free(texture);
@@ -945,6 +950,11 @@ void video_gl_free_texture(struct texture* texture) {
 
 v2i video_gl_get_texture_size(const struct texture* texture) {
 	return ((struct video_gl_texture*)texture)->size;
+}
+
+v3i video_gl_get_texture_3d_size(const struct texture* texture) {
+	abort_with("3D textures are not supported in OpenGL.");
+	return v3i_zero();
 }
 
 void video_gl_texture_copy(struct texture* dst_, v2i dst_offset, const struct texture* src_, v2i src_offset, v2i dimensions) {
@@ -979,6 +989,10 @@ void video_gl_texture_copy(struct texture* dst_, v2i dst_offset, const struct te
 
 	check_gl(glBindFramebuffer(GL_FRAMEBUFFER, old_fb));
 	check_gl(glBindTexture(GL_TEXTURE_2D, old_texture));
+}
+
+void video_gl_texture_copy_3d(struct texture* dst, v3i dst_offset, const struct texture* src, v3i src_offset, v3i dimensions) {
+	abort_with("3D textures are not supported in OpenGL.");
 }
 
 void video_gl_texture_barrier(struct texture* texture, u32 state) {

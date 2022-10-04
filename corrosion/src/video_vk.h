@@ -59,9 +59,12 @@ void video_vk_draw_indexed(usize count, usize offset, usize instances);
 void video_vk_set_scissor(v4i rect);
 
 struct texture* video_vk_new_texture(const struct image* image, u32 flags, u32 format);
+struct texture* video_vk_new_texture_3d(v3i size, u32 flags, u32 format);
 void video_vk_free_texture(struct texture* texture);
 v2i  video_vk_get_texture_size(const struct texture* texture);
+v3i  video_vk_get_texture_3d_size(const struct texture* texture);
 void video_vk_texture_copy(struct texture* dst, v2i dst_offset, const struct texture* src, v2i src_offset, v2i dimensions);
+void video_vk_texture_copy_3d(struct texture* dst, v3i dst_offset, const struct texture* src, v3i src_offset, v3i dimensions);
 void video_vk_texture_barrier(struct texture* texture, u32 state);
 
 struct shader* video_vk_new_shader(const u8* data, usize data_size);

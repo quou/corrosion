@@ -64,6 +64,7 @@ enum {
 	video_vk_object_framebuffer
 };
 
+
 struct free_queue_item {
 	u32 type;
 
@@ -133,10 +134,12 @@ struct vk_video_context {
 
 struct video_vk_texture {
 	v2i size;
+	i32 depth; /* Only used if this is a 3D texture. */
 
 	u32 state;
 
 	bool is_depth;
+	bool is_3d;
 
 	VkImage image;
 	VkImageView view;

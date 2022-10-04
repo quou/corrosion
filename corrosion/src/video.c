@@ -895,11 +895,14 @@ static void find_procs(u32 api, bool enable_validation) {
 	video.set_scissor    = get_v_proc(set_scissor);
 	video.invoke_compute = get_v_proc(invoke_compute);
 
-	video.new_texture      = get_api_proc(new_texture);
-	video.free_texture     = get_api_proc(free_texture);
-	video.get_texture_size = get_api_proc(get_texture_size);
-	video.texture_copy     = get_api_proc(texture_copy);
-	video.texture_barrier  = get_api_proc(texture_barrier);
+	video.new_texture         = get_api_proc(new_texture);
+	video.new_texture_3d      = get_api_proc(new_texture_3d);
+	video.free_texture        = get_api_proc(free_texture);
+	video.get_texture_size    = get_api_proc(get_texture_size);
+	video.get_texture_3d_size = get_api_proc(get_texture_3d_size);
+	video.texture_copy        = get_api_proc(texture_copy);
+	video.texture_copy_3d     = get_api_proc(texture_copy_3d);
+	video.texture_barrier     = get_api_proc(texture_barrier);
 
 	video.new_shader  = get_api_proc(new_shader);
 	video.free_shader = get_api_proc(free_shader);
