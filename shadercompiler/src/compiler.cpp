@@ -284,7 +284,7 @@ i32 main(i32 argc, const char** argv) {
 	shaderc::Compiler compiler;
 	shaderc::CompileOptions options;
 	options.SetTargetEnvironment(shaderc_target_env_vulkan, shaderc_env_version_vulkan_1_2);
-	options.SetOptimizationLevel(shaderc_optimization_level_zero);
+	options.SetOptimizationLevel(shaderc_optimization_level_performance);
 
 	options.SetIncluder(std::make_unique<MyIncluder>());
 
@@ -384,7 +384,7 @@ i32 main(i32 argc, const char** argv) {
 
 		compute_set_bindings();
 
-		auto gl_src = gl_compiler.compile();
+		std::string gl_src = "";
 
 		FILE* outfile = fopen(argv[2], "wb");
 
