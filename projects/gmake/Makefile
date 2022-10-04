@@ -6,7 +6,7 @@ ifndef verbose
   silent = @
 endif
 
-projects = shadercompiler corrosion sbox 3d blur sand particles voxel
+projects = shadercompiler corrosion sbox 3d blur sand particles voxel volume
 runnables =           \
     run_sbox          \
     debug_sbox        \
@@ -26,6 +26,9 @@ runnables =           \
     run_voxel         \
     debug_voxel       \
     memcheck_voxel    \
+    run_volume        \
+    debug_volume      \
+    memcheck_volume   \
 
 .PHONY: all clean $(projects) $(runnables)
 
@@ -69,6 +72,10 @@ particles: corrosion
 	$(silent) make --no-print-directory -C demos/$@ config=$(config)
 
 voxel: corrosion
+	@echo == Building $@ ==
+	$(silent) make --no-print-directory -C demos/$@ config=$(config)
+
+volume: corrosion
 	@echo == Building $@ ==
 	$(silent) make --no-print-directory -C demos/$@ config=$(config)
 
@@ -117,6 +124,15 @@ debug_voxel: voxel
 memcheck_voxel: voxel
 	$(silent) make --no-print-directory -C demos/voxel memcheck
 
+run_volume: volume
+	$(silent) make --no-print-directory -C demos/volume run
+
+debug_volume: volume
+	$(silent) make --no-print-directory -C demos/volume debug
+
+memcheck_volume: volume
+	$(silent) make --no-print-directory -C demos/volume memcheck
+
 clean:
 	$(silent) make --no-print-directory -C corrosion clean
 	$(silent) make --no-print-directory -C shadercompiler clean
@@ -126,3 +142,4 @@ clean:
 	$(silent) make --no-print-directory -C demos/sand clean
 	$(silent) make --no-print-directory -C demos/particles clean
 	$(silent) make --no-print-directory -C demos/voxel clean
+	$(silent) make --no-print-directory -C demos/volume clean
