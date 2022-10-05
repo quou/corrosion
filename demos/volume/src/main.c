@@ -67,7 +67,7 @@ struct point {
 	pad(4);
 };
 
-static void shift_and_gen(vector(struct point) points, u32 count, u32 offset, v3f dir) {
+static void shift_and_gen(vector(struct point) points, u32 count, v3f dir) {
 	for (u32 i = 0; i < count; i++) {
 		vector_push(points, (struct point) { v3f_add(points[i].p, dir) });
 	}
@@ -92,32 +92,32 @@ static void generate_volume_data() {
 	}
 
 	/* Shift the points around the a central "cube" so that the noise tiles properly. */
-	shift_and_gen(gen_points, point_count, point_count * 1,  make_v3f(-1.0f,  0.0f,  0.0f));
-	shift_and_gen(gen_points, point_count, point_count * 2,  make_v3f( 1.0f,  0.0f,  0.0f));
-	shift_and_gen(gen_points, point_count, point_count * 3,  make_v3f( 0.0f, -1.0f,  0.0f));
-	shift_and_gen(gen_points, point_count, point_count * 4,  make_v3f( 0.0f,  1.0f,  0.0f));
-	shift_and_gen(gen_points, point_count, point_count * 5,  make_v3f( 0.0f,  0.0f, -1.0f));
-	shift_and_gen(gen_points, point_count, point_count * 6,  make_v3f( 0.0f,  0.0f,  1.0f));
+	shift_and_gen(gen_points, point_count, make_v3f(-1.0f,  0.0f,  0.0f));
+	shift_and_gen(gen_points, point_count, make_v3f( 1.0f,  0.0f,  0.0f));
+	shift_and_gen(gen_points, point_count, make_v3f( 0.0f, -1.0f,  0.0f));
+	shift_and_gen(gen_points, point_count, make_v3f( 0.0f,  1.0f,  0.0f));
+	shift_and_gen(gen_points, point_count, make_v3f( 0.0f,  0.0f, -1.0f));
+	shift_and_gen(gen_points, point_count, make_v3f( 0.0f,  0.0f,  1.0f));
 
-	shift_and_gen(gen_points, point_count, point_count * 7,  make_v3f( 0.0f, -1.0f, -1.0f));
-	shift_and_gen(gen_points, point_count, point_count * 8,  make_v3f( 0.0f, -1.0f,  1.0f));
-	shift_and_gen(gen_points, point_count, point_count * 9,  make_v3f( 1.0f, -1.0f,  0.0f));
-	shift_and_gen(gen_points, point_count, point_count * 10, make_v3f(-1.0f, -1.0f,  0.0f));
+	shift_and_gen(gen_points, point_count, make_v3f( 0.0f, -1.0f, -1.0f));
+	shift_and_gen(gen_points, point_count, make_v3f( 0.0f, -1.0f,  1.0f));
+	shift_and_gen(gen_points, point_count, make_v3f( 1.0f, -1.0f,  0.0f));
+	shift_and_gen(gen_points, point_count, make_v3f(-1.0f, -1.0f,  0.0f));
 
-	shift_and_gen(gen_points, point_count, point_count * 11, make_v3f( 0.0f,  1.0f, -1.0f));
-	shift_and_gen(gen_points, point_count, point_count * 12, make_v3f( 0.0f,  1.0f,  1.0f));
-	shift_and_gen(gen_points, point_count, point_count * 13, make_v3f( 1.0f,  1.0f,  0.0f));
-	shift_and_gen(gen_points, point_count, point_count * 14, make_v3f(-1.0f,  1.0f,  0.0f));
+	shift_and_gen(gen_points, point_count, make_v3f( 0.0f,  1.0f, -1.0f));
+	shift_and_gen(gen_points, point_count, make_v3f( 0.0f,  1.0f,  1.0f));
+	shift_and_gen(gen_points, point_count, make_v3f( 1.0f,  1.0f,  0.0f));
+	shift_and_gen(gen_points, point_count, make_v3f(-1.0f,  1.0f,  0.0f));
 
-	shift_and_gen(gen_points, point_count, point_count * 15, make_v3f( 1.0f, -1.0f, -1.0f));
-	shift_and_gen(gen_points, point_count, point_count * 16, make_v3f( 1.0f, -1.0f,  1.0f));
-	shift_and_gen(gen_points, point_count, point_count * 17, make_v3f(-1.0f, -1.0f, -1.0f));
-	shift_and_gen(gen_points, point_count, point_count * 18, make_v3f(-1.0f, -1.0f,  1.0f));
+	shift_and_gen(gen_points, point_count, make_v3f( 1.0f, -1.0f, -1.0f));
+	shift_and_gen(gen_points, point_count, make_v3f( 1.0f, -1.0f,  1.0f));
+	shift_and_gen(gen_points, point_count, make_v3f(-1.0f, -1.0f, -1.0f));
+	shift_and_gen(gen_points, point_count, make_v3f(-1.0f, -1.0f,  1.0f));
 
-	shift_and_gen(gen_points, point_count, point_count * 19, make_v3f( 1.0f,  1.0f, -1.0f));
-	shift_and_gen(gen_points, point_count, point_count * 20, make_v3f( 1.0f,  1.0f,  1.0f));
-	shift_and_gen(gen_points, point_count, point_count * 21, make_v3f(-1.0f,  1.0f, -1.0f));
-	shift_and_gen(gen_points, point_count, point_count * 22, make_v3f(-1.0f,  1.0f,  1.0f));
+	shift_and_gen(gen_points, point_count, make_v3f( 1.0f,  1.0f, -1.0f));
+	shift_and_gen(gen_points, point_count, make_v3f( 1.0f,  1.0f,  1.0f));
+	shift_and_gen(gen_points, point_count, make_v3f(-1.0f,  1.0f, -1.0f));
+	shift_and_gen(gen_points, point_count, make_v3f(-1.0f,  1.0f,  1.0f));
 
 	struct storage* points = video.new_storage(storage_flags_none, tiled_pc * sizeof(struct point), gen_points);
 
