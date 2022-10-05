@@ -66,8 +66,8 @@ void cr_init() {
 
 	app.ui = new_ui(video.get_default_fb());
 
-	const struct shader* draw_shader = load_shader("shaders/quad.csh");
-	const struct shader* process_shader = load_shader("shaders/process.csh");
+	const struct shader* draw_shader = load_shader("shaders/quad.csh", null);
+	const struct shader* process_shader = load_shader("shaders/process.csh", null);
 
 	struct image i = { .size = sim_size };
 	app.result = video.new_texture(&i, texture_flags_filter_none | texture_flags_storage, texture_format_rgba8i);

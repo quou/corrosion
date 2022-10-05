@@ -382,7 +382,7 @@ void res_deinit() {
 	free_table(res_registry);
 }
 
-void reg_res_type(const char* type, struct res_config* config) {
+void reg_res_type(const char* type, const struct res_config* config) {
 	table_set(res_registry, hash_string(type), *config);
 }
 
@@ -402,14 +402,14 @@ static void get_resource_id_bytebuffer(u8* bb, usize bb_max_size, usize* bb_size
 	memcpy(bb + filename_len + sizeof config_id, udata, config->udata_size);
 }
 
-void* res_load(const char* type, const char* filename, void* udata) {
+struct resource res_load(const char* type, const char* filename, void* udata) {
 	u64 config_id = hash_string(type);
 
 	struct res_config* config = table_get(res_registry, config_id);
 
 	if (!config) {
 		error("Loading `%s': No resource handler registered for this type of file (%s).", filename, type);
-		return null;
+		return (struct resource) { UINT64_MAX, null };
 	}
 
 	usize resource_id_bb_size;
@@ -419,7 +419,7 @@ void* res_load(const char* type, const char* filename, void* udata) {
 	u64 resource_id = elf_hash(resource_id_bb, resource_id_bb_size);
 
 	struct res* got = table_get(res_cache, resource_id);
-	if (got) {return got->payload; }
+	if (got) { return (struct resource) { resource_id, got->payload }; }
 
 	struct res new_res = {
 		.payload = core_calloc(1, config->payload_size),
@@ -459,11 +459,11 @@ void* res_load(const char* type, const char* filename, void* udata) {
 
 	table_set(res_cache, resource_id, new_res);
 
-	return new_res.payload;
+	return (struct resource) { resource_id, new_res.payload };
 }
 
-void res_unload(const char* filename) {
-	struct res* res = table_get(res_cache, hash_string(filename));
+void res_unload(const struct resource* r) {
+	struct res* res = table_get(res_cache, r->id);
 	if (!res) { return; }
 
 	struct res_config* config = table_get(res_registry, res->config_id);
@@ -474,17 +474,38 @@ void res_unload(const char* filename) {
 		core_free(res->payload);
 	}
 
-	table_delete(res_cache, hash_string(filename) + res->config_id);
+	table_delete(res_cache, r->id);
 }
 
-struct texture* load_texture(const char* filename, u32 flags) {
-	return res_load("texture", filename, &flags);
+struct texture* load_texture(const char* filename, u32 flags, struct resource* r) {
+	struct resource temp;
+
+	if (!r) {
+		r = &temp;
+	}
+
+	*r = res_load("texture", filename, &flags);
+	return r->payload;
 }
 
-struct font* load_font(const char* filename, i32 size) {
-	return res_load("true type font", filename, &size);
+struct font* load_font(const char* filename, i32 size, struct resource* r) {
+	struct resource temp;
+
+	if (!r) {
+		r = &temp;
+	}
+
+	*r = res_load("true type font", filename, &size);
+	return r->payload;
 }
 
-struct shader* load_shader(const char* filename) {
-	return res_load("shader", filename, null);
+struct shader* load_shader(const char* filename, struct resource* r) {
+	struct resource temp;
+
+	if (!r) {
+		r = &temp;
+	}
+
+	*r = res_load("shader", filename, null);
+	return r->payload;
 }

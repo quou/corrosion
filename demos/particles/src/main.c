@@ -70,8 +70,8 @@ void cr_init() {
 
 	app.ui = new_ui(video.get_default_fb());
 
-	const struct shader* update_shader   = load_shader("shaders/update.csh");
-	const struct shader* particle_shader = load_shader("shaders/particle.csh");
+	const struct shader* update_shader   = load_shader("shaders/update.csh", null);
+	const struct shader* particle_shader = load_shader("shaders/particle.csh", null);
 
 	struct particle* initial_particles = core_calloc(max_particles, sizeof *initial_particles);
 

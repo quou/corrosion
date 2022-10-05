@@ -118,15 +118,20 @@ struct res_config {
 	void (*on_unload)(void* payload, usize payload_size);
 };
 
-void reg_res_type(const char* type, struct res_config* config);
+struct resource {
+	u64 id;
+	void* payload;
+};
+
+void reg_res_type(const char* type, const struct res_config* config);
 
 /* Returns the resource payload. */
-void* res_load(const char* type, const char* filename, void* udata);
-void res_unload(const char* filename);
+struct resource res_load(const char* type, const char* filename, void* udata);
+void res_unload(const struct resource* r);
 
-struct texture* load_texture(const char* filename, u32 flags);
-struct font*    load_font(const char* filename, i32 size);
-struct shader*  load_shader(const char* filename);
+struct texture* load_texture(const char* filename, u32 flags, struct resource* r);
+struct font*    load_font(const char* filename, i32 size, struct resource* r);
+struct shader*  load_shader(const char* filename, struct resource* r);
 
 /* Primitive resources. */
 

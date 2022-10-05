@@ -77,11 +77,11 @@ void cr_init() {
 
 		v = rand_flt();
 		if (v > 0.6666f) {
-			obj->material.diffuse_map = load_texture("textures/bricks_diffuse.png", texture_flags_filter_linear);
+			obj->material.diffuse_map = load_texture("textures/bricks_diffuse.png", texture_flags_filter_linear, null);
 		} else if (v > 0.3333f) {
-			obj->material.diffuse_map = load_texture("textures/cobble_diffuse.png", texture_flags_filter_linear);
+			obj->material.diffuse_map = load_texture("textures/cobble_diffuse.png", texture_flags_filter_linear, null);
 		} else {
-			obj->material.diffuse_map = load_texture("textures/wood_diffuse.png", texture_flags_filter_linear);
+			obj->material.diffuse_map = load_texture("textures/wood_diffuse.png", texture_flags_filter_linear, null);
 		}
 
 		obj->spin_speed = rand_flt() * 100.0f;

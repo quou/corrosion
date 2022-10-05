@@ -49,10 +49,10 @@ struct app_config cr_config() {
 void cr_init() {
 	ui_init();
 
-	app.image = load_texture("textures/testimage.png", texture_flags_filter_linear);
+	app.image = load_texture("textures/testimage.png", texture_flags_filter_linear, null);
 
-	const struct shader* shader = load_shader("shaders/quad.csh");
-	const struct shader* blur_shader = load_shader("shaders/blur.csh");
+	const struct shader* shader = load_shader("shaders/quad.csh", null);
+	const struct shader* blur_shader = load_shader("shaders/blur.csh", null);
 
 	struct image i = {
 		.size = video.get_texture_size(app.image)

@@ -79,8 +79,8 @@ struct app_config cr_config() {
 }
 
 static void create_resources() {
-	const struct shader* blit_shader    = load_shader("shaders/blit.csh");
-	const struct shader* draw_shader    = load_shader("shaders/raytrace.csh");
+	const struct shader* blit_shader    = load_shader("shaders/blit.csh", null);
+	const struct shader* draw_shader    = load_shader("shaders/raytrace.csh", null);
 
 	struct image i = {
 		.size = get_window_size()

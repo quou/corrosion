@@ -21,12 +21,19 @@ void register_renderer_resources() {
 	});
 }
 
-struct model* load_model(const char* filename) {
-	return res_load("model", filename, null);
+struct model* load_model(const char* filename, struct resource* r) {
+	struct resource temp;
+
+	if (!r) {
+		r = &temp;
+	}
+
+	*r = res_load("model", filename, null);
+	return r->payload;
 }
 
 static void create_pipeline(struct renderer* renderer) {
-	const struct shader* shader = load_shader("shaders/lit.csh");
+	const struct shader* shader = load_shader("shaders/lit.csh", null);
 
 	renderer->pipeline = video.new_pipeline(
 		pipeline_flags_depth_test | pipeline_flags_draw_tris | pipeline_flags_cull_back_face,
@@ -191,7 +198,7 @@ struct renderer* new_renderer(const struct framebuffer* framebuffer) {
 
 	renderer->tri_vb = video.new_vertex_buffer(tri_verts, sizeof tri_verts, vertex_buffer_flags_none);
 
-	struct shader* lighting_shader = load_shader("shaders/lighting.csh");
+	struct shader* lighting_shader = load_shader("shaders/lighting.csh", null);
 
 	renderer->lighting_pipeline = video.new_pipeline(
 		pipeline_flags_draw_tris,

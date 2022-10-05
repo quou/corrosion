@@ -4,6 +4,7 @@
 #include <ctime>
 #include <utility>
 #include <string>
+#include <functional>
 
 namespace corrosion {
 	namespace impl {
@@ -81,43 +82,295 @@ namespace corrosion {
 
 	class Framebuffer {
 	private:
-		impl::framebuffer* ih;
-
-		Framebuffer(impl::framebuffer* ih) : ih(ih) {}
+		impl::framebuffer* as_impl() {
+			return reinterpret_cast<impl::framebuffer*>(this);
+		}
 
 		friend class App_Base;
+		friend class Video;
 	public:
+		Framebuffer() = delete;
+
+		Framebuffer* create() {
+		
+		}
+
+		void release() {
+			impl::video.free_framebuffer(as_impl());
+		}
+
 		void begin() {
-			impl::video.begin_framebuffer(ih);
+			impl::video.begin_framebuffer(as_impl());
 		}
 
 		void end() {
-			impl::video.end_framebuffer(ih);
+			impl::video.end_framebuffer(as_impl());
 		}
 
 		v2i get_size() {
-			return impl::video.get_framebuffer_size(ih);
+			return impl::video.get_framebuffer_size(as_impl());
 		}
 
 		void resize(v2i new_size) {
-			impl::video.resize_framebuffer(ih, new_size);
+			impl::video.resize_framebuffer(as_impl(), new_size);
 		}
 	};
 
 	class Video {
 	private:
-		inline static Framebuffer* default_fb;
-
 		friend class App_Base;
 	public:
-		enum class API {
+		enum class API : u32 {
 			none   = impl::video_api_none,
 			vulkan = impl::video_api_vulkan,
 			opengl = impl::video_api_opengl
 		};
 
 		static Framebuffer* get_default_fb() {
-			return default_fb;
+			return reinterpret_cast<Framebuffer*>(impl::video.get_default_fb());
+		}
+
+		static void begin(bool present = true) {
+			impl::video.begin(present);
+		}
+
+		static void end(bool present = true) {
+			impl::video.end(present);
+		}
+	};
+
+	class Shader {
+	private:
+		impl::shader* as_impl() {
+			return reinterpret_cast<impl::shader*>(this);
+		}
+	public:
+		Shader() = delete;
+
+		static Shader* create(const u8* data, usize data_size) {
+			return reinterpret_cast<Shader*>(impl::video.new_shader(data, data_size));
+		}
+
+		void release() {
+			impl::video.free_shader(as_impl());
+		}
+	};
+
+	struct Image : public impl::image {
+		Image(v2i size) : impl::image(impl::image { .size = size, .colours = null }) {}
+		Image(const u8* raw, usize raw_size) {
+			impl::init_image_from_raw(this, raw, raw_size);
+		}
+
+		~Image() {
+			if (colours) {
+				impl::deinit_image(this);
+			}
+		}
+
+		void flip_y() {
+			impl::flip_image_y(this);
+		}
+	};
+
+	class Texture {
+	private:
+		impl::texture* as_impl() {
+			return reinterpret_cast<impl::texture*>(this);
+		}
+	public:
+		enum class Flags : u32 {
+			none          = impl::texture_flags_none,
+			filter_linear = impl::texture_flags_filter_linear,
+			filter_none   = impl::texture_flags_filter_none,
+			storage       = impl::texture_flags_storage,
+			repeat        = impl::texture_flags_repeat,
+			clamp         = impl::texture_flags_clamp
+		};
+
+		enum class Format : u32 {
+			r8i     = impl::texture_format_r8i,
+			r16f    = impl::texture_format_r16f,
+			r32f    = impl::texture_format_r32f,
+			rg8i    = impl::texture_format_rg8i,
+			rg16f   = impl::texture_format_rg16f,
+			rg32f   = impl::texture_format_rg32f,
+			rgb8i   = impl::texture_format_rgb8i,
+			rgb16f  = impl::texture_format_rgb16f,
+			rgb32f  = impl::texture_format_rgb32f,
+			rgba8i  = impl::texture_format_rgba8i,
+			rgba16f = impl::texture_format_rgba16f,
+			rgba32f = impl::texture_format_rgba32f,
+			count   = impl::texture_format_count
+		};
+
+		enum class State : u32 {
+			shader_write          = impl::texture_state_shader_write,
+			shader_graphics_read  = impl::texture_state_shader_graphics_read,
+			shader_compute_read   = impl::texture_state_shader_compute_read,
+			shader_compute_sample = impl::texture_state_shader_compute_sample,
+			attachment_write      = impl::texture_state_attachment_write
+		};
+
+		Texture() = delete;
+
+		static Texture* create(const Image* image, Flags flags, Format format) {
+			return reinterpret_cast<Texture*>(impl::video.new_texture(image,
+				static_cast<u32>(flags), static_cast<u32>(format)));
+		}
+
+		static Texture* create(v3i size, Flags flags, Format format) {
+			return reinterpret_cast<Texture*>(impl::video.new_texture_3d(size,
+				static_cast<u32>(flags), static_cast<u32>(format)));
+		}
+
+		void release() {
+			impl::video.free_texture(as_impl());
+		}
+
+		v2i get_size() {
+			impl::video.get_texture_size(as_impl());
+		}
+
+		v3i get_3d_size() {
+			impl::video.get_texture_3d_size(as_impl());
+		}
+
+		void copy_to(Texture* dst, v2i dst_offset, v2i src_offset, v2i region) {
+			impl::video.texture_copy(dst->as_impl(), dst_offset, as_impl(), src_offset, region);
+		}
+		
+		void copy_to(Texture* dst, v3i dst_offset, v3i src_offset, v3i region) {
+			impl::video.texture_copy_3d(dst->as_impl(), dst_offset, as_impl(), src_offset, region);
+		}
+
+		void barrier(State state) {
+			impl::video.texture_barrier(as_impl(), static_cast<u32>(state));
+		}
+	};
+
+	class Font {
+	private:
+		impl::font* as_impl() {
+			return reinterpret_cast<impl::font*>(this);
+		}
+
+		friend class Text_Renderer;
+	public:
+		Font() = delete;
+
+		static usize get_class_size() {
+			return impl::font_struct_size();
+		}
+
+		static Font* create(const u8* raw, usize raw_size, f32 size) {
+			return reinterpret_cast<Font*>(impl::new_font(raw, raw_size, size));
+		}
+
+		void release() {
+			impl::free_font(as_impl());
+		}
+
+		v2f get_char_dimensions(const char* c) {
+			return impl::get_char_dimensions(as_impl(), c);
+		}
+
+		v2f get_text_dimensions(const char* text) {
+			return impl::get_text_dimensions(as_impl(), text);
+		}
+
+		v2f get_text_dimensions(const char* text, usize n) {
+			return impl::get_text_n_dimensions(as_impl(), text, n);
+		}
+
+		f32 get_height() {
+			return impl::get_font_height(as_impl());
+		}
+
+		void* get_data() {
+			return impl::get_font_data(as_impl());
+		}
+	};
+
+	class Text_Renderer : public impl::text_renderer {
+	private:
+	public:
+		Text_Renderer(void* uptr, void (*draw_char)(void*, const Texture*, v2f, v4f, v4f)) {
+			this->uptr = uptr;
+			this->draw_character = (void (*)(void*, const impl::texture*, impl::v2f, impl::v4f, impl::v4f))draw_char;
+		}
+
+		void render_text(Font* font, const char* text, v2f pos, v4f col) {
+			impl::render_text(this, font->as_impl(), text, pos, col);
+		}
+	};
+
+	struct Resource_Config : public impl::res_config {
+		template <typename Payload_T, typename Udata_T>
+		static Resource_Config create(
+			bool free_raw_on_load, bool terminate_raw,
+			const void* alt_raw = null, usize alt_raw_size = 0) {
+
+			Resource_Config cfg{};
+
+			cfg.payload_size = sizeof(Payload_T);
+			cfg.udata_size = sizeof(Udata_T);
+			cfg.free_raw_on_load = free_raw_on_load;
+			cfg.terminate_raw = terminate_raw;
+			cfg.alt_raw = alt_raw;
+			cfg.alt_raw_size = alt_raw_size;
+
+			return std::move(cfg);
+		}
+	};
+
+	class Resource : private impl::resource {
+	private:
+		Resource(void* payload, u64 id)
+			: impl::resource(impl::resource { .id = id, .payload = payload }) {}
+
+		friend class Resource_Manager;
+	public:
+		Resource()
+			: impl::resource(impl::resource { .id = UINT64_MAX, .payload = null }) {}
+
+		template <typename T>
+		T* as() {
+			return reinterpret_cast<T*>(payload);
+		}
+
+		u64 get_id() {
+			return id;
+		}
+	};
+
+	class Resource_Manager {
+	private:
+	public:
+		static void reg(const char* type, const Resource_Config& cfg) {
+			impl::reg_res_type(type, &cfg);
+		}
+
+		Resource load(const char* type, const char* filename, void* udata = null) {
+			auto ir = impl::res_load(type, filename, udata);
+
+			return Resource(ir.payload, ir.id);
+		}
+
+		void unload(const Resource& r) {
+			impl::res_unload(&r);
+		}
+
+		Shader* load_shader(const char* filename, Resource* r = null) {
+			return reinterpret_cast<Shader*>(impl::load_shader(filename, r));
+		}
+
+		Texture* load_texture(const char* filename, Texture::Flags flags, Resource* r = null) {
+			return reinterpret_cast<Texture*>(impl::load_texture(filename, static_cast<u32>(flags), r));
+		}
+		
+		Font* load_font(const char* filename, i32 size, Resource* r = null) {
+			return reinterpret_cast<Font*>(impl::load_font(filename, size, r));
 		}
 	};
 
@@ -168,7 +421,7 @@ namespace corrosion {
 
 			impl::init_window(&c_win_conf, c_vid_conf.api);
 
-			impl::res_init(argv[0]);
+			Resource_Manager::init(argv[0]);
 
 			impl::init_video(&c_vid_conf);
 
@@ -181,27 +434,20 @@ namespace corrosion {
 
 			bool r = true;
 
-			Video::default_fb = new Framebuffer(null);
-
 			while (impl::window_open() && r) {
 				impl::table_lookup_count = 0;
 				impl::heap_allocation_count = 0;
 
 				impl::update_events();
 
-				impl::video.begin(true);
-
-				Video::default_fb->ih = impl::video.get_default_fb();
-
+				Video::begin();
 				on_update(ts);
-				impl::video.end(true);
+				Video::end();
 
 				now = impl::get_timer();
 				ts = (f64)(now - last) / (f64)impl::get_timer_frequency();
 				last = now;
 			}
-
-			delete Video::default_fb;
 
 			on_deinit();
 

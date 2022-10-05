@@ -121,7 +121,7 @@ static void generate_volume_data() {
 
 	free_vector(gen_points);
 
-	const struct shader* shader = load_shader("shaders/volume.csh");
+	const struct shader* shader = load_shader("shaders/volume.csh", null);
 
 	struct {
 		v3f image_size;
@@ -207,7 +207,7 @@ void cr_init() {
 		texture_flags_repeat | texture_flags_filter_linear | texture_flags_storage,
 		texture_format_r16f);
 
-	struct shader* shader = load_shader("shaders/draw.csh");
+	struct shader* shader = load_shader("shaders/draw.csh", null);
 
 	app.pipeline = video.new_pipeline(
 		pipeline_flags_draw_tris,
