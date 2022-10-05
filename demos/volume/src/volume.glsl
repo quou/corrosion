@@ -13,7 +13,7 @@ layout (binding = 1) buffer InputPoints {
 	vec3 points[];
 };
 
-layout (binding = 2, r8) uniform image3D output_texture;
+layout (binding = 2, r16f) uniform image3D output_texture;
 
 void main() {
 	ivec3 id = ivec3(gl_GlobalInvocationID.xyz);

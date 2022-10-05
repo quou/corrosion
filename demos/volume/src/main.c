@@ -61,30 +61,37 @@ struct app_config cr_config() {
 	};
 }
 
-static void shift_and_gen(v3f* points, u32 count, u32 offset, v3f dir) {
+
+struct point {
+	v3f p;
+	pad(4);
+};
+
+static void shift_and_gen(vector(struct point) points, u32 count, u32 offset, v3f dir) {
 	for (u32 i = 0; i < count; i++) {
-		points[offset + i] = v3f_add(points[i], dir);
+		vector_push(points, (struct point) { v3f_add(points[i].p, dir) });
 	}
 }
 
 /* Generate a volumetric texture using worley noise and a compute shader. */
 static void generate_volume_data() {
-	u32 point_count = 256;
+	u32 point_count = 128;
 	u32 tile_count = 23;
 	u32 tiled_pc = point_count * tile_count;
 
-	vector(v3f) gen_points = null;
+	vector(struct point) gen_points = null;
 	vector_allocate(gen_points, tiled_pc);
 
 	for (u32 i = 0; i < point_count; i++) {
 		vector_push(gen_points,
-			make_v3f(
+			(struct point) { make_v3f(
 				random_float(0.0f, 1.0f),
 				random_float(0.0f, 1.0f),
 				random_float(0.0f, 1.0f)
-			));
+			) });
 	}
 
+	/* Shift the points around the a central "cube" so that the noise tiles properly. */
 	shift_and_gen(gen_points, point_count, point_count * 1,  make_v3f(-1.0f,  0.0f,  0.0f));
 	shift_and_gen(gen_points, point_count, point_count * 2,  make_v3f( 1.0f,  0.0f,  0.0f));
 	shift_and_gen(gen_points, point_count, point_count * 3,  make_v3f( 0.0f, -1.0f,  0.0f));
@@ -112,7 +119,7 @@ static void generate_volume_data() {
 	shift_and_gen(gen_points, point_count, point_count * 21, make_v3f(-1.0f,  1.0f, -1.0f));
 	shift_and_gen(gen_points, point_count, point_count * 22, make_v3f(-1.0f,  1.0f,  1.0f));
 
-	struct storage* points = video.new_storage(storage_flags_none, tiled_pc * sizeof(v3f), gen_points);
+	struct storage* points = video.new_storage(storage_flags_none, tiled_pc * sizeof(struct point), gen_points);
 
 	free_vector(gen_points);
 
@@ -197,7 +204,7 @@ void cr_init() {
 	app.vb = video.new_vertex_buffer(verts, sizeof verts, vertex_buffer_flags_none);
 	app.v_tex = video.new_texture_3d(volume_texture_size,
 		texture_flags_repeat | texture_flags_filter_linear | texture_flags_storage,
-		texture_format_r8i);
+		texture_format_r16f);
 
 	struct shader* shader = load_shader("shaders/draw.csh");
 
