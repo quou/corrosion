@@ -24,8 +24,6 @@ struct {
 
 	struct ui* ui;
 
-	bool first_frame;
-
 	v2i old_mouse;
 	bool camera_active;
 	bool first_move;
@@ -173,6 +171,7 @@ static void generate_volume_data() {
 			.count = 1
 		});
 
+	video.begin(false);
 	video.update_pipeline_uniform(pipeline, "primary", "config", &config);
 
 	video.texture_barrier(app.v_tex, texture_state_shader_write);
@@ -183,6 +182,8 @@ static void generate_volume_data() {
 	video.end_pipeline(pipeline);
 
 	video.texture_barrier(app.v_tex, texture_state_shader_graphics_read);
+
+	video.end(false);
 
 	video.free_storage(points);
 	video.free_pipeline(pipeline);
@@ -270,13 +271,13 @@ void cr_init() {
 		}
 	);
 
-	app.first_frame = true;
-
 	app.config.threshold = 0.9f;
 	app.camera.position = make_v3f(0.0f, 0.0f, 0.0f);
 	app.camera.fov = 70.0f;
 	app.camera.near_plane = 0.1f;
 	app.camera.far_plane = 100.0f;
+
+	generate_volume_data();
 }
 
 void cr_update(f64 ts) {
@@ -360,11 +361,6 @@ void cr_update(f64 ts) {
 	ui_knob(app.ui, &app.config.threshold, 0.0f, 1.0f);
 
 	ui_end(app.ui);
-
-	if (app.first_frame) {
-		generate_volume_data();
-		app.first_frame = false;
-	}
 
 	v2i win_size = get_window_size();
 

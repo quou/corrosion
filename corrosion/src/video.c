@@ -125,7 +125,7 @@ static void validated_deinit() {
 	abort();
 }
 
-static void validated_begin() {
+static void validated_begin(bool present) {
 	bool ok = true;
 
 	check_is_init("begin");
@@ -137,14 +137,14 @@ static void validated_begin() {
 
 	if (ok) {	
 		validation_state.end_called = false;
-		get_api_proc(begin)();
+		get_api_proc(begin)(present);
 		return;
 	}
 
 	abort();
 }
 
-static void validated_end() {
+static void validated_end(bool present) {
 	bool ok = true;
 
 	check_is_init("end");
@@ -152,7 +152,7 @@ static void validated_end() {
 
 	if (ok) {
 		validation_state.end_called = true;
-		get_api_proc(end)();
+		get_api_proc(end)(present);
 		return;
 	}
 

@@ -7,8 +7,8 @@
 void video_gl_init(const struct video_config* config);
 void video_gl_deinit();
 
-void video_gl_begin();
-void video_gl_end();
+void video_gl_begin(bool present);
+void video_gl_end(bool present);
 
 void video_gl_want_recreate();
 

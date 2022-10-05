@@ -71,9 +71,9 @@ static bool run(i32 argc, const char** argv) {
 
 		update_events();
 
-		video.begin();
+		video.begin(true);
 		cr_update(ts);
-		video.end();
+		video.end(true);
 
 		now = get_timer();
 		ts = (f64)(now - last) / (f64)get_timer_frequency();

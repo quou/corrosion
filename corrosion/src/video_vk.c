@@ -762,7 +762,7 @@ void video_vk_deinit() {
 	vkDestroyInstance(vctx.instance, null);
 }
 
-void video_vk_begin() {
+void video_vk_begin(bool present) {
 frame_begin:
 
 	vctx.draw_call_count = 0;
@@ -771,8 +771,8 @@ frame_begin:
 
 	vkWaitForFences(vctx.device, 1, &vctx.in_flight_fences[vctx.current_frame], VK_TRUE, UINT64_MAX);
 
-	VkResult r;
-	if (!vctx.want_recreate) {
+	VkResult r = VK_SUCCESS;
+	if (!vctx.want_recreate && present) {
 		r = vkAcquireNextImageKHR(vctx.device, vctx.swapchain, UINT64_MAX, vctx.image_avail_semaphores[vctx.current_frame],
 			VK_NULL_HANDLE, &vctx.image_id);
 	}
@@ -796,7 +796,7 @@ frame_begin:
 	}
 }
 
-void video_vk_end() {
+void video_vk_end(bool present) {
 	if (vkEndCommandBuffer(vctx.command_buffers[vctx.current_frame]) != VK_SUCCESS) {
 		abort_with("Failed to end the command buffer.");
 	}
@@ -819,11 +819,15 @@ void video_vk_end() {
 
 	update_queue->count = 0;
 
-	/* Submit the draw command buffer. It waits on the compute
-	 * command buffer to complete. */
+	u32 wait_count = 0;
+	if (present) {
+		wait_count = 1;
+	}
+
+	/* Submit the command buffer. */
 	if (vkQueueSubmit(vctx.graphics_compute_queue, 1, &(VkSubmitInfo) {
 			.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
-			.waitSemaphoreCount = 1,
+			.waitSemaphoreCount = wait_count,
 			.pWaitSemaphores = (VkSemaphore[]) {
 				vctx.image_avail_semaphores[vctx.current_frame],
 			},
@@ -834,7 +838,7 @@ void video_vk_end() {
 			.pCommandBuffers = (VkCommandBuffer[]) {
 				vctx.command_buffers[vctx.current_frame]
 			},
-			.signalSemaphoreCount = 1,
+			.signalSemaphoreCount = wait_count,
 			.pSignalSemaphores = (VkSemaphore[]) {
 				vctx.render_finish_semaphores[vctx.current_frame]
 			}
@@ -842,18 +846,22 @@ void video_vk_end() {
 		abort_with("Failed to submit draw command buffer.");
 	}
 
-	vkQueuePresentKHR(vctx.present_queue, &(VkPresentInfoKHR) {
-		.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
-		.waitSemaphoreCount = 1,
-		.pWaitSemaphores = (VkSemaphore[]) {
-			vctx.render_finish_semaphores[vctx.current_frame]
-		},
-		.swapchainCount = 1,
-		.pSwapchains = (VkSwapchainKHR[]) {
-			vctx.swapchain
-		},
-		.pImageIndices = &vctx.image_id,
-	});
+	if (present) {
+		vkQueuePresentKHR(vctx.present_queue, &(VkPresentInfoKHR) {
+			.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
+			.waitSemaphoreCount = 1,
+			.pWaitSemaphores = (VkSemaphore[]) {
+				vctx.render_finish_semaphores[vctx.current_frame]
+			},
+			.swapchainCount = 1,
+			.pSwapchains = (VkSwapchainKHR[]) {
+				vctx.swapchain
+			},
+			.pImageIndices = &vctx.image_id,
+		});
+	} else {
+		//vkDeviceWaitIdle(vctx.device);
+	}
 
 	vctx.in_frame = false;
 

@@ -7,8 +7,8 @@
 void video_vk_init(const struct video_config* config);
 void video_vk_deinit();
 
-void video_vk_begin();
-void video_vk_end();
+void video_vk_begin(bool present);
+void video_vk_end(bool present);
 
 void video_vk_want_recreate();
 

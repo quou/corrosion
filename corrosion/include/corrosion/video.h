@@ -235,7 +235,6 @@ struct index_buffer;
 struct shader;
 struct texture;
 struct storage;
-struct render_worker;
 
 struct video {
 	u32 api;
@@ -243,8 +242,8 @@ struct video {
 	void (*init)(const struct video_config* config);
 	void (*deinit)();
 
-	void (*begin)();
-	void (*end)();
+	void (*begin)(bool present);
+	void (*end)(bool present);
 
 	struct framebuffer* (*get_default_fb)();
 

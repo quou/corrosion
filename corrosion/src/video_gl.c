@@ -67,7 +67,7 @@ void video_gl_deinit() {
 	window_destroy_gl_context();
 }
 
-void video_gl_begin() {
+void video_gl_begin(bool present) {
 	gctx.draw_call_count = 0;
 
 	if (gctx.want_recreate) {
@@ -84,8 +84,10 @@ void video_gl_begin() {
 	}
 }
 
-void video_gl_end() {
-	window_gl_swap();
+void video_gl_end(bool present) {
+	if (present) {
+		window_gl_swap();
+	}
 }
 
 void video_gl_want_recreate() {
