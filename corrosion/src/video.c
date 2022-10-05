@@ -1015,3 +1015,9 @@ void vertex_vector_push(struct vertex_vector* v, void* elements, usize count) {
 
 	v->count += count;
 }
+
+struct pipeline_config default_pipeline_config() {
+	return (struct pipeline_config) {
+		.line_width = 1.0f
+	};
+}

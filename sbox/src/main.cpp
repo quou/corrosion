@@ -1,10 +1,10 @@
+#if 0
+
 #include <stdio.h>
 
 #define cr_entrypoint
 
 #include <corrosion/cr.h>
-
-//#if 0
 
 struct {
 	struct texture* texturea;
@@ -443,7 +443,7 @@ void cr_deinit() {
 
 //#endif
 
-#if 0
+//#if 0
 struct vertex {
 	v2f position;
 	v2f uv;
@@ -794,3 +794,51 @@ void cr_deinit() {
 	ui_deinit();
 }
 #endif
+
+#include <iostream>
+
+#include <corrosion/cr.hpp>
+
+using namespace corrosion;
+
+class App : public App_Base {
+public:
+	App() : App_Base(App_Base::Config {
+			.name = "Sandbox",
+			.window_config = {
+				.title = "Sandbox",
+				.size = v2i(1366, 768),
+				.resizable = true
+			},
+			.video_config = {
+				.api = Video::API::vulkan,
+				.enable_validation = true,
+				.enable_vsync = true,
+				.clear_colour = make_rgba(0x0000ff, 255)
+			}
+		}) {
+	
+	}
+
+	void on_init() override {
+	
+	}
+
+	void on_update(f64 ts) override {
+		Video::get_default_fb()->begin();
+
+		Video::get_default_fb()->end();
+	}
+
+	void on_deinit() override {
+	
+	}
+};
+
+i32 main(int argc, const char** argv) {
+	auto app = new App();
+
+	app->run(argc, argv);
+
+	delete app;
+}

@@ -333,8 +333,4 @@ void init_vertex_vector(struct vertex_vector* v, usize element_size, usize initi
 void deinit_vertex_vector(struct vertex_vector* v);
 void vertex_vector_push(struct vertex_vector* v, void* elements, usize count);
 
-inline static struct pipeline_config default_pipeline_config() {
-	return (struct pipeline_config) {
-		.line_width = 1.0f
-	};
-}
+struct pipeline_config default_pipeline_config();

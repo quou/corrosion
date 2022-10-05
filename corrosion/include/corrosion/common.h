@@ -18,7 +18,11 @@ typedef double f64;
 
 typedef size_t usize;
 
-#define null ((void*)0x0)
+#if defined(__cplusplus)
+	#define null nullptr
+#else
+	#define null ((void*)0x0)
+#endif
 
 #if defined(__clang__) || defined(__gcc__)
 	#define force_inline __attribute__((always_inline)) inline

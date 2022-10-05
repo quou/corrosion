@@ -87,6 +87,9 @@
     <ClCompile Include="..\..\..\corrosion\src\thread_windows.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\corrosion\src\corrosion.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\corrosion\include\corrosion\app.h">
@@ -159,6 +162,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\corrosion\include\corrosion\thread.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\corrosion\include\corrosion\cr.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

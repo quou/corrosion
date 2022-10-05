@@ -98,6 +98,7 @@
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(SolutionDir)..\..\corrosion\include\corrosion;$(VULKAN_SDK)\Include</AdditionalIncludeDirectories>
       <LanguageStandard_C>stdc11</LanguageStandard_C>
+      <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -119,6 +120,7 @@
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(SolutionDir)..\..\corrosion\include\corrosion;$(VULKAN_SDK)\Include</AdditionalIncludeDirectories>
       <LanguageStandard_C>stdc11</LanguageStandard_C>
+      <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -141,6 +143,7 @@
       <AdditionalIncludeDirectories>$(SolutionDir)..\..\corrosion\include\corrosion;$(VULKAN_SDK)\Include</AdditionalIncludeDirectories>
       <LanguageStandard_C>stdc11</LanguageStandard_C>
       <DisableSpecificWarnings>5105</DisableSpecificWarnings>
+      <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -162,6 +165,7 @@
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(SolutionDir)..\..\corrosion\include\corrosion;$(VULKAN_SDK)\Include</AdditionalIncludeDirectories>
       <LanguageStandard_C>stdc11</LanguageStandard_C>
+      <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -180,6 +184,7 @@
     <ClCompile Include="..\..\..\corrosion\src\atlas.c" />
     <ClCompile Include="..\..\..\corrosion\src\bir.c" />
     <ClCompile Include="..\..\..\corrosion\src\core.c" />
+    <ClCompile Include="..\..\..\corrosion\src\corrosion.cpp" />
     <ClCompile Include="..\..\..\corrosion\src\dtable.c" />
     <ClCompile Include="..\..\..\corrosion\src\font.c" />
     <ClCompile Include="..\..\..\corrosion\src\gizmo.c" />
@@ -207,6 +212,7 @@
     <ClInclude Include="..\..\..\corrosion\include\corrosion\common.h" />
     <ClInclude Include="..\..\..\corrosion\include\corrosion\core.h" />
     <ClInclude Include="..\..\..\corrosion\include\corrosion\cr.h" />
+    <ClInclude Include="..\..\..\corrosion\include\corrosion\cr.hpp" />
     <ClInclude Include="..\..\..\corrosion\include\corrosion\dtable.h" />
     <ClInclude Include="..\..\..\corrosion\include\corrosion\font.h" />
     <ClInclude Include="..\..\..\corrosion\include\corrosion\gizmo.h" />

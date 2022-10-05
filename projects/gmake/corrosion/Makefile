@@ -48,7 +48,9 @@ sources =                            \
           $(srcdir)/video_gl.c       \
           $(srcdir)/window_common.c  \
 
-sourcespp = $(srcdir)/vma.cpp
+sourcespp =
+	$(srcdir)/vma.cpp       \
+	$(srcdir)/corrosion.cpp \
 
 ifeq ($(config),debug)
   target_dir = bin/debug

@@ -7,35 +7,39 @@
 #define cr_min(a_, b_) ((a_) < (b_) ? (a_) : (b_))
 #define cr_max(a_, b_) ((a_) > (b_) ? (a_) : (b_))
 
-#define v2(t_) struct { \
+#define cr_v2(t_) struct { \
 	union { t_ x; t_ u; }; \
 	union { t_ y; t_ v; }; \
 }
-#define v3(t_) struct { \
+#define cr_v3(t_) struct { \
 	union { t_ x; t_ r; t_ h; }; \
 	union { t_ y; t_ g; t_ s; }; \
 	union { t_ z; t_ b; t_ v; }; \
 }
-#define v4(t_) struct { \
+#define cr_v4(t_) struct { \
 	union { t_ x; t_ r; t_ h; }; \
 	union { t_ y; t_ g; t_ s; }; \
 	union { t_ z; t_ b; t_ v; }; \
 	union { t_ w; t_ a;       }; \
 }
 
-#define m4(t_) struct { t_ m[4][4]; }
+#define cr_m4(t_) struct { t_ m[4][4]; }
 
-typedef v2(f32) v2f;
-typedef v2(i32) v2i;
-typedef v2(u32) v2u;
-typedef v3(f32) v3f;
-typedef v3(i32) v3i;
-typedef v3(u32) v3u;
-typedef v4(f32) v4f;
-typedef v4(i32) v4i;
-typedef v4(u32) v4u;
+typedef cr_v2(f32) v2f;
+typedef cr_v2(i32) v2i;
+typedef cr_v2(u32) v2u;
+typedef cr_v3(f32) v3f;
+typedef cr_v3(i32) v3i;
+typedef cr_v3(u32) v3u;
+typedef cr_v4(f32) v4f;
+typedef cr_v4(i32) v4i;
+typedef cr_v4(u32) v4u;
 
-typedef m4(f32) m4f;
+typedef cr_m4(f32) m4f;
+
+typedef v4f quat;
+
+#if !defined(__cplusplus)
 
 #define pi_f 3.14159265358f
 #define pi_d 3.14159265358979323846
@@ -308,8 +312,6 @@ _v4_normalised(v4f, f32)
 	)
 
 /* Quaternion. */
-typedef v4f quat;
-
 #define make_quat(a_, s_) make_v4f((a_).x, (a_).y, (a_).z, s_)
 
 #define quat_identity()	make_quat(make_v3f(0.0f, 0.0f, 0.0f), 1.0f)
@@ -563,3 +565,4 @@ force_inline m4f m4f_persp(f32 fov, f32 aspect, f32 near_clip, f32 far_clip) {
 
 	return r;
 }
+#endif
