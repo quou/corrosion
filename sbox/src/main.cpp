@@ -801,7 +801,14 @@ void cr_deinit() {
 
 using namespace corrosion;
 
+struct Vertex {
+	v2f position;
+	v2f uv;
+};
+
 class App : public App_Base {
+private:
+	Pipeline* pipeline;
 public:
 	App() : App_Base(App_Base::Config {
 			.name = "Sandbox",
@@ -821,17 +828,35 @@ public:
 	}
 
 	void on_init() override {
+		auto shader = Resource_Manager::load_shader("shaders/test.csh");
 
+		std::vector<Attribute> attributes {
+			Attribute("position", 0, Attribute::Type::vec2, offsetof(Vertex, position)),
+			Attribute("uv",       1, Attribute::Type::vec2, offsetof(Vertex, uv))
+		};
+
+		std::vector<Attribute_Binding> bindings {
+			Attribute_Binding(0,
+				Attribute_Binding::Rate::per_vertex, sizeof(Vertex),
+				attributes
+			)
+		};
+
+		std::vector<Descriptor_Set> descriptor_sets;
+
+		pipeline = Pipeline::create(Pipeline::Flags::none, *shader, Video::get_default_fb(),
+			bindings,
+			descriptor_sets);
 	}
 
 	void on_update(f64 ts) override {
-		Video::get_default_fb()->begin();
+		Video::get_default_fb().begin();
 
-		Video::get_default_fb()->end();
+		Video::get_default_fb().end();
 	}
 
 	void on_deinit() override {
-	
+		pipeline->release();
 	}
 };
 

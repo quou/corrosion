@@ -1,12 +1,13 @@
 /* Corrosion C++ header. */
 
+#include <cmath>
 #include <cstdint>
 #include <ctime>
-#include <utility>
-#include <string>
 #include <functional>
 #include <iostream>
-#include <cmath>
+#include <string>
+#include <utility>
+#include <vector>
 
 namespace corrosion {
 	namespace impl {
@@ -84,114 +85,21 @@ namespace corrosion {
 	static inline v4f make_rgba(u32 rgb, u8 a) {
 		return v4f(make_rgb(rgb), (f32)a / 255.0f);
 	}
+
 	class Texture;
-
-	class Framebuffer {
-	private:
-		impl::framebuffer* as_impl() {
-			return reinterpret_cast<impl::framebuffer*>(this);
-		}
-	public:
-		Framebuffer() = delete;
-
-		struct Attachment_Desc {
-			const char* name;
-
-			enum class Type : u32 {
-				colour = impl::framebuffer_attachment_colour,
-				depth  = impl::framebuffer_attachment_depth
-			} type;
-
-			enum class Format : u32 {
-				depth   = impl::framebuffer_format_depth,
-				rgba8i  = impl::framebuffer_format_rgba8i,
-				rgba16f = impl::framebuffer_format_rgba16f,
-				rgba32f = impl::framebuffer_format_rgba32f
-			};
-
-			v4f clear_colour;
-		};
-
-		enum class Flags {
-			fit                     = impl::framebuffer_flags_fit,
-			headless                = impl::framebuffer_flags_headless,
-			attachments_are_storage = impl::framebuffer_flags_attachments_are_storage
-		};
-
-		template <typename... Args>
-		static Framebuffer* create(Flags flags, v2i size, Args... descs) {
-			Attachment_Desc d[] = {
-				descs...
-			};
-
-			impl::framebuffer_attachment_desc dc[sizeof d / sizeof *d];
-
-			for (usize i = 0; i < sizeof d / sizeof *d; i++) {
-				dc[i].name = d[i].name;
-				dc[i].type = d[i].type;
-				dc[i].format = d[i].format;
-				dc[i].clear_colour = d[i].clear_colour;
-			}
-
-			return reinterpret_cast<Framebuffer*>(impl::video.new_framebuffer(
-				static_cast<u32>(flags), size,
-				dc, sizeof d / sizeof *d
-			));
-		}
-
-		void release() {
-			impl::video.free_framebuffer(as_impl());
-		}
-
-		void begin() {
-			impl::video.begin_framebuffer(as_impl());
-		}
-
-		void end() {
-			impl::video.end_framebuffer(as_impl());
-		}
-
-		v2i get_size() {
-			return impl::video.get_framebuffer_size(as_impl());
-		}
-
-		void resize(v2i new_size) {
-			impl::video.resize_framebuffer(as_impl(), new_size);
-		}
-
-		Texture* get_attachment(u32 index) {
-			return reinterpret_cast<Texture*>(impl::video.get_attachment(as_impl(), index));
-		}
-	};
-
-	class Video {
-	private:
-		friend class App_Base;
-	public:
-		enum class API : u32 {
-			none   = impl::video_api_none,
-			vulkan = impl::video_api_vulkan,
-			opengl = impl::video_api_opengl
-		};
-
-		static Framebuffer* get_default_fb() {
-			return reinterpret_cast<Framebuffer*>(impl::video.get_default_fb());
-		}
-
-		static void begin(bool present = true) {
-			impl::video.begin(present);
-		}
-
-		static void end(bool present = true) {
-			impl::video.end(present);
-		}
-	};
+	class Storage;
 
 	class Shader {
 	private:
 		impl::shader* as_impl() {
 			return reinterpret_cast<impl::shader*>(this);
 		}
+
+		const impl::shader* as_impl() const {
+			return reinterpret_cast<const impl::shader*>(this);
+		}
+
+		friend class Pipeline;
 	public:
 		Shader() = delete;
 
@@ -221,11 +129,102 @@ namespace corrosion {
 		}
 	};
 
+	class Framebuffer {
+	private:
+		impl::framebuffer* as_impl() {
+			return reinterpret_cast<impl::framebuffer*>(this);
+		}
+
+		const impl::framebuffer* as_impl() const {
+			return reinterpret_cast<const impl::framebuffer*>(this);
+		}
+
+		friend class Pipeline;
+	public:
+		Framebuffer() = delete;
+
+		struct Attachment_Desc {
+			const char* name;
+
+			enum class Type : u32 {
+				colour = impl::framebuffer_attachment_colour,
+				depth  = impl::framebuffer_attachment_depth
+			} type;
+
+			enum class Format : u32 {
+				depth   = impl::framebuffer_format_depth,
+				rgba8i  = impl::framebuffer_format_rgba8i,
+				rgba16f = impl::framebuffer_format_rgba16f,
+				rgba32f = impl::framebuffer_format_rgba32f
+			} format;
+
+			v4f clear_colour;
+
+			Attachment_Desc(const char* name, Type type, Format format, v4f clear_colour)
+				: name(name), type(type), format(format), clear_colour(clear_colour) {}
+		};
+
+		enum class Flags {
+			fit                     = impl::framebuffer_flags_fit,
+			headless                = impl::framebuffer_flags_headless,
+			attachments_are_storage = impl::framebuffer_flags_attachments_are_storage
+		};
+
+		template <typename... Args>
+		static Framebuffer* create(Flags flags, v2i size, const std::vector<Attachment_Desc>& attachments) {
+			std::vector<impl::framebuffer_attachment_desc> dc(attachments.size());
+
+			for (usize i = 0; i < attachments.size(); i++) {
+				dc.push_back(impl::framebuffer_attachment_desc {
+					.name         = attachments[i].name,
+					.type         = static_cast<u32>(attachments[i].type),
+					.format       = static_cast<u32>(attachments[i].format),
+					.clear_colour = attachments[i].clear_colour
+				});
+			}
+
+			return reinterpret_cast<Framebuffer*>(impl::video.new_framebuffer(
+				static_cast<u32>(flags), size,
+				&dc[0], dc.size()
+			));
+		}
+
+		void release() {
+			impl::video.free_framebuffer(as_impl());
+		}
+
+		void begin() {
+			impl::video.begin_framebuffer(as_impl());
+		}
+
+		void end() {
+			impl::video.end_framebuffer(as_impl());
+		}
+
+		v2i get_size() {
+			return impl::video.get_framebuffer_size(as_impl());
+		}
+
+		void resize(v2i new_size) {
+			impl::video.resize_framebuffer(as_impl(), new_size);
+		}
+
+		Texture* get_attachment(u32 index) {
+			return reinterpret_cast<Texture*>(impl::video.get_attachment(as_impl(), index));
+		}
+	};
+
 	class Texture {
 	private:
 		impl::texture* as_impl() {
 			return reinterpret_cast<impl::texture*>(this);
 		}
+
+		const impl::texture* as_impl() const {
+			return reinterpret_cast<const impl::texture*>(this);
+		}
+
+		friend class Pipeline;
 	public:
 		enum class Flags : u32 {
 			none          = impl::texture_flags_none,
@@ -284,16 +283,304 @@ namespace corrosion {
 			return impl::video.get_texture_3d_size(as_impl());
 		}
 
-		void copy_to(Texture* dst, v2i dst_offset, v2i src_offset, v2i region) {
-			impl::video.texture_copy(dst->as_impl(), dst_offset, as_impl(), src_offset, region);
+		void copy_to(Texture& dst, v2i dst_offset, v2i src_offset, v2i region) {
+			impl::video.texture_copy(dst.as_impl(), dst_offset, as_impl(), src_offset, region);
 		}
 		
-		void copy_to(Texture* dst, v3i dst_offset, v3i src_offset, v3i region) {
-			impl::video.texture_copy_3d(dst->as_impl(), dst_offset, as_impl(), src_offset, region);
+		void copy_to(Texture& dst, v3i dst_offset, v3i src_offset, v3i region) {
+			impl::video.texture_copy_3d(dst.as_impl(), dst_offset, as_impl(), src_offset, region);
 		}
 
 		void barrier(State state) {
 			impl::video.texture_barrier(as_impl(), static_cast<u32>(state));
+		}
+	};
+
+	class Storage {
+	private:
+		impl::storage* as_impl() {
+			return reinterpret_cast<impl::storage*>(this);
+		}
+
+		const impl::storage* as_impl() const {
+			return reinterpret_cast<const impl::storage*>(this);
+		}
+
+		friend class Pipeline;
+	public:
+		Storage() = delete;
+
+		enum class Flags : u32 {
+			none          = impl::storage_flags_none,
+			cpu_writable  = impl::storage_flags_cpu_writable,
+			cpu_readable  = impl::storage_flags_cpu_readable,
+			vertex_buffer = impl::storage_flags_vertex_buffer,
+			index_buffer  = impl::storage_flags_index_buffer,
+			indices_16bit = impl::storage_flags_16bit_indices,
+			indices_32bit = impl::storage_flags_32bit_indices
+		};
+
+		enum class Bind_As : u32 {
+			vertex_buffer = impl::storage_bind_as_vertex_buffer,
+			index_buffer  = impl::storage_bind_as_index_buffer
+		};
+
+		enum class State : u32 {
+			compute_read       = impl::storage_state_compute_read,
+			compute_write      = impl::storage_state_compute_write,
+			compute_read_write = impl::storage_state_compute_read_write,
+			fragment_read      = impl::storage_state_fragment_read,
+			fragment_write     = impl::storage_state_fragment_write,
+			vertex_read        = impl::storage_state_vertex_read,
+			vertex_write       = impl::storage_state_vertex_write,
+			dont_care          = impl::storage_state_dont_care
+		};
+
+		static Storage* create(Flags flags, usize size, void* initial_data = null) {
+			return reinterpret_cast<Storage*>(impl::video.new_storage(static_cast<u32>(flags), size, initial_data));
+		}
+
+		void update(void* data) {
+			impl::video.update_storage(as_impl(), data);
+		}
+
+		void update(void* data, usize offset, usize size) {
+			impl::video.update_storage_region(as_impl(), data, offset, size);
+		}
+
+		void copy_to(Storage& dst, usize dst_offset, usize src_offset, usize size) {
+			impl::video.copy_storage(dst.as_impl(), dst_offset, as_impl(), src_offset, size);
+		}
+
+		void barrier(State state) {
+			impl::video.storage_barrier(as_impl(), static_cast<u32>(state));
+		}
+
+		void bind_as(Bind_As as, u32 point = 0) {
+			impl::video.storage_bind_as(as_impl(), static_cast<u32>(as), point);
+		}
+
+		void release() {
+			impl::video.free_storage(as_impl());
+		}
+	};
+
+	struct Descriptor_Resource {
+		enum class Type : u32 {
+			uniform_buffer  = impl::pipeline_resource_uniform_buffer,
+			texture         = impl::pipeline_resource_texture,
+			texture_storage = impl::pipeline_resource_texture_storage,
+			storage         = impl::pipeline_resource_storage
+		} type;
+
+		struct Uniform {
+			usize size;
+		};
+
+		union {
+			Uniform uniform;
+			Texture* texture;
+			Storage* storage;
+		};
+
+		Descriptor_Resource(Uniform uniform) : type(Type::uniform_buffer), uniform(uniform) {}
+		Descriptor_Resource(Texture* texture, bool is_storage = false)
+			: type(is_storage ? Type::texture_storage : Type::texture), texture(texture) {}
+		Descriptor_Resource(Storage* storage) : type(Type::storage), storage(storage) {}
+	};
+
+	struct Descriptor {
+		const char* name;
+		u32 binding;
+		u32 stage;
+		Descriptor_Resource resource;
+	};
+
+	struct Descriptor_Set {
+		const char* name;
+		std::vector<Descriptor> descriptors;
+
+		Descriptor_Set(const char* name, std::vector<Descriptor> descriptors) :
+			descriptors(std::move(descriptors)) {}
+	};
+
+	struct Attribute {
+		const char* name;
+		u32 location;
+		enum class Type : u32 {
+			float_ = impl::pipeline_attribute_float,
+			vec2   = impl::pipeline_attribute_vec2,
+			vec3   = impl::pipeline_attribute_vec3,
+			vec4   = impl::pipeline_attribute_vec4,
+		} type;
+		usize offset;
+
+		Attribute(const char* name, u32 location, Type type, usize offset) :
+			name(name), location(location), type(type), offset(offset) {}
+	};
+
+	struct Attribute_Binding {
+		u32 binding;
+		
+		enum class Rate : u32 {
+			per_vertex   = impl::pipeline_attribute_rate_per_vertex,
+			per_instance = impl::pipeline_attribute_rate_per_instance,
+		} rate;
+
+		usize stride;
+
+		std::vector<Attribute> attributes;
+
+		Attribute_Binding(u32 binding, Rate rate, usize stride, std::vector<Attribute> attributes) :
+			binding(binding), rate(rate), stride(stride), attributes(std::move(attributes)) {}
+	};
+
+	class Pipeline {
+	private:
+		impl::pipeline* as_impl() {
+			return reinterpret_cast<impl::pipeline*>(this);
+		}
+	public:
+		Pipeline() = delete;
+
+		enum class Flags : u32 {
+			none            = impl::pipeline_flags_none,
+			depth_test      = impl::pipeline_flags_depth_test,
+			cull_back_face  = impl::pipeline_flags_cull_back_face,
+			cull_front_face = impl::pipeline_flags_cull_front_face,
+			blend           = impl::pipeline_flags_blend,
+			dynamic_scissor = impl::pipeline_flags_dynamic_scissor,
+			draw_lines      = impl::pipeline_flags_draw_lines,
+			draw_line_strip = impl::pipeline_flags_draw_line_strip,
+			draw_tris       = impl::pipeline_flags_draw_tris,
+			draw_points     = impl::pipeline_flags_draw_points,
+			compute         = impl::pipeline_flags_compute
+		};
+
+		static Pipeline* create(Flags flags, const Shader& shader, const Framebuffer& framebuffer,
+			const std::vector<Attribute_Binding> attrib_bindings, const std::vector<Descriptor_Set> descriptor_sets) {
+			std::vector<impl::pipeline_attribute_binding> cattrib_bindings;
+			cattrib_bindings.reserve(attrib_bindings.size());
+			std::vector<impl::pipeline_attribute> cattribs;
+
+			std::vector<impl::pipeline_descriptor_set> cdescriptor_sets;
+			cdescriptor_sets.reserve(descriptor_sets.size());
+			std::vector<impl::pipeline_descriptor> cdescriptors;
+
+			for (const auto& attrib_binding : attrib_bindings) {
+				impl::pipeline_attribute_binding binding{};
+				binding.binding = attrib_binding.binding;
+				binding.rate = static_cast<u32>(attrib_binding.rate);
+				binding.stride = attrib_binding.stride;
+
+				usize offset = cattribs.size();
+
+				for (const auto& attrib : attrib_binding.attributes) {
+					cattribs.push_back(impl::pipeline_attribute {
+						.name = attrib.name,
+						.location = attrib.location,
+						.type = static_cast<u32>(attrib.type),
+						.offset = attrib.offset
+					});
+				}
+
+				binding.attributes.count = cattribs.size();
+				binding.attributes.attributes = &cattribs[offset];
+
+				cattrib_bindings.push_back(std::move(binding));
+			}
+
+			for (const auto& set : descriptor_sets) {
+				impl::pipeline_descriptor_set cset{};
+
+				usize offset = cdescriptors.size();
+
+				for (const auto& desc : set.descriptors) {
+					impl::pipeline_descriptor cdesc{};
+
+					cdesc.resource.type = static_cast<u32>(desc.resource.type);
+					cdesc.name = desc.name;
+					cdesc.binding = desc.binding;
+					cdesc.stage = desc.stage;
+
+					switch (desc.resource.type) {
+					case Descriptor_Resource::Type::uniform_buffer:
+						cdesc.resource.uniform.size = desc.resource.uniform.size;
+						break;
+					case Descriptor_Resource::Type::texture:
+					case Descriptor_Resource::Type::texture_storage:
+						cdesc.resource.texture = desc.resource.texture->as_impl();
+						break;
+					case Descriptor_Resource::Type::storage:
+						cdesc.resource.storage = desc.resource.storage->as_impl();
+						break;
+					default: break;
+					}
+
+					cdescriptors.push_back(std::move(cdesc));
+				}
+
+				cset.name = set.name;
+				cset.count = cdescriptors.size();
+				cset.descriptors = &cdescriptors[offset];
+
+				cdescriptor_sets.push_back(std::move(cset));
+			}
+			
+			return reinterpret_cast<Pipeline*>(impl::video.new_pipeline(static_cast<u32>(flags), shader.as_impl(), framebuffer.as_impl(),
+				impl::pipeline_attribute_bindings { &cattrib_bindings[0], cattrib_bindings.size() },
+				impl::pipeline_descriptor_sets { &cdescriptor_sets[0], cdescriptor_sets.size() }));
+		}
+
+		void release() {
+			impl::video.free_pipeline(as_impl());
+		}
+
+		void begin() {
+			impl::video.begin_pipeline(as_impl());
+		}
+
+		void end() {
+			impl::video.end_pipeline(as_impl());
+		}
+
+		void recreate() {
+			impl::video.recreate_pipeline(as_impl());
+		}
+
+		void update_uniform(const char* set, const char* descriptor, const void* data) {
+			impl::video.update_pipeline_uniform(as_impl(), set, descriptor, data);
+		}
+
+		void bind_descriptor_set(const char* set, usize target) {
+			impl::video.bind_pipeline_descriptor_set(as_impl(), set, target);
+		}
+
+		void change_shader(const Shader& shader) {
+			impl::video.pipeline_change_shader(as_impl(), shader.as_impl());
+		}
+	};
+
+	class Video {
+	private:
+		friend class App_Base;
+	public:
+		enum class API : u32 {
+			none   = impl::video_api_none,
+			vulkan = impl::video_api_vulkan,
+			opengl = impl::video_api_opengl
+		};
+
+		static Framebuffer& get_default_fb() {
+			return *reinterpret_cast<Framebuffer*>(impl::video.get_default_fb());
+		}
+
+		static void begin(bool present = true) {
+			impl::video.begin(present);
+		}
+
+		static void end(bool present = true) {
+			impl::video.end(present);
 		}
 	};
 
@@ -399,25 +686,25 @@ namespace corrosion {
 			impl::reg_res_type(type, &cfg);
 		}
 
-		Resource load(const char* type, const char* filename, void* udata = null) {
+		static Resource load(const char* type, const char* filename, void* udata = null) {
 			auto ir = impl::res_load(type, filename, udata);
 
 			return Resource(ir.payload, ir.id);
 		}
 
-		void unload(const Resource& r) {
+		static void unload(const Resource& r) {
 			impl::res_unload(&r);
 		}
 
-		Shader* load_shader(const char* filename, Resource* r = null) {
+		static Shader* load_shader(const char* filename, Resource* r = null) {
 			return reinterpret_cast<Shader*>(impl::load_shader(filename, r));
 		}
 
-		Texture* load_texture(const char* filename, Texture::Flags flags, Resource* r = null) {
+		static Texture* load_texture(const char* filename, Texture::Flags flags, Resource* r = null) {
 			return reinterpret_cast<Texture*>(impl::load_texture(filename, static_cast<u32>(flags), r));
 		}
 		
-		Font* load_font(const char* filename, i32 size, Resource* r = null) {
+		static Font* load_font(const char* filename, i32 size, Resource* r = null) {
 			return reinterpret_cast<Font*>(impl::load_font(filename, size, r));
 		}
 
