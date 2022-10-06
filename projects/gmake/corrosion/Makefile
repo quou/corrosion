@@ -48,7 +48,7 @@ sources =                            \
           $(srcdir)/video_gl.c       \
           $(srcdir)/window_common.c  \
 
-sourcespp =
+sourcespp = \
 	$(srcdir)/vma.cpp       \
 	$(srcdir)/corrosion.cpp \
 

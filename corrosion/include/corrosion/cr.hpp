@@ -6,6 +6,7 @@
 #include <string>
 #include <functional>
 #include <iostream>
+#include <cmath>
 
 namespace corrosion {
 	namespace impl {
@@ -276,11 +277,11 @@ namespace corrosion {
 		}
 
 		v2i get_size() {
-			impl::video.get_texture_size(as_impl());
+			return impl::video.get_texture_size(as_impl());
 		}
 
 		v3i get_3d_size() {
-			impl::video.get_texture_3d_size(as_impl());
+			return impl::video.get_texture_3d_size(as_impl());
 		}
 
 		void copy_to(Texture* dst, v2i dst_offset, v2i src_offset, v2i region) {
