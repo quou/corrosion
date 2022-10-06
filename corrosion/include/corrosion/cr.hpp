@@ -645,6 +645,13 @@ namespace corrosion {
 			opengl = impl::video_api_opengl
 		};
 
+		enum class Features : u32 {
+			base    = impl::video_feature_base,
+			compute = impl::video_feature_compute,
+			storage = impl::video_feature_storage,
+			barrier = impl::video_feature_barrier
+		};
+
 		static Framebuffer& get_default_fb() {
 			return *reinterpret_cast<Framebuffer*>(impl::video.get_default_fb());
 		}
@@ -655,6 +662,34 @@ namespace corrosion {
 
 		static void end(bool present = true) {
 			impl::video.end(present);
+		}
+
+		static void draw(usize count, usize offset = 0, usize instances = 1) {
+			impl::video.draw(count, offset, instances);
+		}
+
+		static void draw_index(usize count, usize offset = 0, usize instances = 1) {
+			impl::video.draw(count, offset, instances);
+		}
+
+		static void set_scissor(v4i rect) {
+			impl::video.set_scissor(rect);
+		}
+
+		static void invoke_compute(v3u group_count) {
+			impl::video.invoke_compute(group_count);
+		}
+
+		static u32 get_draw_call_count() {
+			return impl::video.get_draw_call_count();
+		}
+
+		static const char* get_api_name() {
+			return impl::video.get_api_name();
+		}
+
+		static Features query_features() {
+			return static_cast<Features>(impl::video.query_features());
 		}
 	};
 
