@@ -321,11 +321,7 @@ force_inline quat quat_scale(quat q, f32 s) {
 }
 
 force_inline f32 quat_normal(quat q) {
-	return
-		(q.x * q.x) +
-		(q.y * q.y) +
-		(q.z * q.z) +
-		(q.w * q.w);
+	return v4_dot(q, q);
 }
 
 force_inline quat quat_conjugate(quat q) {

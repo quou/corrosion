@@ -30,12 +30,37 @@ namespace corrosion {
 
 	typedef size_t usize;
 
+	const static f32 pi_f = 3.14159265358f;
+	const static f64 pi_d = 3.14159265358979323846;
+
 #define cr_decl_v2_cpp(n_, T, b_) \
 	struct n_ : public b_ { \
 		n_() : b_(b_ { 0, 0 }) {} \
 		n_(const b_& v) : b_(v) {} \
 		n_(T xy)     : b_(b_ { xy, xy }) {} \
 		n_(T x, T y) : b_(b_ { x,  y }) {} \
+		\
+		n_ operator+(const n_& rhs) const { return n_(x + rhs.x, y + rhs.y); } \
+		n_ operator-(const n_& rhs) const { return n_(x - rhs.x, y - rhs.y); } \
+		n_ operator*(const n_& rhs) const { return n_(x * rhs.x, y * rhs.y); } \
+		n_ operator/(const n_& rhs) const { return n_(x / rhs.x, y / rhs.y); } \
+		n_ operator+(T rhs) const { return n_(x + rhs, y + rhs); } \
+		n_ operator-(T rhs) const { return n_(x - rhs, y - rhs); } \
+		n_ operator*(T rhs) const { return n_(x * rhs, y * rhs); } \
+		n_ operator/(T rhs) const { return n_(x / rhs, y / rhs); } \
+		T dot(const n_& rhs) const { \
+			return x * rhs.x + y * rhs.y; \
+		} \
+		n_ normalised() const { \
+			const T l = mag(); \
+			return n_(x / l, y / l); \
+		} \
+		T mag_sqrd() const { \
+			return dot(*this); \
+		} \
+		T mag() const { \
+			return std::sqrt(mag_sqrd()); \
+		} \
 	};
 
 #define cr_decl_v3_cpp(n_, T, b_, vec2_t) \
@@ -46,6 +71,35 @@ namespace corrosion {
 		n_(T x, T y, T z) : b_(b_ { x,   y,   z }) {}  \
 		n_(const vec2_t& xy, T z) : b_(b_ { xy.x, xy.y, z }) {} \
 		n_(T x, const vec2_t& yz) : b_(b_ { x, yz.x, yz.y }) {} \
+		\
+		n_ operator+(const n_& rhs) const { return n_(x + rhs.x, y + rhs.y, z + rhs.z); } \
+		n_ operator-(const n_& rhs) const { return n_(x - rhs.x, y - rhs.y, z - rhs.z); } \
+		n_ operator*(const n_& rhs) const { return n_(x * rhs.x, y * rhs.y, z * rhs.z); } \
+		n_ operator/(const n_& rhs) const { return n_(x / rhs.x, y / rhs.y, z / rhs.z); } \
+		n_ operator+(T rhs) const { return n_(x + rhs, y + rhs, z + rhs); } \
+		n_ operator-(T rhs) const { return n_(x - rhs, y - rhs, z - rhs); } \
+		n_ operator*(T rhs) const { return n_(x * rhs, y * rhs, z * rhs); } \
+		n_ operator/(T rhs) const { return n_(x / rhs, y / rhs, z / rhs); } \
+		T dot(const n_& rhs) const { \
+			return x * rhs.x + y * rhs.y + z * rhs.z; \
+		} \
+		n_ cross(const n_& rhs) const { \
+			return n_( \
+				y * rhs.z - z * rhs.y, \
+				z * rhs.x - x * rhs.z, \
+				x * rhs.y - y * rhs.x  \
+			); \
+		} \
+		n_ normalised() const { \
+			const T l = mag(); \
+			return n_(x / l, y / l, z / l); \
+		} \
+		T mag_sqrd() const { \
+			return dot(*this); \
+		} \
+		T mag() const { \
+			return std::sqrt(mag_sqrd()); \
+		} \
 	};
 
 #define cr_decl_v4_cpp(n_, T, b_, vec2_t, vec3_t) \
@@ -59,7 +113,59 @@ namespace corrosion {
 		n_(T x, T y, const vec2_t& zw) : b_(b_ { x, y, zw.x, zw.y }) {} \
 		n_(const vec3_t& xyz, T w) : b_(b_ { xyz.x, xyz.y, xyz.z, w }) {} \
 		n_(T x, const vec3_t& yzw) : b_(b_ { x, yzw.x, yzw.y, yzw.z }) {} \
+		\
+		n_ operator+(const n_& rhs) const { return n_(x + rhs.x, y + rhs.y, z + rhs.z, w + rhs.w); } \
+		n_ operator-(const n_& rhs) const { return n_(x - rhs.x, y - rhs.y, z - rhs.z, w - rhs.w); } \
+		n_ operator*(const n_& rhs) const { return n_(x * rhs.x, y * rhs.y, z * rhs.z, w * rhs.w); } \
+		n_ operator/(const n_& rhs) const { return n_(x / rhs.x, y / rhs.y, z / rhs.z, w / rhs.w); } \
+		n_ operator+(T rhs) const { return n_(x + rhs, y + rhs, z + rhs, w + rhs); } \
+		n_ operator-(T rhs) const { return n_(x - rhs, y - rhs, z - rhs, w - rhs); } \
+		n_ operator*(T rhs) const { return n_(x * rhs, y * rhs, z * rhs, w * rhs); } \
+		n_ operator/(T rhs) const { return n_(x / rhs, y / rhs, z / rhs, w / rhs); } \
+		T dot(const n_& rhs) const { \
+			return x * rhs.x + y * rhs.y + z * rhs.z + w * rhs.w; \
+		} \
+		n_ normalised() const { \
+			const T l = mag(); \
+			return n_(x / l, y / l, z / l, w / l); \
+		} \
+		T mag_sqrd() const { \
+			return dot(*this); \
+		} \
+		T mag() const { \
+			return std::sqrt(mag_sqrd()); \
+		} \
 	};
+
+	template <typename T>
+	T to_rad(T v) {
+		return v * (static_cast<T>(pi_d) / static_cast<T>(180));
+	}
+
+	template <typename T>
+	T to_deg(T v) {
+		return v * (static_cast<T>(180) / static_cast<T>(pi_d));
+	}
+
+	template <typename A, typename B, typename T>
+	A lerp(A a, B b, T t) {
+		return a + t * (b - a);
+	}
+
+	template <typename V, typename Min, typename Max>
+	V clamp(V v, Min min, Max max) {
+		return cr_max(min, cr_min(max, v));
+	}
+
+	template <typename V, typename Min, typename Max>
+	V map(V v, Min min1, Max max1, Min min2, Max max2) {
+		return min2 + (v - min1) * (max2 - min2) / (max1 - min1);
+	}
+
+	template <typename V>
+	V saturate(V v) {
+		return clamp(v, static_cast<V>(0), static_cast<V>(1));
+	}
 
 	cr_decl_v2_cpp(v2f, f32, impl::v2f);
 	cr_decl_v2_cpp(v2i, i32, impl::v2i);
@@ -71,17 +177,268 @@ namespace corrosion {
 	cr_decl_v4_cpp(v4i, i32, impl::v4i, v2i, v3i);
 	cr_decl_v4_cpp(v4u, u32, impl::v4u, v2u, v3u);
 
-#define cr_declare_enum_flag_ops(T) \
-	T operator~ (T a) { return (T)~(int)a; } \
-	T operator| (T a, T b) { return (T)((int)a | (int)b); } \
-	T operator& (T a, T b) { return (T)((int)a & (int)b); } \
-	T operator^ (T a, T b) { return (T)((int)a ^ (int)b); } \
-	T& operator|= (T& a, T b) { return (T&)((int&)a |= (int)b); } \
-	T& operator&= (T& a, T b) { return (T&)((int&)a &= (int)b); } \
-	T& operator^= (T& a, T b) { return (T&)((int&)a ^= (int)b); }
+	struct quat : public impl::quat {
+		quat() : impl::quat(impl::quat { 0.0f, 0.0f, 0.0f, 0.0f }) {}
+		quat(const v3f& a, f32 s) : impl::quat(impl::quat { a.x, a.y, a.z, s }) {}
+		quat(f32 x, f32 y, f32 z, f32 w) : impl::quat(impl::quat { x, y, z, w }) {}
 
-	struct quat {
-		f32 x, y, z, w;
+		static quat identity() {
+			return quat(v3f(0.0f, 0.0f, 0.0f), 1.0f);
+		}
+
+		quat operator*(const quat& rhs) {
+			return quat(
+		 		 x * rhs.w +
+		 		 y * rhs.z -
+		 		 z * rhs.y +
+		 		 w * rhs.x,
+
+				-x * rhs.z +
+		 		 y * rhs.w +
+		 		 z * rhs.x +
+		 		 w * rhs.y,
+
+		 		 x * rhs.y -
+		 		 y * rhs.x +
+		 		 z * rhs.w +
+		 		 w * rhs.z,
+
+				-x * rhs.x -
+		 		 y * rhs.y -
+		 		 z * rhs.z +
+		 		 w * rhs.w
+			).normalised();
+		}
+
+		quat operator*(f32 rhs) {
+			return quat(x * rhs, y * rhs, z * rhs, w);
+		}
+
+		quat conjugate() {
+			return quat(-x, -y, -z, w);
+		}
+
+		v4f to_v4f() {
+			return v4f(x, y, z, w);
+		}
+
+		f32 normal() {
+			v4f v = to_v4f();
+			return v.dot(v);
+		}
+
+		quat normalised() {
+			return *this * (1.0f / std::sqrt(normal()));
+		}
+
+		static quat rotate(f32 angle, const v3f& axis) {
+			quat q;
+
+			angle = to_rad(angle);
+
+			f32 half_angle = 0.5f * angle;
+			f32 sin_ha = sinf(half_angle);
+
+			q.w = std::cos(half_angle);
+			q.x = sin_ha * axis.x;
+			q.y = sin_ha * axis.y;
+			q.z = sin_ha * axis.z;
+
+			return q;
+		}
+
+		static quat euler(const v3f& a) {
+			quat p = rotate(a.x, v3f(1.0f, 0.0f, 0.0f));
+			quat y = rotate(a.y, v3f(0.0f, 1.0f, 0.0f));
+			quat r = rotate(a.z, v3f(0.0f, 0.0f, 1.0f));
+
+			return p * y * r;
+		}
+	};
+
+	struct m4f : public impl::m4f {
+		m4f(const impl::m4f& m) : impl::m4f(m) {}
+		m4f(f32 d) : impl::m4f(impl::m4f{ {
+			{ d,    0.0f, 0.0f, 0.0f },
+			{ 0.0f, d,    0.0f, 0.0f },
+			{ 0.0f, 0.0f, d,    0.0f },
+			{ 0.0f, 0.0f, 0.0f, d    },
+		} }) {}
+		m4f() : impl::m4f(impl::m4f{ {
+			{ 1.0f, 0.0f, 0.0f, 0.0f },
+			{ 0.0f, 1.0f, 0.0f, 0.0f },
+			{ 0.0f, 0.0f, 1.0f, 0.0f },
+			{ 0.0f, 0.0f, 0.0f, 1.0f },
+		} }) {}
+
+		m4f(v4f r0, v4f r1, v4f r2, v4f r3) : impl::m4f(impl::m4f{ {
+			{ r0.x, r0.y, r0.z, r0.w },
+			{ r1.x, r1.y, r1.z, r1.w },
+			{ r2.x, r2.y, r2.z, r2.w },
+			{ r3.x, r3.y, r3.z, r3.w },
+		} }) {}
+
+		static m4f identity() {
+			return m4f(1.0f);
+		}
+
+		static m4f screenspace(f32 hw, f32 hh) {
+			return m4f(
+				v4f(hw,   0.0f, 0.0f, hw),
+				v4f(0.0f, -hh,  0.0f, hh),
+				v4f(0.0f, 0.0f, 1.0f, 0.0f),
+				v4f(0.0f, 0.0f, 0.0f, 1.0f)
+			);
+		}
+
+		m4f operator*(const m4f& rhs) {
+			return m4f(
+				v4f(
+					m[0][0] * rhs.m[0][0] + m[1][0] * rhs.m[0][1] + m[2][0] * rhs.m[0][2] + m[3][0] * rhs.m[0][3],
+					m[0][1] * rhs.m[0][0] + m[1][1] * rhs.m[0][1] + m[2][1] * rhs.m[0][2] + m[3][1] * rhs.m[0][3],
+					m[0][2] * rhs.m[0][0] + m[1][2] * rhs.m[0][1] + m[2][2] * rhs.m[0][2] + m[3][2] * rhs.m[0][3],
+					m[0][3] * rhs.m[0][0] + m[1][3] * rhs.m[0][1] + m[2][3] * rhs.m[0][2] + m[3][3] * rhs.m[0][3]
+				),
+				v4f(
+					m[0][0] * rhs.m[1][0] + m[1][0] * rhs.m[1][1] + m[2][0] * rhs.m[1][2] + m[3][0] * rhs.m[1][3],
+					m[0][1] * rhs.m[1][0] + m[1][1] * rhs.m[1][1] + m[2][1] * rhs.m[1][2] + m[3][1] * rhs.m[1][3],
+					m[0][2] * rhs.m[1][0] + m[1][2] * rhs.m[1][1] + m[2][2] * rhs.m[1][2] + m[3][2] * rhs.m[1][3],
+					m[0][3] * rhs.m[1][0] + m[1][3] * rhs.m[1][1] + m[2][3] * rhs.m[1][2] + m[3][3] * rhs.m[1][3] 
+				),
+				v4f(
+					m[0][0] * rhs.m[2][0] + m[1][0] * rhs.m[2][1] + m[2][0] * rhs.m[2][2] + m[3][0] * rhs.m[2][3],
+					m[0][1] * rhs.m[2][0] + m[1][1] * rhs.m[2][1] + m[2][1] * rhs.m[2][2] + m[3][1] * rhs.m[2][3],
+					m[0][2] * rhs.m[2][0] + m[1][2] * rhs.m[2][1] + m[2][2] * rhs.m[2][2] + m[3][2] * rhs.m[2][3],
+					m[0][3] * rhs.m[2][0] + m[1][3] * rhs.m[2][1] + m[2][3] * rhs.m[2][2] + m[3][3] * rhs.m[2][3] 
+				),
+				v4f(
+					m[0][0] * rhs.m[3][0] + m[1][0] * rhs.m[3][1] + m[2][0] * rhs.m[3][2] + m[3][0] * rhs.m[3][3],
+					m[0][1] * rhs.m[3][0] + m[1][1] * rhs.m[3][1] + m[2][1] * rhs.m[3][2] + m[3][1] * rhs.m[3][3],
+					m[0][2] * rhs.m[3][0] + m[1][2] * rhs.m[3][1] + m[2][2] * rhs.m[3][2] + m[3][2] * rhs.m[3][3],
+					m[0][3] * rhs.m[3][0] + m[1][3] * rhs.m[3][1] + m[2][3] * rhs.m[3][2] + m[3][3] * rhs.m[3][3] 
+				)
+			);
+		}
+
+		v4f operator*(const v4f& rhs) {
+			return v4f(
+				m[0][0] * rhs.x + m[1][0] * rhs.y + m[2][0] * rhs.z + m[3][0] * rhs.w,
+				m[0][1] * rhs.x + m[1][1] * rhs.y + m[2][1] * rhs.z + m[3][1] * rhs.w,
+				m[0][2] * rhs.x + m[1][2] * rhs.y + m[2][2] * rhs.z + m[3][2] * rhs.w,
+				m[0][3] * rhs.x + m[1][3] * rhs.y + m[2][3] * rhs.z + m[3][3] * rhs.w);
+		}
+
+		static m4f translation(const v3f& t) {
+			return m4f(
+				v4f(1.0f, 0.0f, 0.0f, 0.0f),
+				v4f(0.0f, 1.0f, 0.0f, 0.0f),
+				v4f(0.0f, 0.0f, 1.0f, 0.0f),
+				v4f(t.x,  t.y,  t.z, 1.0f)
+			);
+		}
+
+		static m4f scale(const v3f& s) {
+			return m4f(
+				v4f(s.x,  0.0f, 0.0f, 0.0f),
+				v4f(0.0f, s.y,  0.0f, 0.0f),
+				v4f(0.0f, 0.0f, s.z,  0.0f),
+				v4f(0.0f, 0.0f, 0.0f, 1.0f)
+			);
+		}
+
+		static m4f rotation(const quat& q) {
+			m4f r;
+
+			f32 qx, qy, qz, qw, qx2, qy2, qz2, qxqx2, qyqy2, qzqz2, qxqy2, qyqz2, qzqw2, qxqz2, qyqw2, qxqw2;
+			qx = q.x;
+			qy = q.y;
+			qz = q.z;
+			qw = q.w;
+			qx2 = (qx + qx);
+			qy2 = (qy + qy);
+			qz2 = (qz + qz);
+			qxqx2 = (qx * qx2);
+			qxqy2 = (qx * qy2);
+			qxqz2 = (qx * qz2);
+			qxqw2 = (qw * qx2);
+			qyqy2 = (qy * qy2);
+			qyqz2 = (qy * qz2);
+			qyqw2 = (qw * qy2);
+			qzqz2 = (qz * qz2);
+			qzqw2 = (qw * qz2);
+
+			r.m[0][0] = ((1.0f - qyqy2) - qzqz2);
+			r.m[0][1] = qxqy2 - qzqw2;
+			r.m[0][2] = qxqz2 + qyqw2;
+			r.m[0][3] = 0.0f;
+
+			r.m[1][0] = qxqy2 + qzqw2;
+			r.m[1][1] = (1.0f - qxqx2) - qzqz2;
+			r.m[1][2] = qyqz2 - qxqw2;
+			r.m[1][3] = 0.0f;
+
+			r.m[2][0] = qxqz2 - qyqw2;
+			r.m[2][1] = qyqz2 + qxqw2;
+			r.m[2][2] = (1.0f - qxqx2) - qyqy2;
+			r.m[2][3] = 0.0f;
+
+			return r;
+		}
+
+		static m4f lookat(const v3f& c, const v3f& o, v3f u) {
+			m4f r;
+
+			const v3f f = (o - c).normalised();
+			u = u.normalised();
+			const v3f s = f.cross(u).normalised();
+			u = s.cross(f);
+
+			r.m[0][0] = s.x;
+			r.m[1][0] = s.y;
+			r.m[2][0] = s.z;
+			r.m[0][1] = u.x;
+			r.m[1][1] = u.y;
+			r.m[2][1] = u.z;
+			r.m[0][2] = -f.x;
+			r.m[1][2] = -f.y;
+			r.m[2][2] = -f.z;
+			r.m[3][0] = -s.dot(c);
+			r.m[3][1] = -u.dot(c);
+			r.m[3][2] =  f.dot(c);
+
+			return r;
+		}
+
+		static m4f ortho(f32 l, f32 r, f32 b, f32 t, f32 n, f32 f) {
+			m4f res;
+
+			res.m[0][0] = 2.0f / (r - l);
+			res.m[1][1] = 2.0f / (t - b);
+			res.m[2][2] = 2.0f / (n - f);
+
+			res.m[3][0] = (l + r) / (l - r);
+			res.m[3][1] = (b + t) / (b - t);
+			res.m[3][2] = (f + n) / (f - n);
+
+			return res;
+		}
+
+		static m4f persp(f32 fov, f32 aspect, f32 near_clip, f32 far_clip) {
+			m4f r;
+
+			const f32 q = 1.0f / std::tan(to_rad(fov) / 2.0f);
+			const f32 a = q / aspect;
+			const f32 b = (near_clip + far_clip) / (near_clip - far_clip);
+			const f32 c = (2.0f * near_clip * far_clip) / (near_clip - far_clip);
+
+			r.m[0][0] = a;
+			r.m[1][1] = q;
+			r.m[2][2] = b;
+			r.m[2][3] = -1.0f;
+			r.m[3][2] = c;
+
+			return r;
+		}
 	};
 	
 	static inline v3f make_rgb(u32 rgb) {
@@ -94,6 +451,15 @@ namespace corrosion {
 	static inline v4f make_rgba(u32 rgb, u8 a) {
 		return v4f(make_rgb(rgb), (f32)a / 255.0f);
 	}
+
+#define cr_declare_enum_flag_ops(T) \
+	T operator~ (T a) { return (T)~(int)a; } \
+	T operator| (T a, T b) { return (T)((int)a | (int)b); } \
+	T operator& (T a, T b) { return (T)((int)a & (int)b); } \
+	T operator^ (T a, T b) { return (T)((int)a ^ (int)b); } \
+	T& operator|= (T& a, T b) { return (T&)((int&)a |= (int)b); } \
+	T& operator&= (T& a, T b) { return (T&)((int&)a &= (int)b); } \
+	T& operator^= (T& a, T b) { return (T&)((int&)a ^= (int)b); }
 
 	class Texture;
 	class Storage;
@@ -841,6 +1207,34 @@ namespace corrosion {
 
 		static void deinit() {
 			impl::res_deinit();
+		}
+	};
+
+	class Camera : public impl::camera {
+	private:
+	public:
+		Camera() : impl::camera(impl::camera {
+			.position = { 0.0f, 0.0f, 0.0f },
+			.rotation = { 0.0f, 0.0f, 0.0f },
+			.fov = 70.0f,
+			.near_plane = 0.1f,
+			.far_plane = 100.0f
+		}) {}
+
+		Camera(v3f position, f32 fov, f32 near_plane = 0.1f, f32 far_plane = 100.0f) : impl::camera(impl::camera {
+			.position = position,
+			.rotation = { 0.0f, 0.0f, 0.0f },
+			.fov = fov,
+			.near_plane = near_plane,
+			.far_plane = far_plane
+		}) {}
+
+		m4f get_view() {
+			return impl::get_camera_view(this);
+		}
+
+		m4f get_projection(f32 aspect) {
+			return impl::get_camera_projection(this, aspect);
 		}
 	};
 
