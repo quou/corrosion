@@ -809,6 +809,7 @@ struct Vertex {
 class App : public App_Base {
 private:
 	Pipeline* pipeline;
+	Vertex_Buffer* vb;
 public:
 	App() : App_Base(App_Base::Config {
 			.name = "Sandbox",
@@ -844,19 +845,33 @@ public:
 
 		std::vector<Descriptor_Set> descriptor_sets;
 
-		pipeline = Pipeline::create(Pipeline::Flags::none, *shader, Video::get_default_fb(),
+		pipeline = Pipeline::create(Pipeline::Flags::draw_tris, *shader, Video::get_default_fb(),
 			bindings,
 			descriptor_sets);
+
+		Vertex verts[] = {
+			{ {  0.0f,  0.5f }, { 0.5f, 0.0f } },
+			{ { -0.5f, -0.5f }, { 1.0f, 1.0f } },
+			{ {  0.5f, -0.5f }, { 0.0f, 1.0f } },
+		};
+
+		vb = Vertex_Buffer::create(&verts, sizeof verts, Vertex_Buffer::Flags::none);
 	}
 
 	void on_update(f64 ts) override {
 		Video::get_default_fb().begin();
+
+		pipeline->begin();
+			vb->bind(0);
+			Video::draw(3);
+		pipeline->end();
 
 		Video::get_default_fb().end();
 	}
 
 	void on_deinit() override {
 		pipeline->release();
+		vb->release();
 	}
 };
 
