@@ -106,7 +106,7 @@ struct renderer {
 };
 
 void register_renderer_resources();
-struct model* load_model(const char* filename);
+struct model* load_model(const char* filename, struct resource* r);
 
 struct renderer* new_renderer(const struct framebuffer* framebuffer);
 void free_renderer(struct renderer* renderer);

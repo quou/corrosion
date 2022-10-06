@@ -68,11 +68,11 @@ void cr_init() {
 		f32 v = rand_flt();
 
 		if (v > 0.6666f) {
-			obj->model = load_model("meshes/monkey.fbx");
+			obj->model = load_model("meshes/monkey.fbx", null);
 		} else if (v > 0.3333f) {
-			obj->model = load_model("meshes/sphere.fbx");
+			obj->model = load_model("meshes/sphere.fbx", null);
 		} else {
-			obj->model = load_model("meshes/torus.fbx");
+			obj->model = load_model("meshes/torus.fbx", null);
 		}
 
 		v = rand_flt();
