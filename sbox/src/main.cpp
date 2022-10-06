@@ -821,7 +821,7 @@ public:
 	}
 
 	void on_init() override {
-	
+
 	}
 
 	void on_update(f64 ts) override {

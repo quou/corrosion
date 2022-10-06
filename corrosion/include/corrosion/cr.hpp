@@ -5,6 +5,7 @@
 #include <utility>
 #include <string>
 #include <functional>
+#include <iostream>
 
 namespace corrosion {
 	namespace impl {
@@ -29,6 +30,7 @@ namespace corrosion {
 
 #define cr_decl_v2_cpp(n_, T, b_) \
 	struct n_ : public b_ { \
+		n_() : b_(b_ { 0, 0 }) {} \
 		n_(const b_& v) : b_(v) {} \
 		n_(T xy)     : b_(b_ { xy, xy }) {} \
 		n_(T x, T y) : b_(b_ { x,  y }) {} \
@@ -37,6 +39,7 @@ namespace corrosion {
 #define cr_decl_v3_cpp(n_, T, b_, vec2_t) \
 	struct n_ : public b_ { \
 		n_(const b_& v)   : b_(v) {} \
+		n_()              : b_(b_ { 0, 0, 0 }) {} \
 		n_(T xyz)         : b_(b_ { xyz, xyz, xyz }) {}  \
 		n_(T x, T y, T z) : b_(b_ { x,   y,   z }) {}  \
 		n_(const vec2_t& xy, T z) : b_(b_ { xy.x, xy.y, z }) {} \
@@ -46,6 +49,7 @@ namespace corrosion {
 #define cr_decl_v4_cpp(n_, T, b_, vec2_t, vec3_t) \
 	struct n_ : public b_ { \
 		n_(const b_& v)        : b_(v) {} \
+		n_()                   : b_(b_ { 0, 0, 0, 0 }) {} \
 		n_(T xyzw)             : b_(b_ { xyzw, xyzw, xyzw, xyzw }) {}  \
 		n_(T x, T y, T z, T w) : b_(b_ { x,    y,    z,    w }) {}  \
 		n_(const vec2_t& xy, T z, T w) : b_(b_ { xy.x, xy.y, z, w }) {} \
@@ -79,20 +83,59 @@ namespace corrosion {
 	static inline v4f make_rgba(u32 rgb, u8 a) {
 		return v4f(make_rgb(rgb), (f32)a / 255.0f);
 	}
+	class Texture;
 
 	class Framebuffer {
 	private:
 		impl::framebuffer* as_impl() {
 			return reinterpret_cast<impl::framebuffer*>(this);
 		}
-
-		friend class App_Base;
-		friend class Video;
 	public:
 		Framebuffer() = delete;
 
-		Framebuffer* create() {
-		
+		struct Attachment_Desc {
+			const char* name;
+
+			enum class Type : u32 {
+				colour = impl::framebuffer_attachment_colour,
+				depth  = impl::framebuffer_attachment_depth
+			} type;
+
+			enum class Format : u32 {
+				depth   = impl::framebuffer_format_depth,
+				rgba8i  = impl::framebuffer_format_rgba8i,
+				rgba16f = impl::framebuffer_format_rgba16f,
+				rgba32f = impl::framebuffer_format_rgba32f
+			};
+
+			v4f clear_colour;
+		};
+
+		enum class Flags {
+			fit                     = impl::framebuffer_flags_fit,
+			headless                = impl::framebuffer_flags_headless,
+			attachments_are_storage = impl::framebuffer_flags_attachments_are_storage
+		};
+
+		template <typename... Args>
+		static Framebuffer* create(Flags flags, v2i size, Args... descs) {
+			Attachment_Desc d[] = {
+				descs...
+			};
+
+			impl::framebuffer_attachment_desc dc[sizeof d / sizeof *d];
+
+			for (usize i = 0; i < sizeof d / sizeof *d; i++) {
+				dc[i].name = d[i].name;
+				dc[i].type = d[i].type;
+				dc[i].format = d[i].format;
+				dc[i].clear_colour = d[i].clear_colour;
+			}
+
+			return reinterpret_cast<Framebuffer*>(impl::video.new_framebuffer(
+				static_cast<u32>(flags), size,
+				dc, sizeof d / sizeof *d
+			));
 		}
 
 		void release() {
@@ -113,6 +156,10 @@ namespace corrosion {
 
 		void resize(v2i new_size) {
 			impl::video.resize_framebuffer(as_impl(), new_size);
+		}
+
+		Texture* get_attachment(u32 index) {
+			return reinterpret_cast<Texture*>(impl::video.get_attachment(as_impl(), index));
 		}
 	};
 
@@ -372,6 +419,14 @@ namespace corrosion {
 		Font* load_font(const char* filename, i32 size, Resource* r = null) {
 			return reinterpret_cast<Font*>(impl::load_font(filename, size, r));
 		}
+
+		static void init(const char* argv0) {
+			impl::res_init(argv0);
+		}
+
+		static void deinit() {
+			impl::res_deinit();
+		}
 	};
 
 	class App_Base {
@@ -453,7 +508,7 @@ namespace corrosion {
 
 			impl::gizmos_deinit();
 
-			impl::res_deinit();
+			Resource_Manager::deinit();
 
 			impl::deinit_video();
 			impl::deinit_window();

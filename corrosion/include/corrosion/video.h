@@ -75,8 +75,8 @@ struct pipeline_config {
 struct pipeline_attribute {
 	const char* name;
 	u32 location;
-	usize offset;
 	u32 type;
+	usize offset;
 };
 
 struct pipeline_attributes {
