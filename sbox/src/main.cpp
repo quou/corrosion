@@ -859,7 +859,7 @@ public:
 			)
 		};
 
-		pipeline = Pipeline::create(Pipeline::Flags::draw_tris, *shader, Video::get_default_fb(),
+		pipeline = Pipeline::create(Pipeline::Flags::draw_tris | Pipeline::Flags::cull_back_face, *shader, Video::get_default_fb(),
 			bindings,
 			descriptor_sets);
 

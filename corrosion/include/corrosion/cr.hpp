@@ -71,6 +71,15 @@ namespace corrosion {
 	cr_decl_v4_cpp(v4i, i32, impl::v4i, v2i, v3i);
 	cr_decl_v4_cpp(v4u, u32, impl::v4u, v2u, v3u);
 
+#define cr_declare_enum_flag_ops(T) \
+	T operator~ (T a) { return (T)~(int)a; } \
+	T operator| (T a, T b) { return (T)((int)a | (int)b); } \
+	T operator& (T a, T b) { return (T)((int)a & (int)b); } \
+	T operator^ (T a, T b) { return (T)((int)a ^ (int)b); } \
+	T& operator|= (T& a, T b) { return (T&)((int&)a |= (int)b); } \
+	T& operator&= (T& a, T b) { return (T&)((int&)a &= (int)b); } \
+	T& operator^= (T& a, T b) { return (T&)((int&)a ^= (int)b); }
+
 	struct quat {
 		f32 x, y, z, w;
 	};
@@ -834,6 +843,14 @@ namespace corrosion {
 			impl::res_deinit();
 		}
 	};
+
+	/* Declare operator overloads for all of the flag enums. */
+	cr_declare_enum_flag_ops(Framebuffer::Flags);
+	cr_declare_enum_flag_ops(Texture::Flags);
+	cr_declare_enum_flag_ops(Storage::Flags);
+	cr_declare_enum_flag_ops(Vertex_Buffer::Flags);
+	cr_declare_enum_flag_ops(Index_Buffer::Flags);
+	cr_declare_enum_flag_ops(Pipeline::Flags);
 
 	class App_Base {
 	protected:
