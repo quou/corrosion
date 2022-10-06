@@ -25,8 +25,10 @@ layout (location = 0) in VSOut {
 	vec2 uv;
 } fs_in;
 
+layout (binding = 0) uniform sampler2D chad;
+
 void main() {
-	colour = vec4(1.0);
+	colour = texture(chad, fs_in.uv);
 }
 
 #end fragment

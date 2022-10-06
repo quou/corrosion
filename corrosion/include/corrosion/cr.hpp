@@ -463,11 +463,20 @@ namespace corrosion {
 		Descriptor_Resource(Storage* storage) : type(Type::storage), storage(storage) {}
 	};
 
+	enum class Pipeline_Stage : u32 {
+		vertex   = impl::pipeline_stage_vertex,
+		fragment = impl::pipeline_stage_fragment,
+		compute  = impl::pipeline_stage_compute
+	};
+
 	struct Descriptor {
 		const char* name;
 		u32 binding;
-		u32 stage;
+		Pipeline_Stage stage;
 		Descriptor_Resource resource;
+
+		Descriptor(const char* name, u32 binding, Pipeline_Stage stage, Descriptor_Resource resource)
+			: name(name), binding(binding), stage(stage), resource(std::move(resource)) { }
 	};
 
 	struct Descriptor_Set {
@@ -475,7 +484,7 @@ namespace corrosion {
 		std::vector<Descriptor> descriptors;
 
 		Descriptor_Set(const char* name, std::vector<Descriptor> descriptors) :
-			descriptors(std::move(descriptors)) {}
+			name(name), descriptors(std::move(descriptors)) {}
 	};
 
 	struct Attribute {
@@ -575,7 +584,7 @@ namespace corrosion {
 					cdesc.resource.type = static_cast<u32>(desc.resource.type);
 					cdesc.name = desc.name;
 					cdesc.binding = desc.binding;
-					cdesc.stage = desc.stage;
+					cdesc.stage = static_cast<u32>(desc.stage);
 
 					switch (desc.resource.type) {
 					case Descriptor_Resource::Type::uniform_buffer:

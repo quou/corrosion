@@ -831,6 +831,8 @@ public:
 	void on_init() override {
 		auto shader = Resource_Manager::load_shader("shaders/test.csh");
 
+		auto chad = Resource_Manager::load_texture("res/chad.jpg", Texture::Flags::filter_linear);
+
 		std::vector<Attribute> attributes {
 			Attribute("position", 0, Attribute::Type::vec2, offsetof(Vertex, position)),
 			Attribute("uv",       1, Attribute::Type::vec2, offsetof(Vertex, uv))
@@ -843,7 +845,19 @@ public:
 			)
 		};
 
-		std::vector<Descriptor_Set> descriptor_sets;
+		std::vector<Descriptor> descriptors {
+			Descriptor("Fragment_Config", 0,
+				Pipeline_Stage::fragment,
+				Descriptor_Resource(chad)
+			),
+		};
+
+		std::vector<Descriptor_Set> descriptor_sets {
+			Descriptor_Set(
+				"primary",
+				descriptors
+			)
+		};
 
 		pipeline = Pipeline::create(Pipeline::Flags::draw_tris, *shader, Video::get_default_fb(),
 			bindings,
@@ -862,6 +876,7 @@ public:
 		Video::get_default_fb().begin();
 
 		pipeline->begin();
+			pipeline->bind_descriptor_set("primary", 0);
 			vb->bind(0);
 			Video::draw(3);
 		pipeline->end();
