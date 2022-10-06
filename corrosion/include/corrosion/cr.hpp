@@ -365,6 +365,80 @@ namespace corrosion {
 		}
 	};
 
+	class Vertex_Buffer {
+	private:
+		impl::vertex_buffer* as_impl() {
+			return reinterpret_cast<impl::vertex_buffer*>(this);
+		}
+
+		const impl::vertex_buffer* as_impl() const {
+			return reinterpret_cast<const impl::vertex_buffer*>(this);
+		}
+	public:
+		Vertex_Buffer() = delete;
+
+		enum class Flags : u32 {
+			none         = impl::vertex_buffer_flags_none,
+			dynamic      = impl::vertex_buffer_flags_dynamic,
+			transferable = impl::vertex_buffer_flags_transferable
+		};
+
+		static Vertex_Buffer* create(void* data, usize data_size, Flags flags) {
+			return reinterpret_cast<Vertex_Buffer*>(impl::video.new_vertex_buffer(
+				data, data_size, static_cast<u32>(flags)
+			));
+		}
+
+		void release() {
+			impl::video.free_vertex_buffer(as_impl());
+		}
+
+		void bind(u32 point) {
+			impl::video.bind_vertex_buffer(as_impl(), point);
+		}
+
+		void update(const void* data, usize size, usize offset) {
+			impl::video.update_vertex_buffer(as_impl(), data, size, offset);
+		}
+
+		void copy_to(Vertex_Buffer& dst, usize dst_offset, usize src_offset, usize size) {
+			impl::video.copy_vertex_buffer(dst.as_impl(), dst_offset, as_impl(), src_offset, size);
+		}
+	};
+
+	class Index_Buffer {
+	private:
+		impl::index_buffer* as_impl() {
+			return reinterpret_cast<impl::index_buffer*>(this);
+		}
+
+		const impl::index_buffer* as_impl() const {
+			return reinterpret_cast<const impl::index_buffer*>(this);
+		}
+	public:
+		Index_Buffer() = delete;
+
+		enum class Flags : u32 {
+			none     = impl::index_buffer_flags_none,
+			data_u16 = impl::index_buffer_flags_u16,
+			data_u32 = impl::index_buffer_flags_u32
+		};
+
+		static Index_Buffer* create(void* data, usize data_size, Flags flags) {
+			return reinterpret_cast<Index_Buffer*>(impl::video.new_index_buffer(
+				data, data_size, static_cast<u32>(flags)
+			));
+		}
+
+		void release() {
+			impl::video.free_index_buffer(as_impl());
+		}
+
+		void bind() {
+			impl::video.bind_index_buffer(as_impl());
+		}
+	};
+
 	struct Descriptor_Resource {
 		enum class Type : u32 {
 			uniform_buffer  = impl::pipeline_resource_uniform_buffer,
