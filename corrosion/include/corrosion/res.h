@@ -46,10 +46,10 @@ bool dir_iter_next(struct dir_iter* it);
 #define for_dir(n_, v_, c_) \
 	do { \
 		struct dir_iter* cat(v_, __LINE__) = new_dir_iter(n_); \
-		while (dir_iter_next(cat(v_, __LINE__))) { \
+		do { \
 			struct dir_entry* v_ = dir_iter_cur(cat(v_, __LINE__)); \
 			c_ \
-		} \
+		} while (dir_iter_next(cat(v_, __LINE__))); \
 		free_dir_iter(cat(v_, __LINE__)); \
 	} while (0)
 
