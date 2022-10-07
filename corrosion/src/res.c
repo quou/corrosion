@@ -23,6 +23,8 @@ struct pak_entry {
 const struct res_pak {
 	FILE* handle;
 
+	usize header_offset;
+
 	struct pak_entry* entries;
 	usize entry_count;
 }* bound_pak;
@@ -31,7 +33,7 @@ void res_use_pak(const struct res_pak* pak) {
 	bound_pak = pak;
 }
 
-struct res_pak* pak_open(const char* path) {
+struct res_pak* pak_open(const char* path, usize header_offset) {
 	FILE* handle = fopen(path, "rb");
 	if (!handle) {
 		error("Failed to open `%s'.", path);
@@ -39,6 +41,10 @@ struct res_pak* pak_open(const char* path) {
 	}
 
 	struct res_pak* pak = core_calloc(1, sizeof(struct res_pak));
+
+	pak->header_offset = header_offset;
+
+	fseek(handle, pak->header_offset, SEEK_SET);
 
 	pak->handle = handle;
 
@@ -50,7 +56,7 @@ struct res_pak* pak_open(const char* path) {
 	pak->entry_count = (usize)header.size / sizeof(struct pak_entry);
 	pak->entries = core_alloc((usize)header.size);
 
-	fseek(handle, header.offset, SEEK_SET);
+	fseek(handle, header.offset + pak->header_offset, SEEK_SET);
 
 	for (usize i = 0; i < pak->entry_count; i++) {
 		struct pak_entry* e = pak->entries + i;
@@ -68,13 +74,13 @@ void pak_close(struct res_pak* pak) {
 	core_free(pak);
 }
 
-bool write_pak(const char* outname, struct pak_write_file* files, usize file_count) {
+usize write_pak(const char* outname, struct pak_write_file* files, usize file_count) {
 	u8 buffer[2048];
 
 	FILE* outfile = fopen(outname, "wb");
 	if (!outfile) {
 		error("Failed to open `%s' for writing.", outname);
-		return false;
+		return 0;
 	}
 
 	struct pak_header header = { .id = "PACK" };
@@ -83,7 +89,7 @@ bool write_pak(const char* outname, struct pak_write_file* files, usize file_cou
 
 	vector(struct pak_entry) entries = null;
 
-	bool ok = true;
+	usize written = 0;
 
 	usize blob_size = 0;
 
@@ -91,7 +97,6 @@ bool write_pak(const char* outname, struct pak_write_file* files, usize file_cou
 		FILE* infile = fopen(files[i].src, "rb");
 		if (!infile) {
 			error("Failed to open `%s'.", files[i].src);
-			ok = false;
 			continue;
 		}
 
@@ -118,6 +123,7 @@ bool write_pak(const char* outname, struct pak_write_file* files, usize file_cou
 		vector_push(entries, entry);
 
 		blob_size += file_size;
+		written += file_size;
 
 		fclose(infile);
 	}
@@ -129,6 +135,7 @@ bool write_pak(const char* outname, struct pak_write_file* files, usize file_cou
 		fwrite(entries[i].name,    1, sizeof entries[i].name,   outfile);
 		fwrite(&entries[i].offset, 1, sizeof entries[i].offset, outfile);
 		fwrite(&entries[i].size,   1, sizeof entries[i].size,   outfile);
+		written += sizeof entries[i].name + sizeof entries[i].offset + sizeof entries[i].size;
 	}
 
 	fseek(outfile, 0, SEEK_SET);
@@ -137,11 +144,13 @@ bool write_pak(const char* outname, struct pak_write_file* files, usize file_cou
 	fwrite(&header.offset, 1, sizeof header.offset, outfile);
 	fwrite(&header.size, 1, sizeof header.size, outfile);
 
+	written += sizeof header.id + sizeof header.offset + sizeof header.size;
+
 	fclose(outfile);
 
 	free_vector(entries);
 
-	return ok;
+	return written;
 }
 
 bool read_raw(const char* path, u8** buf, usize* size) {
@@ -153,7 +162,7 @@ bool read_raw(const char* path, u8** buf, usize* size) {
 			struct pak_entry* e = bound_pak->entries + i;
 
 			if (strcmp(e->name, path) == 0) {
-				fseek(bound_pak->handle, e->offset, SEEK_SET);
+				fseek(bound_pak->handle, e->offset + bound_pak->header_offset, SEEK_SET);
 
 				*buf = core_alloc((usize)e->size);
 				
@@ -218,7 +227,7 @@ bool read_raw_text(const char* path, char** buf) {
 			struct pak_entry* e = bound_pak->entries + i;
 
 			if (strcmp(e->name, path) == 0) {
-				fseek(bound_pak->handle, e->offset, SEEK_SET);
+				fseek(bound_pak->handle, e->offset + bound_pak->header_offset, SEEK_SET);
 
 				*buf = core_alloc((usize)e->size + 1);
 

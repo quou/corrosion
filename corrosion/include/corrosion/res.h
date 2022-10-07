@@ -76,7 +76,7 @@ struct res_pak;
 
 void res_use_pak(const struct res_pak* pak);
 
-struct res_pak* pak_open(const char* path);
+struct res_pak* pak_open(const char* path, usize offset);
 void pak_close(struct res_pak* pak);
 
 struct pak_write_file {
@@ -84,7 +84,8 @@ struct pak_write_file {
 	const char* dst;
 };
 
-bool write_pak(const char* outname, struct pak_write_file* files, usize file_count);
+/* Returns the amount of bytes written. */
+usize write_pak(const char* outname, struct pak_write_file* files, usize file_count);
 
 struct res_config {
 	usize payload_size;
