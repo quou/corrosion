@@ -1338,35 +1338,35 @@ namespace corrosion {
 
 		virtual ~App_Base() {}
 	};
-};
 
-class UI {
-private:
-	impl::ui* as_impl() {
-		return reinterpret_cast<impl::ui*>(this);
-	}
+	class UI {
+	private:
+		impl::ui* as_impl() {
+			return reinterpret_cast<impl::ui*>(this);
+		}
 
-	const impl::ui* as_impl() const {
-		return reinterpret_cast<const impl::ui*>(this);
-	}
-public:
-	static UI* create(const Framebuffer& framebuffer) {
-		return reinterpret_cast<UI*>(impl::new_ui(framebuffer.as_impl()));
-	}
+		const impl::ui* as_impl() const {
+			return reinterpret_cast<const impl::ui*>(this);
+		}
+	public:
+		static UI* create(const Framebuffer& framebuffer) {
+			return reinterpret_cast<UI*>(impl::new_ui(framebuffer.as_impl()));
+		}
 
-	void release() {
-		impl::free_ui(as_impl());
-	}
+		void release() {
+			impl::free_ui(as_impl());
+		}
 
-	void begin() {
-		impl::ui_begin(as_impl());
-	}
+		void begin() {
+			impl::ui_begin(as_impl());
+		}
 
-	void end() {
-		impl::ui_end(as_impl());
-	}
+		void end() {
+			impl::ui_end(as_impl());
+		}
 
-	void draw_rect(v2f position, f32 z, v2f dimensions, v4f colour, f32 radius) {
-		impl::ui_draw_rect(as_impl(), position, z, dimensions, colour, radius);
-	}
+		void draw_rect(v2f position, f32 z, v2f dimensions, v4f colour, f32 radius) {
+			impl::ui_draw_rect(as_impl(), position, z, dimensions, colour, radius);
+		}
+	};
 };
