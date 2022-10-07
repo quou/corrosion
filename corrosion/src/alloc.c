@@ -3,7 +3,6 @@
 #include "core.h"
 #include "thread.h"
 
-#ifdef debug
 usize memory_usage = 0;
 
 /* Memory allocator for use in debug mode that checks for memory leaks.
@@ -28,12 +27,12 @@ struct alloc_info {
 list(struct alloc_info) alloc_list;
 struct mutex list_mutex;
 
-void alloc_init() {
+void debug_alloc_init() {
 	memset(&alloc_list, 0, sizeof alloc_list);
 	init_mutex(&list_mutex);
 }
 
-void alloc_deinit() {
+void debug_alloc_deinit() {
 	deinit_mutex(&list_mutex);
 }
 
@@ -62,7 +61,7 @@ static void alloc_remove(struct alloc_info* node) {
 	unlock_mutex(&list_mutex);
 }
 
-void* _core_alloc(usize size, struct alloc_code_info cinfo) {
+void* debug_core_alloc(usize size, struct alloc_code_info cinfo) {
 	u8* ptr = malloc(sizeof(struct alloc_info) + size);
 
 	if (!ptr) {
@@ -81,7 +80,7 @@ void* _core_alloc(usize size, struct alloc_code_info cinfo) {
 	return r;
 }
 
-void* _core_calloc(usize count, usize size, struct alloc_code_info cinfo) {
+void* debug_core_calloc(usize count, usize size, struct alloc_code_info cinfo) {
 	usize alloc_size = count * size;
 
 	u8* ptr = malloc(sizeof(struct alloc_info) + alloc_size);
@@ -104,7 +103,7 @@ void* _core_calloc(usize count, usize size, struct alloc_code_info cinfo) {
 	return r;
 }
 
-void* _core_realloc(void* p, usize size, struct alloc_code_info cinfo) {
+void* debug_core_realloc(void* p, usize size, struct alloc_code_info cinfo) {
 	u8* ptr = p;
 
 	if (ptr) {
@@ -130,7 +129,7 @@ void* _core_realloc(void* p, usize size, struct alloc_code_info cinfo) {
 	return r;
 }
 
-void _core_free(void* p, struct alloc_code_info info) {
+void debug_core_free(void* p, struct alloc_code_info info) {
 	if (!p) { return; }
 	
 	u8* ptr = p;
@@ -142,12 +141,12 @@ void _core_free(void* p, struct alloc_code_info info) {
 	free(old_info);
 }
 
-usize core_get_memory_usage() {
+usize debug_core_get_memory_usage() {
 	return memory_usage;
 }
 
-void leak_check() {
-	if (core_get_memory_usage() != 0) {
+void debug_leak_check() {
+	if (debug_core_get_memory_usage() != 0) {
 		lock_mutex(&list_mutex);
 
 		struct alloc_info* node = alloc_list.head;
@@ -165,4 +164,42 @@ void leak_check() {
 	}
 }
 
-#endif
+usize release_core_get_memory_usage() { return 0; }
+
+void release_alloc_init() {}
+void release_alloc_deinit() {}
+void release_leak_check() {}
+
+void* release_core_alloc(usize size) {
+	void* ptr = malloc(size);
+
+	if (!ptr) {
+		abort_with("Out of memory.");
+	}
+
+	return ptr;
+}
+
+void* release_core_calloc(usize count, usize size) {
+	void* ptr = calloc(count, size);
+
+	if (!ptr) {
+		abort_with("Out of memory.");
+	}
+
+	return ptr;
+}
+
+void* release_core_realloc(void* p, usize size) {
+	void* ptr = realloc(p, size);
+
+	if (!ptr && size != 0) {
+		abort_with("Out of memory.");
+	}
+
+	return ptr;
+}
+
+void release_core_free(void* p) {
+	if (p) { free(p); }
+}

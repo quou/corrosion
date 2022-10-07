@@ -111,58 +111,6 @@ void* _table_next_key(void* els, usize el_size, usize capacity, usize count, usi
 	return null;
 }
 
-#ifndef debug
-void alloc_init() {
-
-}
-
-void alloc_deinit() {
-
-}
-
-void* core_alloc(usize size) {
-	void* ptr = malloc(size);
-
-	if (!ptr) {
-		abort_with("Out of memory.");
-	}
-
-	return ptr;
-}
-
-void* core_calloc(usize count, usize size) {
-	void* ptr = calloc(count, size);
-
-	if (!ptr) {
-		abort_with("Out of memory.");
-	}
-
-	return ptr;
-}
-
-void* core_realloc(void* p, usize size) {
-	void* ptr = realloc(p, size);
-
-	if (!ptr && size != 0) {
-		abort_with("Out of memory.");
-	}
-
-	return ptr;
-}
-
-void core_free(void* p) {
-	if (p) { free(p); }
-}
-
-usize core_get_memory_usage() {
-	return 0;
-}
-
-void leak_check() {
-
-}
-#endif
-
 char* copy_string(const char* str) {
 	usize len = strlen(str);
 	char* r = core_alloc(len + 1);

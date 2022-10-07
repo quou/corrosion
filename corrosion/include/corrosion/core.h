@@ -34,40 +34,56 @@ void vwarning(const char* fmt, va_list args);
 #define pad(s_) \
 	u8 cat(padding_, __LINE__)[s_]
 
+
 /* In debug mode, allocations are tracked and memory leaks are reported.
  * This slows down the allocations, however, and uses extra memory, so it's
  * disabled in other configurations. */
-#ifdef debug
-
 struct alloc_code_info {
 	const char* file;
 	u32 line;
 };
 
-void* _core_alloc(usize size, struct alloc_code_info info);
-void* _core_calloc(usize count, usize size, struct alloc_code_info info);
-void* _core_realloc(void* ptr, usize size, struct alloc_code_info info);
-void _core_free(void* ptr, struct alloc_code_info info);
+void* debug_core_alloc(usize size, struct alloc_code_info info);
+void* debug_core_calloc(usize count, usize size, struct alloc_code_info info);
+void* debug_core_realloc(void* ptr, usize size, struct alloc_code_info info);
+void debug_core_free(void* ptr, struct alloc_code_info info);
 
-#define core_alloc(s_) _core_alloc(s_, (struct alloc_code_info) { __FILE__, __LINE__ })
-#define core_calloc(c_, s_) _core_calloc(c_, s_, (struct alloc_code_info) { __FILE__, __LINE__ })
-#define core_realloc(p_, s_) _core_realloc(p_, s_, (struct alloc_code_info) { __FILE__, __LINE__ })
-#define core_free(p_) _core_free(p_, (struct alloc_code_info) { __FILE__, __LINE__ })
+void* release_core_alloc(usize size);
+void* release_core_calloc(usize count, usize size);
+void* release_core_realloc(void* ptr, usize size);
+void release_core_free(void* ptr);
 
+usize release_core_get_memory_usage();
+void release_alloc_init();
+void release_alloc_deinit();
+void release_leak_check();
+
+usize debug_core_get_memory_usage();
+void debug_alloc_init();
+void debug_alloc_deinit();
+void debug_leak_check();
+
+#ifdef debug
+#define core_alloc(s_) debug_core_alloc(s_, (struct alloc_code_info) { __FILE__, __LINE__ })
+#define core_calloc(c_, s_) debug_core_calloc(c_, s_, (struct alloc_code_info) { __FILE__, __LINE__ })
+#define core_realloc(p_, s_) debug_core_realloc(p_, s_, (struct alloc_code_info) { __FILE__, __LINE__ })
+#define core_free(p_) debug_core_free(p_, (struct alloc_code_info) { __FILE__, __LINE__ })
+
+#define core_get_memory_usage() debug_core_get_memory_usage()
+#define alloc_init() debug_alloc_init()
+#define alloc_deinit() debug_alloc_deinit()
+#define leak_check() debug_leak_check()
 #else
+#define core_alloc(s_) release_core_alloc(s_)
+#define core_calloc(c_, s_) release_core_calloc(c_, s_)
+#define core_realloc(p_, s_) release_core_realloc(p_, s_)
+#define core_free(p_) release_core_free(p_)
 
-void* core_alloc(usize size);
-void* core_calloc(usize count, usize size);
-void* core_realloc(void* ptr, usize size);
-void core_free(void* ptr);
-
+#define core_get_memory_usage() release_core_get_memory_usage()
+#define alloc_init() release_alloc_init()
+#define alloc_deinit() release_alloc_deinit()
+#define leak_check() release_leak_check()
 #endif
-
-usize core_get_memory_usage();
-
-void alloc_init();
-void alloc_deinit();
-void leak_check();
 
 /*struct type_info {
 	u64 id;
