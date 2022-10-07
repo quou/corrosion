@@ -219,7 +219,7 @@ namespace corrosion {
 		}
 
 		v4f to_v4f() {
-			return v4f(x, y, z, w);
+			return corrosion::v4f(x, y, z, w);
 		}
 
 		f32 normal() {

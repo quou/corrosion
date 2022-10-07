@@ -44,7 +44,7 @@ struct res_pak* pak_open(const char* path, usize header_offset) {
 
 	pak->header_offset = header_offset;
 
-	fseek(handle, pak->header_offset, SEEK_SET);
+	fseek(handle, (long)pak->header_offset, SEEK_SET);
 
 	pak->handle = handle;
 
@@ -56,7 +56,7 @@ struct res_pak* pak_open(const char* path, usize header_offset) {
 	pak->entry_count = (usize)header.size / sizeof(struct pak_entry);
 	pak->entries = core_alloc((usize)header.size);
 
-	fseek(handle, header.offset + pak->header_offset, SEEK_SET);
+	fseek(handle, header.offset + (long)pak->header_offset, SEEK_SET);
 
 	for (usize i = 0; i < pak->entry_count; i++) {
 		struct pak_entry* e = pak->entries + i;
@@ -162,7 +162,7 @@ bool read_raw(const char* path, u8** buf, usize* size) {
 			struct pak_entry* e = bound_pak->entries + i;
 
 			if (strcmp(e->name, path) == 0) {
-				fseek(bound_pak->handle, e->offset + bound_pak->header_offset, SEEK_SET);
+				fseek(bound_pak->handle, e->offset + (long)bound_pak->header_offset, SEEK_SET);
 
 				*buf = core_alloc((usize)e->size);
 				
@@ -227,7 +227,7 @@ bool read_raw_text(const char* path, char** buf) {
 			struct pak_entry* e = bound_pak->entries + i;
 
 			if (strcmp(e->name, path) == 0) {
-				fseek(bound_pak->handle, e->offset + bound_pak->header_offset, SEEK_SET);
+				fseek(bound_pak->handle, e->offset + (long)bound_pak->header_offset, SEEK_SET);
 
 				*buf = core_alloc((usize)e->size + 1);
 

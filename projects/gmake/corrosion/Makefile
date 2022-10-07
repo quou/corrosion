@@ -50,7 +50,6 @@ sources =                            \
 
 sourcespp = \
 	$(srcdir)/vma.cpp       \
-	$(srcdir)/corrosion.cpp \
 
 ifeq ($(config),debug)
   target_dir = bin/debug
