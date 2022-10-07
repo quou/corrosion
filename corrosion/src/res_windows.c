@@ -77,6 +77,8 @@ struct dir_iter* new_dir_iter(const char* dir_name) {
 		strcat(iter->root, "/");
 	}
 
+	dir_iter_next(iter);
+
 	return iter;
 }
 
