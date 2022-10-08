@@ -129,11 +129,13 @@ struct ui_renderer* new_ui_renderer(const struct framebuffer* framebuffer) {
 	renderer->shader = video.new_shader(bir_ui_csh, bir_ui_csh_size);
 	renderer->framebuffer = framebuffer;
 
-	renderer->vb = video.new_vertex_buffer(null,
-		sizeof(struct ui_renderer_vertex) * ui_renderer_batch_size * ui_renderer_verts_per_quad,
-		vertex_buffer_flags_dynamic);
+	renderer->max = 800;
 
-	usize index_count = ui_renderer_batch_size * ui_renderer_indices_per_quad;
+	renderer->vb = video.new_vertex_buffer(null,
+		sizeof(struct ui_renderer_vertex) * renderer->max * ui_renderer_verts_per_quad,
+		vertex_buffer_flags_dynamic | vertex_buffer_flags_transferable);
+
+	usize index_count = renderer->max * ui_renderer_indices_per_quad;
 	u16* indices = core_alloc(index_count * sizeof(u16));
 
 	u16 offset = 0;
@@ -169,12 +171,42 @@ void free_ui_renderer(struct ui_renderer* renderer) {
 	core_free(renderer);
 }
 
-void ui_renderer_push(struct ui_renderer* renderer, const struct ui_renderer_quad* quad) {
-	if (renderer->count >= ui_renderer_batch_size) {
-		/* TODO: Use multiple vertex buffers to mitgate this. */
-		warning("Too many quads.");
-		return;
+static void resize_vb(struct ui_renderer* renderer) {
+	if (renderer->count >= renderer->max) {
+		usize old_size = renderer->max;
+		renderer->max *= 2;
+
+		struct vertex_buffer* old_vb = renderer->vb;
+
+		renderer->vb = video.new_vertex_buffer(null,
+			sizeof(struct ui_renderer_vertex) * renderer->max * ui_renderer_verts_per_quad,
+			vertex_buffer_flags_dynamic | vertex_buffer_flags_transferable);
+		video.copy_vertex_buffer(renderer->vb, 0, old_vb, 0, old_size);
+		video.free_vertex_buffer(old_vb);
+
+		usize index_count = renderer->max * ui_renderer_indices_per_quad;
+		u16* indices = core_alloc(index_count * sizeof(u16));
+
+		u16 offset = 0;
+		for (usize i = 0; i < index_count; i += ui_renderer_indices_per_quad) {
+			indices[i + 0] = offset + 3;
+			indices[i + 1] = offset + 2;
+			indices[i + 2] = offset + 1;
+			indices[i + 3] = offset + 3;
+			indices[i + 4] = offset + 1;
+			indices[i + 5] = offset + 0;
+
+			offset += 4;
+		}
+
+		video.free_index_buffer(renderer->ib);
+		renderer->ib = video.new_index_buffer(indices, index_count, index_buffer_flags_u16);
+		core_free(indices);
 	}
+}
+
+void ui_renderer_push(struct ui_renderer* renderer, const struct ui_renderer_quad* quad) {
+	resize_vb(renderer);
 
 	f32 x1 = roundf(quad->position.x);
 	f32 y1 = roundf(quad->position.y);
@@ -227,11 +259,7 @@ void ui_renderer_push(struct ui_renderer* renderer, const struct ui_renderer_qua
 }
 
 void ui_renderer_push_gradient(struct ui_renderer* renderer, const struct ui_renderer_gradient_quad* quad) {
-	if (renderer->count >= ui_renderer_batch_size) {
-		/* TODO: Use multiple vertex buffers to mitgate this. */
-		warning("Too many quads.");
-		return;
-	}
+	resize_vb(renderer);
 
 	f32 x1 = roundf(quad->position.x);
 	f32 y1 = roundf(quad->position.y);

@@ -8,7 +8,6 @@
 #include "font.h"
 #include "video.h"
 
-#define ui_renderer_batch_size 10000
 #define ui_renderer_verts_per_quad 4
 #define ui_renderer_indices_per_quad 6
 
@@ -38,6 +37,7 @@ struct ui_renderer {
 
 	usize count;
 	usize offset;
+	usize max;
 
 	f32 text_z;
 
