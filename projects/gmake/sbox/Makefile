@@ -56,8 +56,8 @@ memcheck: | $(deps) $(target)
 	$(silent) cd ../../../sbox; \
 	valgrind --leak-check=no ./../projects/gmake/sbox/$(target)
 
-sources = $(wildcard $(srcdir)/*.cpp $(srcdir)/*/*.cpp)
-objects = $(sources:$(srcdir)/%.cpp=$(objdir)/%.o)
+sources = $(wildcard $(srcdir)/*.c $(srcdir)/*/*.c)
+objects = $(sources:$(srcdir)/%.c=$(objdir)/%.o)
 
 shaders = $(wildcard $(srcdir)/*.glsl $(srcdir)/*/*.glsl)
 
@@ -67,9 +67,9 @@ shader_compiler = ../shadercompiler/bin/$(config)/shadercompiler
 
 $(objects): | $(shader_targets) $(objdir)
 
-$(objects): $(objdir)%.o : $(srcdir)%.cpp
+$(objects): $(objdir)%.o : $(srcdir)%.c
 	@echo $(notdir $<)
-	$(silent) $(cpp) $(cflags) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
+	$(silent) $(cc) $(cflags) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
 
 $(target): $(objects) $(deps) | $(target_dir)
 	@echo Linking $(target)

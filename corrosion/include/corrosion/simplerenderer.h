@@ -6,7 +6,6 @@
 #include "font.h"
 #include "video.h"
 
-#define simple_renderer_batch_size 10000
 #define simple_renderer_verts_per_quad 4
 #define simple_renderer_indices_per_quad 6
 
@@ -33,6 +32,7 @@ struct simple_renderer {
 
 	usize count;
 	usize offset;
+	usize max;
 
 	struct {
 		m4f projection;

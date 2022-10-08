@@ -1,4 +1,4 @@
-#if 0
+//#if 0
 
 #include <stdio.h>
 
@@ -79,24 +79,24 @@ void cr_init() {
 	app.r = 0.0f;
 	app.fps_timer = 1.0;
 
-	app.texturea = load_texture("res/chad.jpg", texture_flags_filter_linear);
-	app.textureb = load_texture("res/test.png", texture_flags_filter_linear);
+	app.texturea = load_texture("res/chad.jpg", texture_flags_filter_linear, null);
+	app.textureb = load_texture("res/test.png", texture_flags_filter_linear, null);
 
 	for (usize i = 0; i < 256; i++) {
 		app.numbers[i] = 40.0f;
 	}
 
-	app.dejavusans = load_font("res/DejaVuSans.ttf", 24);
+	app.dejavusans = load_font("res/DejaVuSans.ttf", 24, null);
 
 	app.ui = new_ui(video.get_default_fb());
 
-	struct ui_stylesheet* stylesheet = res_load("stylesheet", "res/uistyle.dt", null);
+	struct ui_stylesheet* stylesheet = res_load("stylesheet", "res/uistyle.dt", null).payload;
 	ui_stylesheet(app.ui, stylesheet);
 
 	app.com_in  = video.new_storage(storage_flags_none,         sizeof app.numbers, app.numbers);
 	app.com_out = video.new_storage(storage_flags_cpu_readable, sizeof app.numbers, null);
 
-	app.compute_shader = load_shader("shaders/computetest.csh");
+	app.compute_shader = load_shader("shaders/computetest.csh", null);
 	app.compute_pipeline = video.new_compute_pipeline(pipeline_flags_none, app.compute_shader,
 		(struct pipeline_descriptor_sets) {
 			.sets = (struct pipeline_descriptor_set[]) {
@@ -140,7 +140,7 @@ void cr_init() {
 	app.compute_config.number_count = 256;
 	memset(app.numbers, 0, sizeof app.numbers);
 
-	const struct shader* invert_shader = load_shader("shaders/invert.csh");
+	const struct shader* invert_shader = load_shader("shaders/invert.csh", null);
 
 	app.fb = video.new_framebuffer(framebuffer_flags_headless | framebuffer_flags_fit, get_window_size(),
 		(struct framebuffer_attachment_desc[]) {
@@ -443,7 +443,7 @@ void cr_deinit() {
 
 //#endif
 
-//#if 0
+#if 0
 struct vertex {
 	v2f position;
 	v2f uv;
@@ -500,10 +500,10 @@ void cr_init() {
 	ui_init();
 	app.ui = new_ui(video.get_default_fb());
 
-	const struct shader* shader = load_shader("shaders/test.csh");
-	const struct shader* invert_shader = load_shader("shaders/invert.csh");
+	const struct shader* shader = load_shader("shaders/test.csh", null);
+	const struct shader* invert_shader = load_shader("shaders/invert.csh", null);
 
-	app.texture = load_texture("res/chad.jpg", texture_flags_filter_linear);
+	app.texture = load_texture("res/chad.jpg", texture_flags_filter_linear, null);
 
 	app.fb = video.new_framebuffer(framebuffer_flags_headless | framebuffer_flags_fit, get_window_size(),
 		(struct framebuffer_attachment_desc[]) {
@@ -793,7 +793,6 @@ void cr_deinit() {
 	free_ui(app.ui);
 	ui_deinit();
 }
-#endif
 
 #include <iostream>
 
@@ -897,3 +896,5 @@ i32 main(int argc, const char** argv) {
 
 	delete app;
 }
+
+#endif
