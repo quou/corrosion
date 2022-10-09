@@ -13,6 +13,8 @@ void ui_deinit();
 struct ui* new_ui(const struct framebuffer* framebuffer);
 void free_ui(struct ui* ui);
 
+struct ui_stylesheet* load_stylesheet(const char* path, struct resource* r);
+
 void ui_begin(struct ui* ui);
 void ui_end(struct ui* ui);
 

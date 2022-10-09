@@ -90,7 +90,7 @@ void cr_init() {
 
 	app.ui = new_ui(video.get_default_fb());
 
-	struct ui_stylesheet* stylesheet = res_load("stylesheet", "res/uistyle.dt", null).payload;
+	struct ui_stylesheet* stylesheet = load_stylesheet("res/uistyle.dt", null);
 	ui_stylesheet(app.ui, stylesheet);
 
 	app.com_in  = video.new_storage(storage_flags_none,         sizeof app.numbers, app.numbers);

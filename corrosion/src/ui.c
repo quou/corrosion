@@ -717,6 +717,17 @@ void free_ui(struct ui* ui) {
 	core_free(ui);
 }
 
+struct ui_stylesheet* load_stylesheet(const char* filename, struct resource* r) {
+	struct resource temp;
+
+	if (!r) {
+		r = &temp;
+	}
+
+	*r = res_load("stylesheet", filename, null);
+	return r->payload;
+}
+
 void ui_begin(struct ui* ui) {
 	ui->cmd_buffer_idx = 0;
 
