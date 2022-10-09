@@ -473,7 +473,10 @@ struct resource res_load(const char* type, const char* filename, void* udata) {
 
 void res_unload(const struct resource* r) {
 	struct res* res = table_get(res_cache, r->id);
-	if (!res) { return; }
+	if (!res) {
+		error("Failed to unload resource.");
+		return;
+	}
 
 	struct res_config* config = table_get(res_registry, res->config_id);
 

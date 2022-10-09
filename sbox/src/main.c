@@ -38,15 +38,15 @@ struct {
 } app;
 
 void on_resize(const struct window_event* event) {
-	info("Window resized: %d, %d", event->size_changed.new_size.x, event->size_changed.new_size.y);
+	//info("Window resized: %d, %d", event->size_changed.new_size.x, event->size_changed.new_size.y);
 }
 
 void on_event(const struct window_event* event) {
-	info("Window event with type: %d", event->type);
+	//info("Window event with type: %d", event->type);
 }
 
 void on_type(const struct window_event* event) {
-	info("Text typed: %.*s", event->text_typed.len, event->text_typed.text);
+	//info("Text typed: %.*s", event->text_typed.len, event->text_typed.text);
 }
 
 struct app_config cr_config() {
