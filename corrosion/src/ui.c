@@ -717,6 +717,10 @@ void free_ui(struct ui* ui) {
 	core_free(ui);
 }
 
+struct ui_renderer* get_ui_renderer(const struct ui* ui) {
+	return ui->renderer;
+}
+
 struct ui_stylesheet* load_stylesheet(const char* filename, struct resource* r) {
 	struct resource temp;
 
