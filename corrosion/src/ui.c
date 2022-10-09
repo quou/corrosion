@@ -1333,8 +1333,13 @@ bool ui_input_ex2(struct ui* ui, const char* class, char* buf, usize buf_size, u
 		if (get_input_string(&input_string, &input_len) && buf_len + input_len < buf_size) {
 			for (usize i = 0; i < input_len; i++) {
 				if (filter(input_string[i])) {
-					strncat(buf, input_string + i, 1);
-					ui->input_cursor++;
+					for (i64 ii = buf_len + 1; ii >= ui->input_cursor + (u32)input_len; ii--) {
+						buf[ii] = buf[ii - 1];
+					}
+
+					memcpy(buf + ui->input_cursor, input_string, input_len);
+
+					ui->input_cursor += input_len;
 				}
 			}
 		}
@@ -1352,6 +1357,24 @@ bool ui_input_ex2(struct ui* ui, const char* class, char* buf, usize buf_size, u
 
 			buf[buf_len - 1] = '\0';
 			ui->input_cursor--;
+		}
+
+		if (ui->input_cursor > 0 && key_just_pressed(key_left)) {
+			ui->input_cursor--;
+		}
+
+		if (ui->input_cursor < buf_len) {
+			if (key_just_pressed(key_right)) {
+				ui->input_cursor++;
+			}
+
+			if (buf_len > 0 && key_just_pressed(key_delete)) {
+				for (u32 i = ui->input_cursor; i < buf_len - 1; i++) {
+					buf[i] = buf[i + 1];
+				}
+
+				buf[buf_len - 1] = '\0';
+			}
 		}
 	}
 
