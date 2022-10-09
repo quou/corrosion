@@ -1258,7 +1258,7 @@ bool ui_alphanum_input_filter(char c) {
 		ui_number_input_filter(c);
 }
 
-bool ui_input_ex2(struct ui* ui, const char* class, char* buf, usize buf_size, ui_input_filter filter, u64 id) {
+bool ui_input_ex2(struct ui* ui, const char* class, char* buf, usize buf_size, ui_input_filter filter, u64 id, bool is_password) {
 	if (id == 0) {
 		id = elf_hash((const u8*)&buf, sizeof buf);
 	}
@@ -1270,9 +1270,21 @@ bool ui_input_ex2(struct ui* ui, const char* class, char* buf, usize buf_size, u
 	const v2f dimensions = v2f_add(make_v2f(ui->columns[ui->column] *
 		container->rect.z - (style.padding.value.x * 2.0f + style.padding.value.z) - (container->padding.x + container->padding.z), get_font_height(ui->font)),
 		make_v2f(0.0f, style.padding.value.y + style.padding.value.w));
-	
-	const v2f text_dimensions = get_text_dimensions(ui->font, buf);
-	const f32 cursor_x_off = get_text_n_dimensions(ui->font, buf, ui->input_cursor).x;
+
+	usize buf_len = strlen(buf);
+
+	v2f star_size;
+	v2f text_dimensions;
+	f32 cursor_x_off;
+
+	if (is_password) {
+		star_size = get_char_dimensions(ui->font, "*");
+		text_dimensions = make_v2f(star_size.x * buf_len, get_font_height(ui->font));
+		cursor_x_off = star_size.x * (f32)ui->input_cursor;
+	} else {
+		text_dimensions = get_text_dimensions(ui->font, buf);
+		cursor_x_off = get_text_n_dimensions(ui->font, buf, ui->input_cursor).x;
+	}
 
 	ui_draw_rect(ui, get_ui_el_position(ui, &style, dimensions), z_layer_1, dimensions,
 		style.background_colour.value, style.radius.value);
@@ -1318,8 +1330,6 @@ bool ui_input_ex2(struct ui* ui, const char* class, char* buf, usize buf_size, u
 		usize input_len;
 		const char* input_string;
 
-		usize buf_len = strlen(buf);
-
 		if (get_input_string(&input_string, &input_len) && buf_len + input_len < buf_size) {
 			for (usize i = 0; i < input_len; i++) {
 				if (filter(input_string[i])) {
@@ -1345,7 +1355,16 @@ bool ui_input_ex2(struct ui* ui, const char* class, char* buf, usize buf_size, u
 		}
 	}
 
-	ui_draw_text(ui, make_v2f(text_pos.x + scroll, text_pos.y), z_layer_2, text_dimensions, buf, style.text_colour.value);
+	if (is_password) {	
+		f32 x = text_pos.x + scroll;
+		for (usize i = 0; i < buf_len; i++) {
+			ui_draw_text(ui, make_v2f(x, text_pos.y), z_layer_2, text_dimensions, "*", style.text_colour.value);
+			x += star_size.x;
+		}
+	} else {
+		ui_draw_text(ui, make_v2f(text_pos.x + scroll, text_pos.y), z_layer_2, text_dimensions, buf, style.text_colour.value);
+	}
+
 	struct ui_cmd_draw_text* text_cmd = ui_last_cmd(ui);
 
 	ui_clip(ui, prev_clip);
@@ -1367,7 +1386,7 @@ bool ui_number_input_ex(struct ui* ui, const char* class, f64* target) {
 		strcat(buf, ".");
 	}
 
-	bool submitted = ui_input_ex2(ui, class, buf, sizeof buf, ui_number_input_filter, id);
+	bool submitted = ui_input_ex2(ui, class, buf, sizeof buf, ui_number_input_filter, id, false);
 	if (buf[strlen(buf) - 1] == '.') {
 		table_set(ui->number_input_trailing_fullstops, id, true); 
 	} else {

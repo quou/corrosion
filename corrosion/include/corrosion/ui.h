@@ -63,8 +63,9 @@ bool ui_text_input_filter(char c);
 bool ui_number_input_filter(char c);
 bool ui_alphanum_input_filter(char c);
 
-bool ui_input_ex2(struct ui* ui, const char* klass, char* buf, usize buf_size, ui_input_filter filter, u64 id);
-#define ui_input_ex(ui_, c_, b_, s_) ui_input_ex2(ui_, c_, b_, s_, ui_text_input_filter, 0)
+bool ui_input_ex2(struct ui* ui, const char* klass, char* buf, usize buf_size, ui_input_filter filter, u64 id, bool is_password);
+#define ui_password_input(ui_, b_, s_) ui_input_ex2(ui_, "", b_, s_, ui_text_input_filter, 0, true)
+#define ui_input_ex(ui_, c_, b_, s_) ui_input_ex2(ui_, c_, b_, s_, ui_text_input_filter, 0, false)
 #define ui_input(ui_, b_, s_) ui_input_ex(ui_, "", b_, s_)
 
 bool ui_number_input_ex(struct ui* ui, const char* klass, f64* target);
