@@ -23,6 +23,11 @@ void free_atlas(struct atlas* atlas) {
 	core_free(atlas);
 }
 
+void reset_atlas(struct atlas* atlas) {
+	free_table(atlas->rects);
+	memset(&atlas->rects, 0, sizeof atlas->rects);
+}
+
 bool atlas_add_texture(struct atlas* atlas, const struct texture* new_texture) {
 	/* TODO: Proper packing algorithm. */
 
