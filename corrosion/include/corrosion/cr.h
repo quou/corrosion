@@ -13,6 +13,7 @@
 #include "render_util.h"
 #include "res.h"
 #include "simplerenderer.h"
+#include "thread.h"
 #include "timer.h"
 #include "ui.h"
 #include "ui_render.h"
