@@ -510,11 +510,11 @@ struct pipeline* validated_new_pipeline_ex(u32 flags, const struct shader* shade
 	check_isnt_null(shader, "new_pipeline", "`shader' must be a valid pointer to a shader object.");
 	check_isnt_null(framebuffer, "new_pipeline", "`framebuffer' must be a valid pointer to a framebuffer object.");
 
-	if (!attrib_bindings.count || !attrib_bindings.bindings) {
+/*	if (!attrib_bindings.count || !attrib_bindings.bindings) {
 		error("new_pipeline: Graphics pipelines must have more than one attribute binding."
 			" If you meant to create a compute pipeline, use `video.new_compute_pipeline' instead.");
 		ok = false;
-	}
+	} */
 
 	vector(u32) used_locs = null;
 	vector(u32) used_binds = null;
