@@ -217,14 +217,14 @@ void window_create_gl_context() {
 
 	i32 context_attribs[] = {
 		GLX_CONTEXT_MAJOR_VERSION_ARB, 3,
-		GLX_CONTEXT_MINOR_VERSION_ARB, 0,
-		GLX_CONTEXT_PROFILE_MASK_ARB, GLX_CONTEXT_ES2_PROFILE_BIT_EXT,
+		GLX_CONTEXT_MINOR_VERSION_ARB, 3,
+		GLX_CONTEXT_PROFILE_MASK_ARB, GLX_CONTEXT_CORE_PROFILE_BIT_ARB,
 		None
 	};
 
 	window.context = create_context(display, fbc[0], null, true, context_attribs);
 	if (!window.context) {
-		abort_with("Failed to create OpenGL ES context");
+		abort_with("Failed to create OpenGL context");
 	}
 
 	glXMakeCurrent(display, window.window, window.context);
@@ -248,6 +248,55 @@ void window_gl_set_swap_interval(i32 interval) {
 	if (glx_swap_interval) {
 		glx_swap_interval(display, window.window, interval);
 	}
+}
+
+bool is_opengl_supported() {
+	Display* dpy = XOpenDisplay(null);
+
+	int visual_attribs[] = {
+		GLX_RENDER_TYPE,   GLX_RGBA_BIT,
+		GLX_DRAWABLE_TYPE, GLX_WINDOW_BIT,
+		GLX_DOUBLEBUFFER,  true,
+		GLX_RED_SIZE,      8,
+		GLX_GREEN_SIZE,    8,
+		GLX_BLUE_SIZE,     8,
+		GLX_DEPTH_SIZE,    24,
+		GLX_STENCIL_SIZE,  8,
+		None
+	};
+
+	i32 num_fbc = 0;
+	GLXFBConfig* fbc = glXChooseFBConfig(dpy, DefaultScreen(dpy),
+			visual_attribs, &num_fbc);
+	if (!fbc) {
+		return false;
+	}
+
+	create_context_func create_context = (create_context_func)
+			glXGetProcAddress((const u8*)"glXCreateContextAttribsARB");
+	
+	if (!create_context) {
+		return false;
+	}
+
+	i32 context_attribs[] = {
+		GLX_CONTEXT_MAJOR_VERSION_ARB, 3,
+		GLX_CONTEXT_MINOR_VERSION_ARB, 3,
+		GLX_CONTEXT_PROFILE_MASK_ARB, GLX_CONTEXT_CORE_PROFILE_BIT_ARB,
+		None
+	};
+
+	void* ctx = create_context(dpy, fbc[0], null, true, context_attribs);
+	if (!ctx) {
+		return false;
+	}
+
+	XFree(fbc);
+
+	glXDestroyContext(dpy, ctx);
+	XCloseDisplay(dpy);
+
+	return true;
 }
 
 #endif

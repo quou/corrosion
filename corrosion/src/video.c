@@ -914,6 +914,30 @@ static void find_procs(u32 api, bool enable_validation) {
 #undef get_v_proc
 }
 
+u32 video_best_api(u32 features) {
+#if defined(cr_no_vulkan)
+	if (is_opengl_supported()) {
+		return video_api_opengl;
+	}
+#elif defined(cr_no_opengl)
+	if (is_vulkan_supported()) {
+		return video_api_vulkan;
+	}
+#else
+	if (
+		is_vulkan_supported() ||
+		features & video_feature_compute ||
+		features & video_feature_storage ||
+		features & video_feature_barrier) {
+		return video_api_vulkan;
+	} else if (is_opengl_supported()) {
+		return video_api_opengl;
+	}
+#endif
+
+	abort_with("No suitable graphics APIs were found. Try updating your drivers or talking to the developer of the application.");
+}
+
 void init_video(const struct video_config* config) {
 	video.api = config->api;
 
@@ -943,7 +967,7 @@ void init_video(const struct video_config* config) {
 #endif
 #ifndef cr_no_opengl
 	case video_api_opengl:
-		info("Using API: OpenGL ES.");
+		info("Using API: OpenGL.");
 
 		find_procs(config->api, config->enable_validation);
 

@@ -10,6 +10,8 @@ void video_vk_deinit();
 void video_vk_begin(bool present);
 void video_vk_end(bool present);
 
+bool is_vulkan_supported();
+
 void video_vk_want_recreate();
 
 struct framebuffer* video_vk_new_framebuffer(u32 flags, v2i size, const struct framebuffer_attachment_desc* attachments, usize attachment_count);

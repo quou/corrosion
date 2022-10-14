@@ -762,6 +762,24 @@ void video_vk_deinit() {
 	vkDestroyInstance(vctx.instance, null);
 }
 
+bool is_vulkan_supported() {
+	VkInstance tmp_instance;
+
+	if (vkCreateInstance(&(VkInstanceCreateInfo) {
+			.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
+			.pApplicationInfo = &(VkApplicationInfo) {
+				.apiVersion = VK_API_VERSION_1_2,
+				.pApplicationName = "Corrosion Application."
+			}
+		}, null, &vctx.instance) == VK_SUCCESS) {
+		vkDestroyInstance(tmp_instance, null);
+
+		return true;
+	}
+
+	return false;
+}
+
 void video_vk_begin(bool present) {
 frame_begin:
 

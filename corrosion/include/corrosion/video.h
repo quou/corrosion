@@ -236,6 +236,11 @@ struct shader;
 struct texture;
 struct storage;
 
+/* Chooses the best supported API that supports the given features.
+ *
+ * If no supported APIs are found, the function will abort the program. */
+u32 video_best_api(u32 features);
+
 struct video {
 	u32 api;
 

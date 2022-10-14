@@ -1,7 +1,7 @@
 #ifndef cr_no_opengl
 
-#define GLAD_GLES2_IMPLEMENTATION
-#include "gles2.h"
+#define GLAD_GL_IMPLEMENTATION
+#include "gl33.h"
 
 #include "bir.h"
 #include "video_gl.h"
@@ -51,8 +51,8 @@ void video_gl_init(const struct video_config* config) {
 
 	window_create_gl_context();
 
-	if (!gladLoadGLES2((GLADloadfunc)window_get_gl_proc)) {
-		abort_with("Failed to load OpenGL ES functions.");
+	if (!gladLoadGL((GLADloadfunc)window_get_gl_proc)) {
+		abort_with("Failed to load OpenGL functions.");
 	}
 
 	info("GL_VENDOR: \t%s.", glGetString(GL_VENDOR));

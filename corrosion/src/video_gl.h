@@ -10,6 +10,8 @@ void video_gl_deinit();
 void video_gl_begin(bool present);
 void video_gl_end(bool present);
 
+bool is_opengl_supported();
+
 void video_gl_want_recreate();
 
 struct framebuffer* video_gl_new_framebuffer(u32 flags, v2i size, const struct framebuffer_attachment_desc* attachments, usize attachment_count);

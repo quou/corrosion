@@ -384,6 +384,10 @@ void window_gl_set_swap_interval(i32 interval) {
 	abort_with("Not implemented.");
 }
 
+bool is_opengl_supported() {
+	return false;
+}
+
 void deinit_window() {
 	core_free(window.raw_input_buffer);
 
