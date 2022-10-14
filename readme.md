@@ -3,8 +3,8 @@
 C graphics framework for GNU/Linux and Windows.
 
 ## Notes
- - Functional Vulkan backend that uses the dynamic rendering extension.
- - OpenGL ES backend. Some features (like compute shaders) are not supported on this backend.
+ - Vulkan backend that uses the dynamic rendering extension.
+ - OpenGL 3.3 backend. Some features (like compute shaders) are not supported on this backend.
  - Emscripten support coming soon.
 
 ## Build Instructions
@@ -15,6 +15,9 @@ C graphics framework for GNU/Linux and Windows.
  - Vulkan validation layers (optional but highly recommended).
  - On GNU/Linux:
 	 - X11 (Wayland might be supported in the future as well, but don't count on it).
+
+If you don't have or don't want the first three prerequisites, you can compile with `cr_no_vulkan`
+to compile with only the OpenGL backend, but most of the demos require Vulkan-only features.
 
 ### GNU/Linux
 From the `projects/gmake` directory, run:
