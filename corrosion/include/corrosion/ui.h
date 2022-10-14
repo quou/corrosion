@@ -30,8 +30,9 @@ void ui_clip(struct ui* ui, v4f rect);
 v2f ui_get_cursor_pos(const struct ui* ui);
 void ui_set_cursor_pos(struct ui* ui, v2f pos);
 void ui_advance(struct ui* ui, v2f dimensions);
-
 f32 ui_advance_z(struct ui* ui);
+
+v4f ui_get_container_rect(struct ui* ui);
 
 void ui_font(struct ui* ui, struct font* font);
 void ui_stylesheet(struct ui* ui, struct ui_stylesheet* ss);
@@ -84,5 +85,7 @@ bool ui_colour_picker_ex(struct ui* ui, const char* klass, v4f* colour, u64 id);
 #define ui_colour_picker(ui_, c_) ui_colour_picker_ex(ui_, "", c_, 0)
 
 bool ui_anything_hovered(struct ui* ui);
+
+void ui_grab_input(struct ui* ui);
 
 void ui_draw(const struct ui* ui);

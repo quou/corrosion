@@ -175,6 +175,9 @@ struct ui {
 	u64 dragging;
 	u64 hovered;
 
+	u64 last_input_id;
+	char* last_input_buf;
+
 	f32 current_z;
 
 	vector(void*) cmd_free_queue;
@@ -1043,6 +1046,11 @@ f32 ui_advance_z(struct ui* ui) {
 	return ui->current_z -= ui_z_decrease;
 }
 
+v4f ui_get_container_rect(struct ui* ui) {
+	struct ui_container* container = vector_end(ui->container_stack) - 1;
+	return container->rect;
+}
+
 void ui_columns(struct ui* ui, usize count, f32* columns) {
 	vector_clear(ui->columns);
 
@@ -1394,6 +1402,9 @@ bool ui_input_ex2(struct ui* ui, const char* class, char* buf, usize buf_size, u
 
 	ui_advance(ui, make_v2f(dimensions.x, dimensions.y + container->spacing));
 
+	ui->last_input_id = id;
+	ui->last_input_buf = buf;
+
 	return submitted;
 }
 
@@ -1721,6 +1732,11 @@ bool ui_colour_picker_ex(struct ui* ui, const char* class, v4f* colour, u64 id) 
 
 bool ui_anything_hovered(struct ui* ui) {
 	return ui->hovered != 0;
+}
+
+void ui_grab_input(struct ui* ui) {
+	ui->active = ui->last_input_id;
+	ui->input_cursor = (u32)strlen(ui->last_input_buf);
 }
 
 void ui_draw(const struct ui* ui) {
