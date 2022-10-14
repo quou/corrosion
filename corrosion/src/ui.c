@@ -221,6 +221,11 @@ static bool rect_outside_clip(v2f position, v2f dimensions, v4i clip) {
 		position.y                < (f32)clip.y;
 }
 
+static v2f get_container_max_scroll(const struct ui_container* container, const struct ui_container_meta* meta) {
+	return make_v2f(
+		container->content_size.x - container->rect.z - meta->scroll.x,
+		container->content_size.y - container->rect.w - meta->scroll.y);
+}
 
 /* Position is the top left of a bounding box around the circle. */
 static inline bool mouse_over_circle(v2f position, f32 radius) {
@@ -953,8 +958,7 @@ void ui_end_container(struct ui* ui) {
 		meta->scroll.x += (f32)get_scroll().x * 10.0f;
 		meta->scroll.y += (f32)get_scroll().y * get_font_height(ui->font) * 3.0f;
 
-		v2f max_scroll = make_v2f(container->content_size.x - container->rect.z - meta->scroll.x,
-			container->content_size.y - container->rect.w - meta->scroll.y);
+		v2f max_scroll = get_container_max_scroll(container, meta);
 
 		if (meta->scroll.y < -max_scroll.y) {
 			meta->scroll.y = -max_scroll.y;
@@ -1049,6 +1053,28 @@ f32 ui_advance_z(struct ui* ui) {
 v4f ui_get_container_rect(struct ui* ui) {
 	struct ui_container* container = vector_end(ui->container_stack) - 1;
 	return container->rect;
+}
+
+void ui_scroll_max(struct ui* ui) {
+	struct ui_container* container = vector_end(ui->container_stack) - 1;
+
+	struct ui_container_meta* meta = get_container_meta(ui, container->id);
+
+	if (container->scrollable && meta) {
+		v2f max_scroll = get_container_max_scroll(container, meta);
+
+		meta->scroll.y = max_scroll.y;
+	}
+}
+
+void ui_scroll_min(struct ui* ui) {
+	struct ui_container* container = vector_end(ui->container_stack) - 1;
+
+	struct ui_container_meta* meta = get_container_meta(ui, container->id);
+
+	if (container->scrollable && meta) {
+		meta->scroll.y = 0.0f;
+	}
 }
 
 void ui_columns(struct ui* ui, usize count, f32* columns) {

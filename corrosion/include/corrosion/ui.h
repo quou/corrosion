@@ -34,6 +34,9 @@ f32 ui_advance_z(struct ui* ui);
 
 v4f ui_get_container_rect(struct ui* ui);
 
+void ui_scroll_max(struct ui* ui);
+void ui_scroll_min(struct ui* ui);
+
 void ui_font(struct ui* ui, struct font* font);
 void ui_stylesheet(struct ui* ui, struct ui_stylesheet* ss);
 
