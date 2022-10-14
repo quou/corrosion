@@ -763,7 +763,7 @@ void video_vk_deinit() {
 }
 
 bool is_vulkan_supported() {
-	VkInstance tmp_instance;
+	VkInstance tmp_instance = null;
 
 	if (vkCreateInstance(&(VkInstanceCreateInfo) {
 			.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
