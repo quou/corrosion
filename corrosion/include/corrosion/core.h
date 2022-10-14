@@ -124,7 +124,7 @@ void debug_leak_check();
  */
 
 #define table_null_key UINT64_MAX
-#define table_load_factor 0.75
+#define table_load_factor 0.65
 
 #ifndef table_malloc
 #define table_malloc core_alloc
