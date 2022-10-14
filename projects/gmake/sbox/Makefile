@@ -14,7 +14,7 @@ includes = -I../../../corrosion/include
 target_name = sbox
 deps =
 srcdir = ../../../sbox/src
-libs = -lm -lX11 -lXi -lvulkan -lGLESv2 -lGLX -lpthread
+libs = -lm -lX11 -lXi -lvulkan -lGL -lGLX -lpthread
 defines =
 
 ifeq ($(config),debug)

@@ -10,5 +10,5 @@ Description: Graphics library for GNU/Linux and Windows.
 Version: 0.0.0
 Requires: vulkan
 Conflicts:
-Libs: -L${libdir} -lcorrosion -lm -lX11 -lXi -lvulkan -lGLESv2 -lGLX -lpthread
+Libs: -L${libdir} -lcorrosion -lm -lX11 -lXi -lvulkan -lGL -lGLX -lpthread
 Cflags: -I${includedir}
