@@ -19,6 +19,8 @@
 #ifndef cr_no_opengl
 typedef GLXContext (*create_context_func)
 	(Display*, GLXFBConfig, GLXContext, Bool, const int*);
+typedef i32 (*swap_interval_func)(Display* dpy, GLXDrawable drawable, i32 interval);
+swap_interval_func glx_swap_interval;
 #endif
 
 Display* display;
@@ -208,6 +210,11 @@ void window_create_gl_context() {
 		abort_with("Failed to find glXCreateContextAttribsARB.");
 	}
 
+	glx_swap_interval = (swap_interval_func)glXGetProcAddress("glXSwapIntervalEXT");
+	if (!glx_swap_interval) {
+		error("Cannot disable vsync, since glXSwapIntervalEXT was not found.");
+	}
+
 	i32 context_attribs[] = {
 		GLX_CONTEXT_MAJOR_VERSION_ARB, 3,
 		GLX_CONTEXT_MINOR_VERSION_ARB, 0,
@@ -235,6 +242,12 @@ void* window_get_gl_proc(const char* name) {
 
 void window_gl_swap() {
 	glXSwapBuffers(display, window.window);
+}
+
+void window_gl_set_swap_interval(i32 interval) {
+	if (glx_swap_interval) {
+		glx_swap_interval(display, window.window, interval);
+	}
 }
 
 #endif

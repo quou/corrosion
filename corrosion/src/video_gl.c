@@ -61,6 +61,12 @@ void video_gl_init(const struct video_config* config) {
 
 	gctx.default_fb = (void*)-1;
 	gctx.default_clear = config->clear_colour;
+
+	if (config->enable_vsync) {
+		window_gl_set_swap_interval(1);
+	} else {
+		window_gl_set_swap_interval(0);
+	}
 }
 
 void video_gl_deinit() {
