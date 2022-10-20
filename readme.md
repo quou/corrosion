@@ -27,12 +27,38 @@ make config=debug run_sbox
 ```
 
 ### Windows
-The Windows platform layer is still work in progress, so some things don't work properly
-or aren't implemented at all. Only Vulkan is supported on Windows for now.
+I develop this framework primarily on GNU/Linux, so the Windows platform might be out of date
+sometimes.
 
 #### Visual Studio
 Open `corrosion.sln` in the `projects/vs2022` directory in Visual Studio 2022, right click
 the solution in the Solution Explorer and click "Build Solution".
+
+## Installation
+After building, you can optionally install Corrosion to your system to make it easier to use
+from projects. On Linux, you can do this by running the "install" target. On Windows, you can
+build the "install" Visual Studio project that is part of the solution. On Linux, you must run
+as root and on Windows as an administrator. It is recommended to be in release mode when you
+build the install target on both platforms.
+
+On Linux, this will create a pkg-config, copy the header files to `/usr/include/corrosion`, copy
+the static library to `/usr/lib64` and copy the shader compiler executable to `/usr/bin` with the
+name `cshc`.
+
+On Windows, this will copy the header files to `C:\Program Files\corrosion\include`, copy the static
+library to `C:\Program Files\corrosion\lib` and copy the shader compiler executable to
+`C:\Program Files\corrosion\bin` with the name `cshc.exe`.
+It will also set the following environment variables:
+
+| Name                | Target                              |
+|---------------------|-------------------------------------|
+| CORROSION_SDK       | C:\Program Files\corrosion\         |
+| CORROSION_DEPS      | vulkan-1.lib;opengl32.lib;winmm.lib |
+| CORROSION_DEP_PATHS | %VULKAN_SDK%\Lib                    |
+| PATH                | C:\Program Files\corrosion\bin      |
+
+After installation on Windows, you'll want to restart your shell so that you can use the environment
+variables.
 
 ## Demos
 <figure>
