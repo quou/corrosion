@@ -29,6 +29,12 @@ void warning(const char* fmt, ...) {
 	va_end(args);
 }
 
+/* Some Windows consoles don't support ANSI escape codes, so we use the WIN32 API
+ * instead to colour the console output.
+ *
+ * Most terminal emulators on Linux do, however, so we don't bother checking if
+ * it does. */
+
 void vinfo(const char* fmt, va_list args) {
 #ifdef _WIN32
 		HANDLE console = GetStdHandle(STD_OUTPUT_HANDLE);
@@ -69,4 +75,19 @@ void vwarning(const char* fmt, va_list args) {
 		vprintf(fmt, args);
 		printf("\n");
 
+}
+
+void abort_with(const char* fmt, ...) {
+	va_list args;
+	va_start(args, fmt);
+	verror(fmt, args);
+	va_end(args);
+
+	abort();
+}
+
+void vabort_with(const char* fmt, va_list args) {
+	verror(fmt, args);
+
+	abort();
 }

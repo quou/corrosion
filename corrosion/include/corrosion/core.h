@@ -20,11 +20,8 @@ void vinfo(const char* fmt, va_list args);
 void verror(const char* fmt, va_list args);
 void vwarning(const char* fmt, va_list args);
 
-#define abort_with(fmt_, ...) \
-	do { \
-		error(fmt_, ##__VA_ARGS__); \
-		abort(); \
-	} while (0)
+void abort_with(const char* fmt, ...);
+void vabort_with(const char* fmt, va_list args);
 
 #define cat2(x, y) x ## y
 #define cat(x, y) cat2(x, y)
