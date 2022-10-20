@@ -838,7 +838,7 @@ static void validated_set_scissor(v4i rect) {
 static const char* impl_get_api_name() {
 	return
 		video.api == video_api_vulkan ? "Vulkan" :
-		video.api == video_api_opengl ? "OpenGL ES" :
+		video.api == video_api_opengl ? "OpenGL" :
 		"<Unkown API>";
 }
 
