@@ -406,10 +406,10 @@ force_inline quat euler(v3f a) {
 
 #define m4f_screenspace(hw_, hh_) \
 	((m4f) {{ \
-		{ hw_,  0.0f,   0.0f, hw_  }, \
-		{ 0.0f, -(hh_), 0.0f, hh_  }, \
+		{ hw_,  0.0f,   0.0f, 0.0f }, \
+		{ 0.0f, -(hh_), 0.0f, 0.0f }, \
 		{ 0.0f, 0.0f,   1.0f, 0.0f }, \
-		{ 0.0f, 0.0f,   0.0f, 1.0f }, \
+		{ hw_,  hh_,    0.0f, 1.0f }, \
 	}})
 
 force_inline m4f m4f_mul(m4f a, m4f b) {
