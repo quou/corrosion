@@ -15,6 +15,12 @@
 #include "window.h"
 #include "window_internal.h"
 
+#ifndef cr_no_opengl
+typedef void (*swap_interval_func)(i32 interval);
+
+swap_interval_func wgl_swap_interval;
+#endif
+
 static LRESULT CALLBACK win32_event_callback(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
 	switch (msg) {
 		case WM_CLOSE:
@@ -364,28 +370,59 @@ VkSurfaceKHR get_window_vk_surface() {
 #endif
 
 void window_create_gl_context() {
-	abort_with("Not implemented.");
+	/* TODO: Create a modern context instead of a legacy one. */
+
+	window.device_context = GetDC(window.hwnd);
+
+	PIXELFORMATDESCRIPTOR pfd = { 0 };
+	pfd.nVersion = 1;
+	pfd.nSize = sizeof(PIXELFORMATDESCRIPTOR);
+	pfd.dwFlags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER;
+	pfd.iPixelType = PFD_TYPE_RGBA;
+	pfd.cColorBits = 32;
+	pfd.cDepthBits = 24;
+	pfd.cStencilBits = 8;
+	pfd.iLayerType = PFD_MAIN_PLANE;
+
+	i32 pf;
+	if (!(pf = ChoosePixelFormat(window.device_context, &pfd))) {
+		abort_with("Error choosing pixel format.\n");
+		return 0;
+	}
+	SetPixelFormat(window.device_context, pf, &pfd);
+
+	if (!(window.render_context = wglCreateContext(window.device_context))) {
+		abort_with("Failed to create OpenGL context.\n");
+		return 0;
+	}
+
+	wglMakeCurrent(window.device_context, window.render_context);
+
+	wgl_swap_interval = (swap_interval_func)wglGetProcAddress("wglSwapIntervalEXT");
+	if (!wgl_swap_interval) {
+		error("Failed to find the wglSwapIntervalEXT. The state of VSync thus cannot be changed.");
+	}
 }
 
 void window_destroy_gl_context() {
-	abort_with("Not implemented.");
+	wglDeleteContext(window.render_context);
 }
 
 void* window_get_gl_proc(const char* name) {
-	abort_with("Not implemented.");
-	return null;
+	return wglGetProcAddress(name);
 }
 
 void window_gl_swap() {
-	abort_with("Not implemented.");
+	SwapBuffers(window.device_context);
 }
 
 void window_gl_set_swap_interval(i32 interval) {
-	abort_with("Not implemented.");
+	wgl_swap_interval(interval);
 }
 
 bool is_opengl_supported() {
-	return false;
+	/* TODO */
+	return true;
 }
 
 void deinit_window() {

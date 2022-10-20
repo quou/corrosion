@@ -34,6 +34,9 @@ struct window {
 #if defined(_WIN32)
 	HWND hwnd;
 
+	HDC device_context;
+	HGLRC render_context;
+
 	table(i32, u32) keymap;
 #elif defined(__linux__) || defined(__FreeBSD__)
 	Window window;
