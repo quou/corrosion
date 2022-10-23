@@ -26,7 +26,7 @@ u64 hash_string(const char* str) {
 
 void* _find_table_el(void* els_v, usize el_size, usize capacity, usize key_size, const void* key_ptr,
 	usize key_off, usize val_off, usize state_off, usize* ind) {
-	u64 nk = table_null_key;
+	_make_null_table_key_s(key_size, nk);
 
 	usize idx = elf_hash(key_ptr, key_size) % capacity;
 
@@ -38,7 +38,7 @@ void* _find_table_el(void* els_v, usize el_size, usize capacity, usize key_size,
 
 	for (;;) {
 		u8* el = els + idx * el_size;
-		if (memcmp(el + key_off, &nk, key_size) == 0) {
+		if (memcmp(el + key_off, nk, key_size) == 0) {
 			if (*(el + state_off) != table_el_state_inactive) {
 				if (ind) { *ind = idx; }
 				return tombstone != null ? tombstone : el;
@@ -58,10 +58,10 @@ void* _table_get(void* els, usize el_size, usize capacity, usize count, usize ke
 	usize key_off, usize val_off, usize state_off) {
 	if (count == 0) { return null; }
 	
-	u64 nk = table_null_key;
+	_make_null_table_key_s(key_size, nk);
 
 	u8* el = _find_table_el(els, el_size, capacity, key_size, key, key_off, val_off, state_off, null);
-	if (memcmp(el + key_off, &nk, key_size) == 0) {
+	if (memcmp(el + key_off, nk, key_size) == 0) {
 		return null;
 	}
 
@@ -72,11 +72,11 @@ void* _table_first_key(void* els, usize el_size, usize capacity, usize count, us
 	usize key_off, usize val_off, usize state_off) {
 	if (count == 0) { return null; }
 
-	u64 nk = table_null_key;
+	_make_null_table_key_s(key_size, nk);
 
 	for (usize i = 0; i < capacity; i++) {
 		u8* el = (u8*)els + i * el_size;
-		if (memcmp(el + key_off, &nk, key_size) != 0) {
+		if (memcmp(el + key_off, nk, key_size) != 0) {
 			return el + key_off;
 		}
 	}
@@ -88,12 +88,12 @@ void* _table_next_key(void* els, usize el_size, usize capacity, usize count, usi
 	usize key_off, usize val_off, usize state_off) {
 	if (count == 0) { return null; }
 
-	u64 nk = table_null_key;
+	_make_null_table_key_s(key_size, nk);
 
 	usize idx = 0;
 
 	u8* el = _find_table_el(els, el_size, capacity, key_size, key, key_off, val_off, state_off, &idx);
-	if (memcmp(el + key_off, &nk, key_size) == 0) {
+	if (memcmp(el + key_off, nk, key_size) == 0) {
 		return null;
 	}
 
@@ -103,7 +103,7 @@ void* _table_next_key(void* els, usize el_size, usize capacity, usize count, usi
 
 	for (usize i = idx + 1; i < capacity; i++) {
 		el = (u8*)els + i * el_size;
-		if (memcmp(el + key_off, &nk, key_size) != 0) {
+		if (memcmp(el + key_off, nk, key_size) != 0) {
 			return el + key_off;
 		}
 	}

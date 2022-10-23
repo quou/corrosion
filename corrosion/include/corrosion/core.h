@@ -120,7 +120,6 @@ void debug_leak_check();
  * free_table(test_table);
  */
 
-#define table_null_key UINT64_MAX
 #define table_load_factor 0.65
 
 #ifndef table_malloc
@@ -158,9 +157,25 @@ void* _table_first_key(void* els, usize el_size, usize capacity, usize count, us
 void* _table_next_key(void* els, usize el_size, usize capacity, usize count, usize key_size, const void* key,
 	usize key_off, usize val_off, usize state_off);
 
+/* Not wrapped in a do/while intentionally because nk_ needs to be
+ * in the scope where this macro is expanded. Don't wrap it! Also
+ * make sure it doesn't get put in a statement without parentheses.
+ */
+#define _make_null_table_key(t_, n_) \
+	char n_[sizeof((t_).k)]; \
+	for (usize i = 0; i < sizeof n_; i++) { \
+		n_[i] = 0xff; \
+	}
+
+#define _make_null_table_key_s(s_, n_) \
+	char n_[s_]; \
+	for (usize i = 0; i < sizeof n_; i++) { \
+		n_[i] = 0xff; \
+	}
+
 #define _table_resize(t_, cap_) \
 	do { \
-		u64 nk_ = table_null_key; \
+		_make_null_table_key(t_, nk_); \
 		u8* els_ = table_malloc((cap_) * sizeof (t_).e); \
 		for (usize i = 0; i < (cap_); i++) { \
 			memcpy(&els_[i * sizeof (t_).e + voffsetof((t_).e, key)], &nk_, sizeof (t_).k); \
@@ -210,7 +225,7 @@ void* _table_next_key(void* els, usize el_size, usize capacity, usize count, usi
 			_table_resize((t_), new_cap_); \
 		} \
 		(t_).k = (k_); \
-		u64 nk_ = table_null_key; \
+		_make_null_table_key(t_, nk_); \
 		u8* el_ = _find_table_el((t_).entries, sizeof *(t_).entries, (t_).capacity, sizeof (t_).k, \
 			&(t_).k,\
 			voffsetof((t_).e, key), voffsetof((t_).e, value), voffsetof((t_).e, state), null); \
@@ -235,7 +250,7 @@ void* _table_next_key(void* els, usize el_size, usize capacity, usize count, usi
 			u8* el_ = _find_table_el((t_).entries, sizeof *(t_).entries, (t_).capacity, sizeof (t_).k, \
 				&(t_).k,\
 				voffsetof((t_).e, key), voffsetof((t_).e, value), voffsetof((t_).e, state), null); \
-			u64 nk_ = table_null_key; \
+			_make_null_table_key(t_, nk_); \
 			memcpy(el_ + voffsetof((t_).e, key), &nk_, sizeof (t_).k); \
 			*(el_ + voffsetof((t_).e, state)) = table_el_state_inactive; \
 			(t_).count--; \
