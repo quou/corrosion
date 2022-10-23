@@ -17,7 +17,7 @@ C graphics framework for GNU/Linux and Windows.
 	 - X11 (Wayland might be supported in the future as well, but don't count on it).
 
 If you don't have or don't want the first three prerequisites, you can compile with `cr_no_vulkan`
-to compile with only the OpenGL backend, but most of the demos require Vulkan-only features.
+defined to compile with only the OpenGL backend, but most of the demos require Vulkan-only features.
 
 ### GNU/Linux
 From the `projects/gmake` directory, run:
