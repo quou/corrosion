@@ -266,7 +266,7 @@ static void destroy_debug_utils_messenger_ext(VkInstance instance, VkDebugUtilsM
 	const VkAllocationCallbacks* allocator) {
 
 	PFN_vkDestroyDebugUtilsMessengerEXT f =
-		(PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
+		(PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "	");
 	
 	if (f) {
 		f(instance, messenger, allocator);
@@ -376,6 +376,7 @@ static VkPhysicalDevice find_suitable_device() {
 	core_free(devices);
 
 	vctx.min_uniform_buffer_offset_alignment = score.props.limits.minUniformBufferOffsetAlignment;
+	vctx.qfs = get_queue_families(score.device);
 	info("Selected device: %s.", score.props.deviceName);
 	return score.device;
 }
