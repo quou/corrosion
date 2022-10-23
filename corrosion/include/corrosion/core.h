@@ -4,6 +4,12 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifdef _WIN32
+#include <malloc.h>
+#else
+#include <alloca.h>
+#endif
+
 #include "common.h"
 
 extern u32 table_lookup_count;
@@ -167,11 +173,19 @@ void* _table_next_key(void* els, usize el_size, usize capacity, usize count, usi
 		n_[i] = 0xff; \
 	}
 
+#ifdef _WIN32
 #define _make_null_table_key_s(s_, n_) \
-	char n_[s_]; \
+	char* n_ = _malloca(s_); \
 	for (usize i = 0; i < sizeof n_; i++) { \
 		n_[i] = 0xff; \
 	}
+#else
+#define _make_null_table_key_s(s_, n_) \
+	char* n_ = alloca(s_); \
+	for (usize i = 0; i < sizeof n_; i++) { \
+		n_[i] = 0xff; \
+	}
+#endif
 
 #define _table_resize(t_, cap_) \
 	do { \

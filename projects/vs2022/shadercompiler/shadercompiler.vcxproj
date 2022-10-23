@@ -139,7 +139,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>debug;_CRT_SECURE_NO_WARNINGS</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir)..\..\corrosion\include;$(SolutionDir)..\..\corrosion\include\corrosion;$(VULKAN_SDK)\Include;$(SPIRV_CROSS)\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)..\..\corrosion\include;$(SolutionDir)..\..\corrosion\include\corrosion;$(VULKAN_SDK)\Include</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
     </ClCompile>
     <Link>

@@ -480,7 +480,7 @@ struct app_config cr_config() {
 	return (struct app_config) {
 		.name = "Sandbox",
 		.video_config = (struct video_config) {
-			.api = video_api_opengl,
+			.api = video_api_vulkan,
 #ifdef debug
 			.enable_validation = true,
 #else
