@@ -156,6 +156,13 @@ void init_window(const struct window_config* config, u32 api) {
 	table_set(window.keymap, XK_9, key_9);
 }
 
+i32 get_preferred_gpu_idx() {
+	char* dri_prime_str = getenv("DRI_PRIME");
+	if (!dri_prime_str) { return -1; }
+
+	return atoi(dri_prime_str);
+}
+
 #ifndef cr_no_vulkan
 void window_create_vk_surface(VkInstance instance) {
 	if (vkCreateXlibSurfaceKHR(instance, &(VkXlibSurfaceCreateInfoKHR){

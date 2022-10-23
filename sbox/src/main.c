@@ -1,4 +1,3 @@
-//#if 0
 
 #include <stdio.h>
 
@@ -6,6 +5,7 @@
 
 #include <corrosion/cr.h>
 
+#if 0
 struct {
 	struct texture* texturea;
 	struct texture* textureb;
@@ -441,9 +441,9 @@ void cr_deinit() {
 	ui_deinit();
 }
 
-//#endif
+#endif
 
-#if 0
+//#if 0
 struct vertex {
 	v2f position;
 	v2f uv;
@@ -793,6 +793,8 @@ void cr_deinit() {
 	free_ui(app.ui);
 	ui_deinit();
 }
+
+#if 0
 
 #include <iostream>
 

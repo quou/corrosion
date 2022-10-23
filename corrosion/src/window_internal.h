@@ -77,6 +77,11 @@ struct window {
 	vector(window_event_handler_t) event_handlers[window_event_count];
 };
 
+/* Returns the preferred GPU index. Returns
+ * a negative value on failure or none
+ * specified. */
+i32 get_preferred_gpu_idx();
+
 #ifndef cr_no_vulkan
 void window_create_vk_surface(VkInstance instance);
 void window_destroy_vk_surface(VkInstance instance);

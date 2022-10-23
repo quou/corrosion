@@ -344,6 +344,10 @@ void init_window(const struct window_config* config, u32 api) {
 	window.open = true;
 }
 
+u32 get_preferred_gpu_idx() {
+	return -1;
+}
+
 #ifndef cr_no_vulkan
 void window_create_vk_surface(VkInstance instance) {
 	if (vkCreateWin32SurfaceKHR(instance, &(VkWin32SurfaceCreateInfoKHR) {

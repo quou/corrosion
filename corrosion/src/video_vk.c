@@ -293,7 +293,20 @@ static VKAPI_ATTR VkBool32 debug_callback(VkDebugUtilsMessageSeverityFlagBitsEXT
 	return false;
 }
 
-static VkPhysicalDevice first_suitable_device() {
+struct pdevice_score {
+	VkPhysicalDevice device;
+	VkPhysicalDeviceProperties props;
+	i32 score;
+};
+
+static i32 cmp_scores(const void* a, const void* b) {
+	return ((struct pdevice_score*)a)->score < ((struct pdevice_score*)b)->score;
+}
+
+/* Iterates devices and gives them a score based on whether they are
+ * preferred by get_preferred_gpu_idx, whether they are dedicated
+ * or integrated, etc. */
+static VkPhysicalDevice find_suitable_device() {
 	/* Choose the physical device. */
 	u32 device_count = 0;
 	vkEnumeratePhysicalDevices(vctx.instance, &device_count, null);
@@ -305,7 +318,13 @@ static VkPhysicalDevice first_suitable_device() {
 	VkPhysicalDevice* devices = core_alloc(sizeof(VkPhysicalDevice) * device_count);
 	vkEnumeratePhysicalDevices(vctx.instance, &device_count, devices);
 
+	i32 preferred = get_preferred_gpu_idx();
+
+	vector(struct pdevice_score) scores = null;
+
 	for (u32 i = 0; i < device_count; i++) {
+		i32 score = 0;
+
 		VkPhysicalDevice device = devices[i];
 
 		vctx.qfs = get_queue_families(device);
@@ -323,21 +342,42 @@ static VkPhysicalDevice first_suitable_device() {
 			deinit_swapchain_capabilities(&scc);
 		}
 
-		if (
-			(props.deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU ||
-			 props.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) &&
-			 extensions_good && swapchain_good &&
-			 vctx.qfs.graphics_compute >= 0 && vctx.qfs.present >= 0) {
-			info("Selected device: %s.", props.deviceName);
-			vctx.min_uniform_buffer_offset_alignment = props.limits.minUniformBufferOffsetAlignment;
-			core_free(devices);
-			return device;
+		if (extensions_good && swapchain_good && vctx.qfs.graphics_compute >= 0 && vctx.qfs.present >= 0) {
+			score++;
+
+			if (props.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
+				score++;
+			}
+
+			if ((i32)i == preferred) {
+				score += 2;
+			}
+
+			vector_push(scores, ((struct pdevice_score) {
+				.device = device,
+				.props = props,
+				.score = score
+			}));
 		}
 	}
 
+	if (!vector_count(scores)) {
+		core_free(devices);
+		free_vector(scores);
+		return VK_NULL_HANDLE;
+	}
+
+	/* Sort the devices based on score and take the one with the highest. */
+	qsort(scores, vector_count(scores), sizeof *scores, cmp_scores);
+
+	struct pdevice_score score = scores[0];
+
+	free_vector(scores);
 	core_free(devices);
 
-	return VK_NULL_HANDLE;
+	vctx.min_uniform_buffer_offset_alignment = score.props.limits.minUniformBufferOffsetAlignment;
+	info("Selected device: %s.", score.props.deviceName);
+	return score.device;
 }
 
 static usize pad_ub_size(usize size) {
@@ -579,7 +619,7 @@ no_validation:
 		}
 	}
 
-	vctx.pdevice = first_suitable_device();
+	vctx.pdevice = find_suitable_device();
 	if (vctx.pdevice == VK_NULL_HANDLE) {
 		error("Vulkan-capable hardware exists, but it does not support the necessary features.");
 		abort_with("Failed to find a suitable graphics device.");
