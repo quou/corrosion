@@ -266,7 +266,7 @@ static void destroy_debug_utils_messenger_ext(VkInstance instance, VkDebugUtilsM
 	const VkAllocationCallbacks* allocator) {
 
 	PFN_vkDestroyDebugUtilsMessengerEXT f =
-		(PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "	");
+		(PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
 	
 	if (f) {
 		f(instance, messenger, allocator);
@@ -275,6 +275,18 @@ static void destroy_debug_utils_messenger_ext(VkInstance instance, VkDebugUtilsM
 
 static VKAPI_ATTR VkBool32 debug_callback(VkDebugUtilsMessageSeverityFlagBitsEXT severity,
 	VkDebugUtilsMessageTypeFlagsEXT type, const VkDebugUtilsMessengerCallbackDataEXT* data, void* udata) {
+
+	/* This ignores some errors related to dynamic rendering that I think are a bug
+	 * in the validation layers. If they aren't then I have no idea how to fix them :p
+	 *
+	 * I think it's a bug because it doesn't happen in an older version of the SDK and there
+	 * are no visual bugs on all of the GPUs that I have tested (Intel UHD 620, AMD Radeon 570
+	 * and NVIDIA 3080). The Radeon and Intel one were tested with both the official Windows
+	 * drivers and the Mesa Linux drivers. The 3080 was tested with only the official Windows
+	 * driver. */
+	/*if (data->messageIdNumber == 0x11b37e31 ||
+		data->messageIdNumber == 0xd6d77e1e ||
+		data->messageIdNumber == 0x6c16bfb4) { return false; }*/
 
 	if (severity > VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT) {
 		switch (severity) {
