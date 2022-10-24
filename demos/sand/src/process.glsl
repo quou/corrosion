@@ -28,7 +28,7 @@ float map(float v, float min1, float max1, float min2, float max2) {
 }
 
 void update_sand(ivec2 coords, uint idx) {
-	groupMemoryBarrier();
+	memoryBarrier();
 
 	ivec2 bottom_coords = ivec2(coords.x, coords.y + 1);
 	ivec2 bottom_left_coords = ivec2(coords.x - 1, coords.y + 1);
@@ -62,7 +62,7 @@ void update_sand(ivec2 coords, uint idx) {
 }
 
 void update_rock(ivec2 coords, uint idx) {
-	groupMemoryBarrier();
+	memoryBarrier();
 
 	ivec2 bottom_coords = ivec2(coords.x, coords.y + 1);
 
