@@ -168,21 +168,21 @@ void* _table_next_key(void* els, usize el_size, usize capacity, usize count, usi
  * make sure it doesn't get put in a statement without parentheses.
  */
 #define _make_null_table_key(t_, n_) \
-	char n_[sizeof((t_).k)]; \
+	u8 n_[sizeof((t_).k)]; \
 	for (usize i = 0; i < sizeof n_; i++) { \
 		n_[i] = 0xff; \
 	}
 
 #ifdef _WIN32
 #define _make_null_table_key_s(s_, n_) \
-	char* n_ = _malloca(s_); \
-	for (usize i = 0; i < sizeof n_; i++) { \
+	u8* n_ = _alloca(s_); \
+	for (usize i = 0; i < s_; i++) { \
 		n_[i] = 0xff; \
 	}
 #else
 #define _make_null_table_key_s(s_, n_) \
-	char* n_ = alloca(s_); \
-	for (usize i = 0; i < sizeof n_; i++) { \
+	u8* n_ = alloca(s_); \
+	for (usize i = 0; i < s_; i++) { \
 		n_[i] = 0xff; \
 	}
 #endif
