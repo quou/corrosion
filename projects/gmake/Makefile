@@ -133,6 +133,13 @@ debug_volume: volume
 memcheck_volume: volume
 	$(silent) make --no-print-directory -C demos/volume memcheck
 
+emscripten: corrosion sbox
+	$(silent) make --no-print-directory -C corrosion emscripten
+	$(silent) make --no-print-directory -C sbox emscripten
+
+em_run_sbox: emscripten
+	$(silent) emrun sbox/bin/debug/emscripten/sbox.html
+
 clean:
 	$(silent) make --no-print-directory -C corrosion clean
 	$(silent) make --no-print-directory -C shadercompiler clean
@@ -156,5 +163,5 @@ install: shadercompiler corrosion
 	install -m 777 ./shadercompiler/bin/$(config)/shadercompiler $(installbindir)/cshc
 	install ./../../corrosion/include/corrosion/* $(installheaderdir)
 	install ./corrosion/bin/$(config)/libcr.a $(installlibdir)/libcorrosion.a
-	install ./corrosion/bin/emscripten/libcr.a $(installlibdir)/libcorrosion_ems.a
+	install ./corrosion/bin/emscripten/libcr.bc $(installlibdir)/libcorrosion.bc
 	install ./corrosion.pc $(installlibdir)/pkgconfig/corrosion.pc

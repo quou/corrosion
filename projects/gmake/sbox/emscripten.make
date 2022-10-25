@@ -15,6 +15,7 @@ target_name = sbox
 defines = -Dcr_no_vulkan
 libs = ../corrosion/bin/$(config)/emscripten/libcr.bc
 deps = 
+opts = -pthread
 srcdir = ../../../sbox/src
 cstd = -std=c11
 cxxstd = -std=c++20
@@ -24,8 +25,8 @@ ifeq ($(config),debug)
   target = $(targetdir)/$(target_name).html
   lflags = -mwasm64 -g
   defines += -Ddebug
-  cflags = -MMD -MP -g $(cstd) $(includes) $(defines)
-  cxxflags = -MMD -MP -g $(cxxstd) $(includes) $(defines)
+  cflags = -MMD -MP -g $(cstd) $(includes) $(defines) $(opts)
+  cxxflags = -MMD -MP -g $(cxxstd) $(includes) $(defines) $(opts)
   objdir = obj
 endif
 
@@ -34,8 +35,8 @@ ifeq ($(config),release)
   target = $(targetdir)/$(target_name).html
   lflags = -mwasm64 -s
   defined += -Dndebug
-  cflags = -MMD -MP -O2 $(cstd) $(includes) $(defines)
-  cxxflags = -MMD -MP -O2 $(cxxstd) $(includes) $(defines)
+  cflags = -MMD -MP -O2 $(cstd) $(includes) $(defines) $(opts)
+  cxxflags = -MMD -MP -O2 $(cxxstd) $(includes) $(defines) $(opts)
   objdir = obj/release
 endif
 

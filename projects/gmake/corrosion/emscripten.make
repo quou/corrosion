@@ -13,18 +13,18 @@ cxx = em++
 includes = -I../../../corrosion/include/corrosion -I../../../corrosion/src
 targetname = cr
 defines = -Dcr_no_vulkan
-libs = 
+opts = -pthread
 deps = 
 srcdir = ../../../corrosion/src
-cstd = -std=c11
+cstd = -std=gnu11
 cxxstd = -std=c++20
 
 ifeq ($(config),debug)
   targetdir = bin/debug/emscripten
   target = $(targetdir)/lib$(targetname).bc
   defines += -Ddebug
-  cflags = -MMD -MP  -g $(cstd) $(includes) $(defines)
-  cxxflags = -MMD -MP -g $(cxxstd) $(includes) $(defines)
+  cflags = -MMD -MP  -g $(cstd) $(includes) $(defines) $(opts)
+  cxxflags = -MMD -MP -g $(cxxstd) $(includes) $(defines) $(opts)
   objdir = obj
 endif
 
@@ -32,8 +32,8 @@ ifeq ($(config),release)
   targetdir = bin/release
   target = $(targetdir)/lib$(targetname).bc
   defined += -Dndebug
-  cflags = -MMD -MP -O2 $(cstd) $(includes) $(defines)
-  cxxflags = -MMD -MP -O2 $(cxxstd) $(includes) $(defines)
+  cflags = -MMD -MP -O2 $(cstd) $(includes) $(defines) $(opts)
+  cxxflags = -MMD -MP -O2 $(cxxstd) $(includes) $(defines) $(opts)
   objdir = obj/release
 endif
 
@@ -54,8 +54,8 @@ sources =                               \
           $(srcdir)/res_emscripten.c    \
           $(srcdir)/simplerenderer.c    \
           $(srcdir)/stb.c               \
-          $(srcdir)/thread_emscripten.c \
-          $(srcdir)/timer_emscripten.c  \
+          $(srcdir)/thread_posix.c      \
+          $(srcdir)/timer_posix.c       \
           $(srcdir)/ui.c                \
           $(srcdir)/ui_render.c         \
           $(srcdir)/video.c             \
