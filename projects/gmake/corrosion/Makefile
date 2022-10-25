@@ -6,7 +6,7 @@ ifndef verbose
   silent = @
 endif
 
-.PHONY: all clean
+.PHONY: all clean emscripten
 
 cc = gcc
 cxx = g++
@@ -38,15 +38,19 @@ sources =                            \
           $(srcdir)/log.c            \
           $(srcdir)/render_util.c    \
           $(srcdir)/res.c            \
+          $(srcdir)/res_posix.c      \
           $(srcdir)/simplerenderer.c \
           $(srcdir)/stb.c            \
+          $(srcdir)/thread_posix.c   \
+          $(srcdir)/timer_posix.c    \
           $(srcdir)/ui.c             \
           $(srcdir)/ui_render.c      \
           $(srcdir)/video.c          \
           $(srcdir)/video_common.c   \
-          $(srcdir)/video_vk.c       \
           $(srcdir)/video_gl.c       \
+          $(srcdir)/video_vk.c       \
           $(srcdir)/window_common.c  \
+          $(srcdir)/window_x11.c     \
 
 sourcespp = \
 	$(srcdir)/vma.cpp       \
@@ -67,24 +71,6 @@ ifeq ($(config),release)
   cflags += -MMD -MP -m64 -O2 $(includes) $(defines)
   cppflags += -MMD -MP -m64 -O2 $(includes) $(defines)
   objdir = obj/release
-endif
-
-ifeq ($(config),emscripten)
-  target_dir = bin/emscripten
-  target = $(target_dir)/lib$(target_name).a
-  defines += -Dndebug -Dcr_no_vulkan
-  cflags +=
-  cppflags +=
-  objdir = obj/emscripten
-  sources += $(srcdir)/window_emscripten.c \
-      $(srcdir)/timer_emscripten.c         \
-      $(srcdir)/thread_emscripten.c        \
-      $(srcdir)/res_emscripten.c
-else
-  sources += $(srcdir)/window_x11.c \
-      $(srcdir)/timer_posix.c       \
-      $(srcdir)/thread_posix.c      \
-      $(srcdir)/res_posix.c
 endif
 
 all: $(target)
@@ -138,6 +124,9 @@ $(objdir):
 
 $(deps):
 	$(silent) make --no-print-directory -C "$@" -f Makefile config=$(config)
+
+emscripten: $(target)
+	$(silent) make --no-print-directory -f emscripten.make config=$(config)
 
 clean:
 	$(silent) rm -rf obj

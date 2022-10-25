@@ -91,6 +91,9 @@ $(shader_targetdir):
 $(objdir):
 	$(silent) mkdir -p $(objdir)
 
+emscripten: $(target)
+	$(silent) make -f emscripten.make
+
 clean:
 	$(silent) rm -rf obj
 	$(silent) rm -rf bin
