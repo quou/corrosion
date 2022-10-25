@@ -234,7 +234,7 @@ loop_end:
 static void compile_for_opengl(spirv_cross::CompilerGLSL& compiler) {
 	spirv_cross::CompilerGLSL::Options options;
 
-	options.version = 320;
+	options.version = 300;
 	options.es = true;
 
 	compiler.set_common_options(options);

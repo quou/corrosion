@@ -1,7 +1,13 @@
 #ifndef cr_no_opengl
 
+#if defined(__EMSCRIPTEN__)
+#include <GLES2/gl2.h>
+#include <GLES3/gl3.h>
+#include <GLES2/gl2ext.h>
+#else
 #define GLAD_GL_IMPLEMENTATION
 #include "gl33.h"
+#endif
 
 #include "bir.h"
 #include "video_gl.h"
@@ -51,9 +57,11 @@ void video_gl_init(const struct video_config* config) {
 
 	window_create_gl_context();
 
+#ifndef __EMSCRIPTEN__
 	if (!gladLoadGL((GLADloadfunc)window_get_gl_proc)) {
 		abort_with("Failed to load OpenGL functions.");
 	}
+#endif
 
 	info("GL_VENDOR: \t%s.", glGetString(GL_VENDOR));
 	info("GL_RENDERER: \t%s.", glGetString(GL_RENDERER));
@@ -971,7 +979,7 @@ void video_gl_texture_copy(struct texture* dst_, v2i dst_offset, const struct te
 
 	src_offset.y = src->size.y - (src_offset.y + dimensions.y);
 
-	u32 old_fb, old_texture;
+	i32 old_fb, old_texture;
 	check_gl(glGetIntegerv(GL_FRAMEBUFFER_BINDING, &old_fb));
 	check_gl(glGetIntegerv(GL_TEXTURE_BINDING_2D, &old_texture));
 

@@ -19,6 +19,11 @@ extern struct window window;
 #include <X11/X.h>
 #include <X11/Xlib.h>
 
+#elif defined(__EMSCRIPTEN__)
+
+#include <emscripten/emscripten.h>
+#include <emscripten/html5.h>
+
 #endif
 
 struct window {
@@ -50,6 +55,13 @@ struct window {
 	table(KeySym, u32) keymap;
 
 	v2i last_mouse;
+
+#elif defined(__EMSCRIPTEN__)
+	const char* canvas_name;
+
+	EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context;
+
+	table(i32, u32) keymap;
 #endif
 
 #ifndef cr_no_vulkan

@@ -12,8 +12,8 @@ cc = emcc
 cxx = em++
 includes = -I../../../corrosion/include
 target_name = sbox
-defines = -Dcr_no_vulkan
-libs = ../corrosion/bin/$(config)/emscripten/libcr.bc
+defines = -Dcr_no_vulkan -Wno-unreachable-code-generic-assoc
+libs = ../corrosion/bin/$(config)/emscripten/libcr.bc -sMAX_WEBGL_VERSION=2
 deps = 
 opts = -pthread
 srcdir = ../../../sbox/src
