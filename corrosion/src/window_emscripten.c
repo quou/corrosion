@@ -8,6 +8,12 @@
 #include "window.h"
 #include "window_internal.h"
 
+extern void __cr_app_update();
+
+static void main_loop() {
+	__cr_app_update();
+}
+
 void init_window(const struct window_config* config, u32 api) {
 	memset(&window, 0, sizeof window);
 
@@ -23,6 +29,10 @@ void init_window(const struct window_config* config, u32 api) {
 	window.open = true;
 	window.resizable = false;
 	window.api = api;
+}
+
+void window_emscripten_run() {
+	emscripten_set_main_loop(main_loop, 0, true);
 }
 
 i32 get_preferred_gpu_idx() {

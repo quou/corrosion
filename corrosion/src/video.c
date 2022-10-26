@@ -942,6 +942,7 @@ void init_video(const struct video_config* config) {
 	video.api = config->api;
 
 	if (config->api != video_api_vulkan && config->api != video_api_opengl) {
+		info("%d", config->api);
 		abort_with("Invalid video API.");
 	}
 

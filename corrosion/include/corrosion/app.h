@@ -41,6 +41,33 @@ extern void cr_init();
 extern void cr_update(f64 ts);
 extern void cr_deinit();
 
+#ifdef __EMSCRIPTEN__
+extern void window_emscripten_run();
+#endif
+
+struct {
+	f64 ts;
+	u64 now, last;
+	bool r;
+} _impl__cr__app;
+
+void __cr_app_update() {
+	table_lookup_count = 0;
+	heap_allocation_count = 0;
+
+	update_events();
+
+	video.begin(true);
+	cr_update(_impl__cr__app.ts);
+	video.end(true);
+
+	_impl__cr__app.now = get_timer();
+	_impl__cr__app.ts = (f64)(_impl__cr__app.now - _impl__cr__app.last) / (f64)get_timer_frequency();
+	_impl__cr__app.last = _impl__cr__app.now;
+
+	_impl__cr__app.r = !want_reconfigure;
+}
+
 static bool run(i32 argc, const char** argv) {
 	alloc_init();
 
@@ -60,27 +87,19 @@ static bool run(i32 argc, const char** argv) {
 
 	cr_init();
 
-	u64 now = get_timer(), last = get_timer();
-	f64 ts = 0.0;
+	_impl__cr__app.now = get_timer();
+	_impl__cr__app.last = get_timer();
+	_impl__cr__app.ts = 0.0;
 
-	bool r = true;
+	_impl__cr__app.r = true;
 
-	while (window_open() && r) {
-		table_lookup_count = 0;
-		heap_allocation_count = 0;
-
-		update_events();
-
-		video.begin(true);
-		cr_update(ts);
-		video.end(true);
-
-		now = get_timer();
-		ts = (f64)(now - last) / (f64)get_timer_frequency();
-		last = now;
-
-		r = !want_reconfigure;
+#ifdef __EMSCRIPTEN__
+	window_emscripten_run();
+#else
+	while (window_open() && _impl__cr__app.r) {
+		__cr_app_update();
 	}
+#endif
 
 	cr_deinit();
 
@@ -95,7 +114,7 @@ static bool run(i32 argc, const char** argv) {
 
 	alloc_deinit();
 
-	return r;
+	return _impl__cr__app.r;
 }
 
 void reconfigure_app(struct app_config config) {
@@ -104,6 +123,7 @@ void reconfigure_app(struct app_config config) {
 }
 
 i32 main(i32 argc, const char** argv) {
+#ifndef __EMSCRIPTEN__
 	want_reconfigure = false;
 
 	current_config = cr_config();
@@ -111,6 +131,11 @@ i32 main(i32 argc, const char** argv) {
 	while (!run(argc, argv)) {
 		want_reconfigure = false;
 	}
+#else
+	current_config = cr_config();
+
+	run(argc, argv);
+#endif
 }
 
 

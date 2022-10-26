@@ -110,4 +110,8 @@ void window_gl_swap();
 void window_gl_set_swap_interval(i32 interval);
 #endif
 
+#ifdef __EMSCRIPTEN__
+void window_emscripten_run();
+#endif
+
 void dispatch_event(const struct window_event* event);

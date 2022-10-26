@@ -163,5 +163,5 @@ install: shadercompiler corrosion
 	install -m 777 ./shadercompiler/bin/$(config)/shadercompiler $(installbindir)/cshc
 	install ./../../corrosion/include/corrosion/* $(installheaderdir)
 	install ./corrosion/bin/$(config)/libcr.a $(installlibdir)/libcorrosion.a
-	install ./corrosion/bin/emscripten/libcr.bc $(installlibdir)/libcorrosion.bc
+	install ./corrosion/bin/$(config)/libcr.bc $(installlibdir)/libcorrosion.bc
 	install ./corrosion.pc $(installlibdir)/pkgconfig/corrosion.pc

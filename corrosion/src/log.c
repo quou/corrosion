@@ -33,14 +33,16 @@ void warning(const char* fmt, ...) {
  * instead to colour the console output.
  *
  * Most terminal emulators on Linux do, however, so we don't bother checking if
- * it does. */
+ * it does. We don't do coloured output on Emscripten. */
 
 void vinfo(const char* fmt, va_list args) {
-#ifdef _WIN32
+#if defined(_WIN32)
 		HANDLE console = GetStdHandle(STD_OUTPUT_HANDLE);
 		SetConsoleTextAttribute(console, FOREGROUND_GREEN);
 		printf("info ");
 		SetConsoleTextAttribute(console, FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE);
+#elif defined(__EMSCRIPTEN__)
+		printf("info: ");
 #else
 		printf("\033[31;32minfo \033[0m");
 #endif
@@ -50,11 +52,13 @@ void vinfo(const char* fmt, va_list args) {
 }
 
 void verror(const char* fmt, va_list args) {
-#ifdef _WIN32
+#if defined(_WIN32)
 		HANDLE console = GetStdHandle(STD_OUTPUT_HANDLE);
 		SetConsoleTextAttribute(console, FOREGROUND_RED);
 		printf("error ");
 		SetConsoleTextAttribute(console, FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE);
+#elif defined(__EMSCRIPTEN__)
+		printf("error: ");
 #else
 		printf("\033[31;31merror \033[0m");
 #endif
@@ -64,11 +68,13 @@ void verror(const char* fmt, va_list args) {
 }
 
 void vwarning(const char* fmt, va_list args) {
-#ifdef _WIN32
+#if defined(_WIN32)
 		HANDLE console = GetStdHandle(STD_OUTPUT_HANDLE);
 		SetConsoleTextAttribute(console, FOREGROUND_RED | FOREGROUND_BLUE);
 		printf("warning ");
 		SetConsoleTextAttribute(console, FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE);
+#elif defined(__EMSCRIPTEN__)
+		printf("warning: ");
 #else
 		printf("\033[31;35mwarning \033[0m");
 #endif
