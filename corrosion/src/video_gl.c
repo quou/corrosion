@@ -14,10 +14,14 @@
 #include "video_internal.h"
 #include "window_internal.h"
 
+#ifdef debug
 #define check_gl(x) \
 	clear_gl_errors(); \
 	x; \
 	gl_log(__LINE__, __FILE__)
+#else
+#define check_gl(x) x
+#endif
 
 static void clear_gl_errors() {
 	while (glGetError() != GL_NO_ERROR);
