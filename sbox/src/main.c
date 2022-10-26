@@ -451,8 +451,10 @@ struct vertex {
 
 struct {
 	struct pipeline* pipeline;
+	struct vertex_buffer* quad_vb;
+	struct index_buffer* quad_ib;
+
 	struct vertex_buffer* tri_vb;
-	struct index_buffer* tri_ib;
 
 	struct framebuffer* fb;
 	struct pipeline* invert_pip;
@@ -617,21 +619,15 @@ void cr_init() {
 					.attributes = (struct pipeline_attributes) {
 						.attributes = (struct pipeline_attribute[]) {
 							{
-								.name     = "position",
+								.name = "in_vertex",
 								.location = 0,
-								.offset   = 0,
-								.type     = pipeline_attribute_vec2
-							},
-							{
-								.name     = "uv",
-								.location = 1,
-								.offset   = sizeof(v2f),
-								.type     = pipeline_attribute_vec2
-							},
+								.offset = 0,
+								.type = pipeline_attribute_vec4
+							}
 						},
-						.count = 2
+						.count = 1
 					},
-					.stride = sizeof(v2f) * 2,
+					.stride = sizeof(v4f),
 					.rate = pipeline_attribute_rate_per_vertex,
 					.binding = 0
 				}
@@ -660,21 +656,20 @@ void cr_init() {
 		}
 	);
 
-	struct vertex verts[] = {
+	struct vertex quad_verts[] = {
 		{ { -1.0f,  1.0f }, { 0.0f, 0.0f } },
 		{ { -1.0f, -1.0f }, { 0.0f, 1.0f } },
 		{ {  1.0f, -1.0f }, { 1.0f, 1.0f } },
 		{ {  1.0f,  1.0f }, { 1.0f, 0.0f } }
 	};
 
-	u16 indices[] = {
+	u16 quad_indices[] = {
 		0, 1, 2,
 		0, 2, 3
 	};
 
-	app.tri_vb = video.new_vertex_buffer(verts, sizeof verts, vertex_buffer_flags_none);
-	app.tri_ib = video.new_index_buffer(indices, sizeof indices, index_buffer_flags_u16);
-
+	app.quad_vb = video.new_vertex_buffer(quad_verts, sizeof quad_verts, vertex_buffer_flags_none);
+	app.quad_ib = video.new_index_buffer(quad_indices, sizeof quad_indices, index_buffer_flags_u16);
 
 	app.ui = new_ui(app.fb);
 }
@@ -767,8 +762,8 @@ void cr_update(f64 ts) {
 				video.bind_pipeline_descriptor_set(app.pipeline, "fubdata", 1);
 			}
 
-			video.bind_vertex_buffer(app.tri_vb, 0);
-			video.bind_index_buffer(app.tri_ib);
+			video.bind_vertex_buffer(app.quad_vb, 0);
+			video.bind_index_buffer(app.quad_ib);
 			video.draw_indexed(6, 0, 1);
 		video.end_pipeline(app.pipeline);
 
@@ -778,10 +773,8 @@ void cr_update(f64 ts) {
 
 	video.begin_framebuffer(video.get_default_fb());
 		video.begin_pipeline(app.invert_pip);
-			video.bind_vertex_buffer(app.tri_vb, 0);
-			video.bind_index_buffer(app.tri_ib);
 			video.bind_pipeline_descriptor_set(app.invert_pip, "primary", 0);
-			video.draw_indexed(6, 0, 1);
+			video.draw(3, 0, 1);
 		video.end_pipeline(app.invert_pip);
 
 		gizmos_draw();
@@ -792,8 +785,8 @@ void cr_deinit() {
 	video.free_pipeline(app.pipeline);
 	video.free_pipeline(app.invert_pip);
 	video.free_framebuffer(app.fb);
-	video.free_vertex_buffer(app.tri_vb);
-	video.free_index_buffer(app.tri_ib);
+	video.free_vertex_buffer(app.quad_vb);
+	video.free_index_buffer(app.quad_ib);
 	free_ui(app.ui);
 	ui_deinit();
 }

@@ -2,17 +2,12 @@
 
 #begin vertex
 
-layout (location = 0) in vec2 position;
-layout (location = 1) in vec2 uv;
-
-layout (location = 0) out VSOut {
-	vec2 uv;
-} fs_in;
+layout (location = 0) out vec2 uv;
 
 void main() {
-	fs_in.uv = uv;
-
-	gl_Position = vec4(position, 0.0, 1.0);
+	uv = vec2((gl_VertexIndex << 1) & 2, gl_VertexIndex & 2);
+	gl_Position = vec4(uv * 2.0f + -1.0f, 0.0f, 1.0f);
+	uv.y = 1.0 - uv.y;
 }
 
 #end vertex
@@ -21,16 +16,14 @@ void main() {
 
 layout (location = 0) out vec4 colour;
 
-layout (location = 0) in VSOut {
-	vec2 uv;
-} fs_in;
+layout (location = 0) in vec2 uv;
 
-layout (binding = 0) uniform sampler2D src;
+layout (binding = 0) uniform sampler2D image;
 
 void main() {
-	vec4 src_col = texture(src, fs_in.uv);
+	vec4 tc = texture(image, uv);
 
-	colour = vec4(src_col.rgb, src_col.a);
+	colour = vec4(tc.rgb, tc.a);
 }
 
 #end fragment

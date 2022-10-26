@@ -18,6 +18,12 @@ extern u32 heap_allocation_count;
 u64 elf_hash(const u8* data, usize size);
 u64 hash_string(const char* str);
 
+/* These are *not* hash functions! They simply add up all the bytes
+ * in a string or buffer, producing a unique ID for buffer. Obviously
+ * it will only work for very small buffers. */
+u64 buffer_id(const u8* data, usize size);
+u64 string_id(const char* str);
+
 void info(const char* fmt, ...);
 void error(const char* fmt, ...);
 void warning(const char* fmt, ...);

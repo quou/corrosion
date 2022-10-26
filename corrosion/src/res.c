@@ -289,6 +289,14 @@ void init_image_from_raw(struct image* image, const u8* raw, usize raw_size) {
 	}
 
 	image->colours = data;
+
+#ifdef __EMSCRIPTEN__
+	/* I have no idea why this is necessary, but for some reason when loading images
+	 * with Emscripten they are flipped...
+	 *
+	 * TODO: Figure out why. */
+	flip_image_y(image);
+#endif
 }
 
 void deinit_image(struct image* image) {
@@ -392,7 +400,7 @@ void res_deinit() {
 }
 
 void reg_res_type(const char* type, const struct res_config* config) {
-	table_set(res_registry, hash_string(type), *config);
+	table_set(res_registry, string_id(type), *config);
 }
 
 /* Get a unique ID buffer for each resource, based on the config type and the user data. This allows
@@ -412,7 +420,7 @@ static void get_resource_id_bytebuffer(u8* bb, usize bb_max_size, usize* bb_size
 }
 
 struct resource res_load(const char* type, const char* filename, void* udata) {
-	u64 config_id = hash_string(type);
+	u64 config_id = string_id(type);
 
 	struct res_config* config = table_get(res_registry, config_id);
 
@@ -425,7 +433,11 @@ struct resource res_load(const char* type, const char* filename, void* udata) {
 	u8 resource_id_bb[1024];
 	get_resource_id_bytebuffer(resource_id_bb, sizeof resource_id_bb, &resource_id_bb_size,
 		filename, udata, config_id, config);
-	u64 resource_id = elf_hash(resource_id_bb, resource_id_bb_size);
+	u64 resource_id = 0;
+
+	for (usize i = 0; i < resource_id_bb_size; i++) {
+		resource_id += resource_id_bb[i];
+	}
 
 	struct res* got = table_get(res_cache, resource_id);
 	if (got) { return (struct resource) { resource_id, got->payload }; }
