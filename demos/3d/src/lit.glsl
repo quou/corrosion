@@ -27,7 +27,7 @@ layout (location = 0) out VSOut {
 	vec3 world_pos;
 	vec3 diffuse;
 	vec2 uv;
-} vs_out;
+} fs_in;
 
 void main() {
 	mat4 transform;
@@ -38,15 +38,15 @@ void main() {
 
 	vec2 pixel_size = vec2(1.0f / atlas_size.x, 1.0f / atlas_size.y);
 
-    vs_out.uv = vec2(
+    fs_in.uv = vec2(
     	pixel_size.x * diffuse_rect.x + diffuse_rect.z * pixel_size.x * uv.x,
     	pixel_size.y * diffuse_rect.y + diffuse_rect.w * pixel_size.y * uv.y);
 
-	vs_out.normal = normalize(vec3(transform * vec4(normal, 0.0)));
-	vs_out.world_pos = vec3(transform * vec4(position, 1.0));
-	vs_out.diffuse = diffuse;
+	fs_in.normal = normalize(vec3(transform * vec4(normal, 0.0)));
+	fs_in.world_pos = vec3(transform * vec4(position, 1.0));
+	fs_in.diffuse = diffuse;
 
-	gl_Position = projection * view * vec4(vs_out.world_pos, 1.0);
+	gl_Position = projection * view * vec4(fs_in.world_pos, 1.0);
 }
 
 #end vertex
