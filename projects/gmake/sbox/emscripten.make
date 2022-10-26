@@ -13,7 +13,7 @@ cxx = em++
 includes = -I../../../corrosion/include
 target_name = sbox
 defines = -Dcr_no_vulkan -Wno-unreachable-code-generic-assoc
-libs = ../corrosion/bin/$(config)/emscripten/libcr.bc -sFULL_ES3 --shell-file ../../../corrosion/ems_shell.html
+libs = ../corrosion/bin/$(config)/emscripten/libcr.bc -sMAX_WEBGL_VERSION=2 --shell-file ../../../corrosion/ems_shell.html
 deps = ../corrosion/bin/$(config)/emscripten/libcr.bc
 opts = -pthread
 srcdir = ../../../sbox/src
@@ -28,17 +28,17 @@ ifeq ($(config),debug)
   defines += -Ddebug
   cflags = -MMD -MP -g $(cstd) $(includes) $(defines) $(opts)
   cxxflags = -MMD -MP -g $(cxxstd) $(includes) $(defines) $(opts)
-  objdir = obj
+  objdir = obj/debug/emscripten
 endif
 
 ifeq ($(config),release)
-  targetdir = bin/release
+  targetdir = bin/release/emscripten
   target = $(targetdir)/$(target_name).html
   lflags = -mwasm64 -s
   defined += -Dndebug
   cflags = -MMD -MP -O2 $(cstd) $(includes) $(defines) $(opts)
   cxxflags = -MMD -MP -O2 $(cxxstd) $(includes) $(defines) $(opts)
-  objdir = obj/release
+  objdir = obj/release/emscripten
 endif
 
 all: $(target)

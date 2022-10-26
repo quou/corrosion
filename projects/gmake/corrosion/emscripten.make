@@ -25,16 +25,16 @@ ifeq ($(config),debug)
   defines += -Ddebug
   cflags = -MMD -MP  -g $(cstd) $(includes) $(defines) $(opts)
   cxxflags = -MMD -MP -g $(cxxstd) $(includes) $(defines) $(opts)
-  objdir = obj
+  objdir = obj/debug/emscripten
 endif
 
 ifeq ($(config),release)
-  targetdir = bin/release
+  targetdir = bin/release/emscripten
   target = $(targetdir)/lib$(targetname).bc
   defined += -Dndebug
   cflags = -MMD -MP -O2 $(cstd) $(includes) $(defines) $(opts)
   cxxflags = -MMD -MP -O2 $(cxxstd) $(includes) $(defines) $(opts)
-  objdir = obj/release
+  objdir = obj/release/emscripten
 endif
 
 all: $(target)
