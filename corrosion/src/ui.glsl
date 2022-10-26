@@ -18,23 +18,23 @@ layout (location = 0) out VSOut {
 	vec4 rect;
 	float z;
 	vec2 frag_pos;
-} vs_out;
+} fs_in;
 
 layout (std140, binding = 0) uniform VertexUniformData {
 	mat4 projection;
 };
 
 void main() {
-	vs_out.uv = uv;
-	vs_out.colour = colour;
-	vs_out.use_texture = use_texture;
-	vs_out.radius = radius;
-	vs_out.rect = rect;
-	vs_out.z = z;
+	fs_in.uv = uv;
+	fs_in.colour = colour;
+	fs_in.use_texture = use_texture;
+	fs_in.radius = radius;
+	fs_in.rect = rect;
+	fs_in.z = z;
 
 	vec4 p = (projection * vec4(position, 0.0, 1.0));
 
-	vs_out.frag_pos = position;
+	fs_in.frag_pos = position;
 
 	gl_Position = p;
 }

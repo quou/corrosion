@@ -19,6 +19,7 @@ opts = -pthread
 srcdir = ../../../sbox/src
 cstd = -std=c11
 cxxstd = -std=c++20
+package_files = --preload-file ../../../sbox/shaders@shaders/ --preload-file ../../../sbox/res/@res/
 
 ifeq ($(config),debug)
   targetdir = bin/debug/emscripten
@@ -64,7 +65,7 @@ $(objects): $(objdir)/%.o : $(srcdir)/%.c
 
 $(target): $(objects) $(objectsxx) $(deps) | $(targetdir)
 	@echo linking $(target)
-	$(silent) $(cxx) -o "$@" $(objects) $(lflags) $(libs)
+	$(silent) $(cxx) -o "$@" $(objects) $(lflags) $(libs) $(package_files)
 
 $(targetdir):
 	$(silent) mkdir -p $(targetdir)

@@ -11,16 +11,16 @@ layout (location = 0) out VSOut {
 	vec2 uv;
 	vec4 colour;
 	float use_texture;
-} vs_out;
+} fs_in;
 
 layout (std140, binding = 0) uniform VertexUniformData {
 	mat4 projection;
 };
 
 void main() {
-	vs_out.uv = uv;
-	vs_out.colour = colour;
-	vs_out.use_texture = use_texture;
+	fs_in.uv = uv;
+	fs_in.colour = colour;
+	fs_in.use_texture = use_texture;
 
 	gl_Position = projection * vec4(position, 0.0, 1.0);
 }

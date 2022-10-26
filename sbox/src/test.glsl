@@ -7,10 +7,10 @@ layout (location = 1) in vec2 uv;
 
 layout (location = 0) out VSOut {
 	vec2 uv;
-} vs_out;
+} fs_in;
 
 void main() {
-	vs_out.uv = uv;
+	fs_in.uv = uv;
 
 	gl_Position = vec4(position, 0.0, 1.0);
 }
