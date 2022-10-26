@@ -498,7 +498,6 @@ struct app_config cr_config() {
 
 void cr_init() {
 	ui_init();
-	app.ui = new_ui(video.get_default_fb());
 
 	const struct shader* shader = load_shader("shaders/test.csh", null);
 	const struct shader* invert_shader = load_shader("shaders/invert.csh", null);
@@ -662,10 +661,10 @@ void cr_init() {
 	);
 
 	struct vertex verts[] = {
-		{ { -1.0f,  1.0f }, { 1.0f, 0.0f } },
-		{ { -1.0f, -1.0f }, { 1.0f, 1.0f } },
-		{ {  1.0f, -1.0f }, { 0.0f, 1.0f } },
-		{ {  1.0f,  1.0f }, { 0.0f, 0.0f } }
+		{ { -1.0f,  1.0f }, { 0.0f, 0.0f } },
+		{ { -1.0f, -1.0f }, { 0.0f, 1.0f } },
+		{ {  1.0f, -1.0f }, { 1.0f, 1.0f } },
+		{ {  1.0f,  1.0f }, { 1.0f, 0.0f } }
 	};
 
 	u16 indices[] = {
@@ -675,6 +674,9 @@ void cr_init() {
 
 	app.tri_vb = video.new_vertex_buffer(verts, sizeof verts, vertex_buffer_flags_none);
 	app.tri_ib = video.new_index_buffer(indices, sizeof indices, index_buffer_flags_u16);
+
+
+	app.ui = new_ui(app.fb);
 }
 
 void cr_update(f64 ts) {
@@ -769,6 +771,9 @@ void cr_update(f64 ts) {
 			video.bind_index_buffer(app.tri_ib);
 			video.draw_indexed(6, 0, 1);
 		video.end_pipeline(app.pipeline);
+
+
+		ui_draw(app.ui);
 	video.end_framebuffer(app.fb);
 
 	video.begin_framebuffer(video.get_default_fb());
@@ -780,7 +785,6 @@ void cr_update(f64 ts) {
 		video.end_pipeline(app.invert_pip);
 
 		gizmos_draw();
-		ui_draw(app.ui);
 	video.end_framebuffer(video.get_default_fb());
 }
 
