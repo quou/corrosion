@@ -1059,6 +1059,24 @@ static void init_shader(struct video_gl_shader* shader, const struct shader_head
 
 		check_gl(glDeleteShader(vert));
 		check_gl(glDeleteShader(frag));
+
+		check_gl(glUseProgram(shader->program));
+
+		/* Read in the sampler names and set their values. */
+		struct shader_sampler_name_table_header* snth = (void*)(data + header->raster_header.sampler_name_table_offset);
+		u8* ptr = (void*)(snth + 1);
+		for (u64 i = 0; i < snth->count; i++) {
+			struct shader_sampler_name* n = (void*)ptr;
+
+			check_gl(u32 location = glGetUniformLocation(shader->program, n->name));
+			check_gl(glUniform1i(location, n->binding));
+
+			ptr += sizeof *n;
+		}
+
+		if (gctx.bound_pipeline) {
+			check_gl(glUseProgram(gctx.bound_pipeline->shader->program));
+		}
 	}
 }
 

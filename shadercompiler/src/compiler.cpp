@@ -100,6 +100,7 @@ struct ShaderRasterHeader {
 	u64 f_gl_offset;
 	u64 v_gl_size;
 	u64 f_gl_size;
+	u64 sampler_name_table_offset;
 };
 
 struct ShaderComputeHeader {
@@ -121,9 +122,11 @@ struct ShaderHeader {
 #pragma pack(pop)
 
 struct Desc {
+	std::string name;
 	spirv_cross::CompilerGLSL& compiler;
 	u32 binding;
 	u32 id;
+	bool is_sampler;
 };
 
 struct DescSet {
@@ -133,6 +136,7 @@ struct DescSet {
 };
 
 std::unordered_map<u32, DescSet> sets;
+std::unordered_map<u32, std::string> sampler_names;
 
 static std::string convert_filename(const std::string& path, const std::string& name) {
 	usize slash = path.find_last_of("/");
@@ -145,7 +149,13 @@ static void compute_set_bindings() {
 		auto& set = sp.second;
 
 		for (auto& desc : set.bindings) {
-			desc.compiler.set_decoration((spirv_cross::ID)desc.id, spv::DecorationBinding, id * 16 + desc.binding);
+			auto binding = id * 16 + desc.binding;
+
+			desc.compiler.set_decoration((spirv_cross::ID)desc.id, spv::DecorationBinding, binding);
+
+			if (desc.is_sampler) {
+				sampler_names[binding] = desc.name;
+			}
 		}
 	}
 }
@@ -241,13 +251,16 @@ static void compile_for_opengl(spirv_cross::CompilerGLSL& compiler) {
 
 	spirv_cross::ShaderResources resources = compiler.get_shader_resources();
 
-	/* Modify bindings of uniforms and samplers, because OpenGL doesn't support descriptor sets */
+	/* Modify bindings of uniforms and samplers, because OpenGL doesn't support descriptor sets.
+	 *
+	 * Also record the bind locations of samplers for OpenGL, since we are using a version
+	 * of GLSL that doesn't allow it to be specified directly in the shader. */
 	for (auto& resource : resources.sampled_images) {
 		u32 set = compiler.get_decoration(resource.id, spv::DecorationDescriptorSet);
 		u32 binding = compiler.get_decoration(resource.id, spv::DecorationBinding);
 
 		sets[set].count++;
-		sets[set].bindings.push_back(Desc { compiler, binding, resource.id });
+		sets[set].bindings.push_back(Desc { resource.name, compiler, binding, resource.id, true });
 
 		compiler.unset_decoration(resource.id, spv::DecorationDescriptorSet);
 	}
@@ -257,7 +270,7 @@ static void compile_for_opengl(spirv_cross::CompilerGLSL& compiler) {
 		u32 binding = compiler.get_decoration(resource.id, spv::DecorationBinding);
 
 		sets[set].count++;
-		sets[set].bindings.push_back(Desc { compiler, binding, resource.id });
+		sets[set].bindings.push_back(Desc { resource.name, compiler, binding, resource.id, false });
 
 		compiler.unset_decoration(resource.id, spv::DecorationDescriptorSet);
 	}
@@ -352,6 +365,7 @@ i32 main(i32 argc, const char** argv) {
 		r_header.f_gl_size = frag_opengl_src.size() + 1;
 		r_header.v_gl_offset = r_header.f_offset + r_header.f_size;
 		r_header.f_gl_offset = r_header.v_gl_offset + r_header.v_gl_size;
+		r_header.sampler_name_table_offset = r_header.f_gl_offset + r_header.f_gl_size;
 
 		fwrite(&header, 1, sizeof header, outfile);
 		fwrite(&vert_data[0], 1, r_header.v_size, outfile);
@@ -361,6 +375,14 @@ i32 main(i32 argc, const char** argv) {
 		fwrite("\0", 1, 1, outfile);
 		fwrite(frag_opengl_src.c_str(), 1, frag_opengl_src.size(), outfile);
 		fwrite("\0", 1, 1, outfile);
+
+		/* Sampler bind table */
+		u64 count = sampler_names.size();
+		fwrite(&count, 1, sizeof count, outfile);
+		for (auto& n : sampler_names) {
+			fwrite(&n.first, 1, sizeof n.first, outfile);
+			fwrite(n.second.c_str(), 1, n.second.size() + 1, outfile);
+		}
 
 		fclose(outfile);
 	} else {

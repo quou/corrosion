@@ -21,6 +21,7 @@ struct shader_raster_header {
 	u64 f_gl_offset;
 	u64 v_gl_size;
 	u64 f_gl_size;
+	u64 sampler_name_table_offset;
 };
 
 struct shader_compute_header {
@@ -28,6 +29,15 @@ struct shader_compute_header {
 	u64 size;
 	u64 gl_offset;
 	u64 gl_size;
+};
+
+struct shader_sampler_name {
+	u32 binding;
+	char name[32];
+};
+
+struct shader_sampler_name_table_header {
+	u64 count;
 };
 
 struct shader_header {
