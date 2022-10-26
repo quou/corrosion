@@ -677,8 +677,17 @@ void cr_init() {
 void cr_update(f64 ts) {
 	app.time += ts;
 
+	static char fps_buf[32];
+	static f64 fps_timer = 0.0;
+	
+	fps_timer += ts;
+	if (fps_timer > 1.0) {
+		fps_timer = 0;
+		sprintf(fps_buf, "FPS: %g", 1.0 / ts);
+	}
+
 	ui_begin(app.ui);
-	ui_label(app.ui, "Hello, world");
+	ui_label(app.ui, fps_buf);
 
 	ui_begin_container(app.ui, make_v4f(0.5f, 0.0f, 0.5f, 1.0f), true);
 
