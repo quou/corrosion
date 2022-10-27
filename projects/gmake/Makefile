@@ -6,7 +6,7 @@ ifndef verbose
   silent = @
 endif
 
-projects = shadercompiler corrosion sbox 3d blur sand particles voxel volume
+projects = shadercompiler corrosion sbox 3d blur sand particles voxel volume ui
 runnables =           \
     run_sbox          \
     debug_sbox        \
@@ -29,6 +29,9 @@ runnables =           \
     run_volume        \
     debug_volume      \
     memcheck_volume   \
+    run_ui            \
+    debug_ui          \
+    memcheck_ui       \
 
 .PHONY: all clean $(projects) $(runnables) install
 
@@ -76,6 +79,10 @@ voxel: corrosion
 	$(silent) make --no-print-directory -C demos/$@ config=$(config)
 
 volume: corrosion
+	@echo == Building $@ ==
+	$(silent) make --no-print-directory -C demos/$@ config=$(config)
+
+ui: corrosion
 	@echo == Building $@ ==
 	$(silent) make --no-print-directory -C demos/$@ config=$(config)
 
@@ -133,9 +140,19 @@ debug_volume: volume
 memcheck_volume: volume
 	$(silent) make --no-print-directory -C demos/volume memcheck
 
+run_ui: ui
+	$(silent) make --no-print-directory -C demos/ui run
+
+debug_ui: ui
+	$(silent) make --no-print-directory -C demos/ui debug
+
+memcheck_ui: ui
+	$(silent) make --no-print-directory -C demos/ui memcheck
+
 emscripten: corrosion sbox
 	$(silent) make --no-print-directory -C corrosion emscripten
 	$(silent) make --no-print-directory -C sbox emscripten
+	$(silent) make --no-print-directory -C demos/ui emscripten
 
 em_run_sbox: emscripten
 	$(silent) emrun sbox/bin/debug/emscripten/sbox.html

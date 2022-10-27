@@ -1,0 +1,27 @@
+normal = {
+	knob_label = {
+		align = "centre";
+	}
+
+	align_right = {
+		align = "right";
+	}
+
+	red_knob = {
+		background_colour = colour(#cd6363);
+		text_colour = colour(#f0dede);
+	}
+}
+
+hovered = {
+	red_knob = {
+		background_colour = colour(#e54747);
+	}
+}
+
+active = {
+	red_knob = {
+		background_colour = colour(#f0dede);
+		text_colour = colour(#cd6363);
+	}
+}
