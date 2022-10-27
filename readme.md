@@ -5,7 +5,10 @@ C graphics framework for GNU/Linux and Windows.
 ## Notes
  - Vulkan backend that uses the dynamic rendering extension.
  - OpenGL 3.3 backend. Some features (like compute shaders) are not supported on this backend.
- - Emscripten support coming soon.
+ - Support for Emscripten.
+
+The Emscripten backend is still a work-in-progress; Building for Emscripten is not supported
+by the included Visual Studio projects yet and some things are unimplemented.
 
 ## Build Instructions
 
