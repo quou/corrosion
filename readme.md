@@ -18,6 +18,9 @@ by the included Visual Studio projects yet and some things are unimplemented.
  - Vulkan validation layers (optional but highly recommended).
  - On GNU/Linux:
 	 - X11 (Wayland might be supported in the future as well, but don't count on it).
+ - To build with Emscripten:
+     - The Emscripten SDK.
+     - A web browser with support for WebGL 2.0.
 
 If you don't have or don't want the first three prerequisites, you can compile with `cr_no_vulkan`
 defined to compile with only the OpenGL backend, but most of the demos require Vulkan-only features.
