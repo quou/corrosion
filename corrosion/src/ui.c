@@ -879,7 +879,7 @@ void ui_begin_container_ex(struct ui* ui, const char* class, v4f rect, bool scro
 		ui_draw_rect(ui, make_v2f(clip.x, clip.y), meta->z, make_v2f(clip.z, clip.w), style.background_colour.value, style.radius.value);
 	} else {
 		clip = make_v4f(
-			rect.x * (f32)window_size.x,
+			rect.x * (f32)window_size.x + 5.0f,
 			rect.y * (f32)window_size.y,
 			rect.z * (f32)window_size.x,
 			rect.w * (f32)window_size.y);
