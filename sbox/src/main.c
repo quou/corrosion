@@ -705,6 +705,13 @@ void cr_update(f64 ts) {
 			info("Button B pressed.");
 		}
 
+		ui_columns(app.ui, 1, (f32[]) { 1.0f });
+
+		static char buf[64];
+		if (ui_input(app.ui, buf, sizeof buf)) {
+			info("%s", buf);
+		}
+
 		ui_tree_pop(app.ui);
 	}
 

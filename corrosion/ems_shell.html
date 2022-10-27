@@ -15,7 +15,14 @@
 		</style>
 	</head>
 	<body>
-			<canvas id="canvas" oncontextmenu="event.preventDefault()" tabindex=-1></canvas>
+			<canvas id="canvas" oncontextmenu="event.preventDefault()" tabindex="0" onclick="focus_canvas()"></canvas>
+
+			<script>
+				function focus_canvas() {
+					document.getElementById('canvas').focus();
+				}
+			</script>
+
 			{{{ SCRIPT }}}
 	</body>
 </html>

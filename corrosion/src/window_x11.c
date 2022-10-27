@@ -454,7 +454,7 @@ void update_events() {
 
 						struct window_event mouse_button_event = {
 							.type = window_event_mouse_button_pressed,
-							.mouse_button = e.xbutton.button = 1
+							.mouse_button = e.xbutton.button - 1
 						};
 
 						dispatch_event(&mouse_button_event);
@@ -484,7 +484,7 @@ void update_events() {
 
 						struct window_event mouse_button_event = {
 							.type = window_event_mouse_button_released,
-							.mouse_button = e.xbutton.button = 1
+							.mouse_button = e.xbutton.button - 1
 						};
 
 						dispatch_event(&mouse_button_event);
