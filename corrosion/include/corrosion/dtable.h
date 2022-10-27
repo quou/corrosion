@@ -53,7 +53,6 @@
 struct dtable_key {
 	char chars[64];
 	usize len;
-	u64 hash;
 };
 
 enum {

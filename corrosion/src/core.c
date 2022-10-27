@@ -38,11 +38,19 @@ u64 string_id(const char* str) {
 	return buffer_id((const u8*)str, strlen(str));
 }
 
-void* _find_table_el(void* els_v, usize el_size, usize capacity, usize key_size, const void* key_ptr,
-	usize key_off, usize val_off, usize state_off, usize* ind) {
+static inline u64 hash_key(const u8* bytes, usize size, table_hash_fun f) {
+	return f ? f(bytes, size) : elf_hash(bytes, size);
+}
+
+static inline bool compare_keys(const void* a, const void* b, usize size, table_compare_fun f) {
+	return f ? f((const u8*)a, (const u8*)b) : (memcmp(a, b, size) == 0);
+}
+
+void* _find_table_el(table_hash_fun hash, table_compare_fun compare, void* els_v, usize el_size, usize capacity,
+	usize key_size, const void* key_ptr, usize key_off, usize val_off, usize state_off, usize* ind) {
 	_make_null_table_key_s(key_size, nk);
 
-	usize idx = elf_hash(key_ptr, key_size) % capacity;
+	usize idx = hash_key(key_ptr, key_size, hash) % capacity;
 
 	u8* tombstone = null;
 
@@ -59,7 +67,7 @@ void* _find_table_el(void* els_v, usize el_size, usize capacity, usize key_size,
 			} else if (tombstone == null) {
 				tombstone = el;
 			}
-		} else if (memcmp(el + key_off, key_ptr, key_size) == 0) {
+		} else if (compare_keys(el + key_off, key_ptr, key_size, compare)) {
 			if (ind) { *ind = idx; }
 			return el;
 		}
@@ -68,13 +76,13 @@ void* _find_table_el(void* els_v, usize el_size, usize capacity, usize key_size,
 	}
 }
 
-void* _table_get(void* els, usize el_size, usize capacity, usize count, usize key_size, const void* key,
-	usize key_off, usize val_off, usize state_off) {
+void* _table_get(table_hash_fun hash, table_compare_fun compare, void* els, usize el_size, usize capacity, usize count,
+	usize key_size, const void* key, usize key_off, usize val_off, usize state_off) {
 	if (count == 0) { return null; }
 	
 	_make_null_table_key_s(key_size, nk);
 
-	u8* el = _find_table_el(els, el_size, capacity, key_size, key, key_off, val_off, state_off, null);
+	u8* el = _find_table_el(hash, compare, els, el_size, capacity, key_size, key, key_off, val_off, state_off, null);
 	if (memcmp(el + key_off, nk, key_size) == 0) {
 		return null;
 	}
@@ -82,8 +90,8 @@ void* _table_get(void* els, usize el_size, usize capacity, usize count, usize ke
 	return el + val_off;
 }
 
-void* _table_first_key(void* els, usize el_size, usize capacity, usize count, usize key_size,
-	usize key_off, usize val_off, usize state_off) {
+void* _table_first_key(table_hash_fun hash, table_compare_fun compare, void* els, usize el_size, usize capacity,
+	usize count, usize key_size, usize key_off, usize val_off, usize state_off) {
 	if (count == 0) { return null; }
 
 	_make_null_table_key_s(key_size, nk);
@@ -98,15 +106,15 @@ void* _table_first_key(void* els, usize el_size, usize capacity, usize count, us
 	return null;
 }
 
-void* _table_next_key(void* els, usize el_size, usize capacity, usize count, usize key_size, const void* key,
-	usize key_off, usize val_off, usize state_off) {
+void* _table_next_key(table_hash_fun hash, table_compare_fun compare, void* els, usize el_size, usize capacity,
+	usize count, usize key_size, const void* key, usize key_off, usize val_off, usize state_off) {
 	if (count == 0) { return null; }
 
 	_make_null_table_key_s(key_size, nk);
 
 	usize idx = 0;
 
-	u8* el = _find_table_el(els, el_size, capacity, key_size, key, key_off, val_off, state_off, &idx);
+	u8* el = _find_table_el(hash, compare, els, el_size, capacity, key_size, key, key_off, val_off, state_off, &idx);
 	if (memcmp(el + key_off, nk, key_size) == 0) {
 		return null;
 	}

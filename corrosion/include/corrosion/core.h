@@ -94,6 +94,9 @@ void debug_leak_check();
 #define leak_check() release_leak_check()
 #endif
 
+/* String manipulation. */
+char* copy_string(const char* str);
+
 /*struct type_info {
 	u64 id;
 	usize size;
@@ -152,6 +155,27 @@ enum {
 	table_el_state_inactive
 };
 
+typedef u64  (*table_hash_fun)(const u8* bytes, usize size);
+typedef bool (*table_compare_fun)(const u8* a, const u8* b);
+typedef void (*table_free_key_fun)(u8* ptr);
+typedef u8*  (*table_copy_key_fun)(const u8* src);
+
+inline static u64 table_hash_string(const u8* data, usize size) {
+	return hash_string(*(const char**)data);
+}
+
+inline static bool table_compare_string(const u8* a, const u8* b) {
+	return strcmp(*(const char**)a, *(const char**)b) == 0;
+}
+
+inline static void table_free_string(u8* ptr) {
+	core_free(*(u8**)ptr);
+}
+
+inline static u8* table_copy_string(const u8* src) {
+	return (u8*)copy_string((const char*)src);
+}
+
 #define _table_el(kt_, vt_) \
 	struct { \
 		kt_ key; \
@@ -160,14 +184,14 @@ enum {
 	}
 
 /* Internal table functions, to be called upon by the table macros. */
-void* _find_table_el(void* els, usize el_size, usize capacity, usize key_size, const void* key,
-	usize key_off, usize val_off, usize state_off, usize* ind);
-void* _table_get(void* els, usize el_size, usize capacity, usize count, usize key_size, const void* key,
-	usize key_off, usize val_off, usize state_off);
-void* _table_first_key(void* els, usize el_size, usize capacity, usize count, usize key_size,
-	usize key_off, usize val_off, usize state_off);
-void* _table_next_key(void* els, usize el_size, usize capacity, usize count, usize key_size, const void* key,
-	usize key_off, usize val_off, usize state_off);
+void* _find_table_el(table_hash_fun hash, table_compare_fun compare, void* els, usize el_size, usize capacity,
+	usize key_size, const void* key, usize key_off, usize val_off, usize state_off, usize* ind);
+void* _table_get(table_hash_fun hash, table_compare_fun compare, void* els, usize el_size, usize capacity,
+	usize count, usize key_size, const void* key, usize key_off, usize val_off, usize state_off);
+void* _table_first_key(table_hash_fun hash, table_compare_fun compare, void* els, usize el_size, usize capacity,
+	usize count, usize key_size, usize key_off, usize val_off, usize state_off);
+void* _table_next_key(table_hash_fun hash, table_compare_fun compare, void* els, usize el_size, usize capacity,
+	usize count, usize key_size, const void* key, usize key_off, usize val_off, usize state_off);
 
 /* Not wrapped in a do/while intentionally because nk_ needs to be
  * in the scope where this macro is expanded. Don't wrap it! Also
@@ -196,16 +220,16 @@ void* _table_next_key(void* els, usize el_size, usize capacity, usize count, usi
 #define _table_resize(t_, cap_) \
 	do { \
 		_make_null_table_key(t_, nk_); \
-		u8* els_ = table_malloc((cap_) * sizeof (t_).e); \
-		for (usize i = 0; i < (cap_); i++) { \
-			memcpy(&els_[i * sizeof (t_).e + voffsetof((t_).e, key)], &nk_, sizeof (t_).k); \
-			els_[i * sizeof (t_).e + voffsetof((t_).e, state)] = table_el_state_active; \
+		u8* els_ = core_alloc((cap_) * sizeof (t_).e); \
+		for (usize i_ = 0; i_ < (cap_); i_++) { \
+			memcpy(&els_[(i_ * sizeof (t_).e) + voffsetof((t_).e, key)], nk_, sizeof (t_).k); \
+			els_[(i_ * sizeof (t_).e) + voffsetof((t_).e, state)] = table_el_state_active; \
 		} \
 		\
 		for (usize i_ = 0; i_ < (t_).capacity; i_++) { \
 			u8* el_ = (((u8*)(t_).entries) + i_ * sizeof (t_).e); \
-			if (memcmp(el_, &nk_, sizeof (t_).k) == 0) { continue; } \
-			u8* dst_ = _find_table_el(els_, sizeof *(t_).entries, (t_).capacity, sizeof (t_).k, \
+			if (memcmp(el_ + voffsetof((t_).e, key), nk_, sizeof (t_).k) == 0) { continue; } \
+			u8* dst_ = _find_table_el((t_).hash, (t_).compare, els_, sizeof *(t_).entries, (cap_), sizeof (t_).k, \
 				el_ + voffsetof(*(t_).entries, key),\
 				voffsetof(*(t_).entries, key), voffsetof(*(t_).entries, value), voffsetof((t_).e, state), \
 				null); \
@@ -227,6 +251,10 @@ void* _table_next_key(void* els, usize el_size, usize capacity, usize count, usi
 		 * take a pointer to to allow literals to be passed
 		 * into the macros. */\
 		_table_el(kt_, vt_) e; \
+		table_hash_fun hash; /* If not null, should return the hash of a key. */ \
+		table_compare_fun compare; /* If not null, should return true if the keys are equal. */ \
+		table_copy_key_fun copy_key;  \
+		table_free_key_fun free_key; \
 		kt_ k; \
 		vt_ v; \
 	}
@@ -234,6 +262,14 @@ void* _table_next_key(void* els, usize el_size, usize capacity, usize count, usi
 #define free_table(t_) \
 	do { \
 		if ((t_).entries) { \
+			if ((t_).free_key) { \
+				_make_null_table_key(t_, nk_); \
+				for (usize i_ = 0; i_ < (t_).capacity; i_++) { \
+					u8* el_ = (((u8*)(t_).entries) + i_ * sizeof (t_).e); \
+					if (memcmp(el_, nk_, sizeof (t_).k) == 0) { continue; } \
+					(t_).free_key(el_ + voffsetof((t_).e, key)); \
+				} \
+			} \
 			table_free((t_).entries); \
 		} \
 	} while (0)
@@ -244,12 +280,20 @@ void* _table_next_key(void* els, usize el_size, usize capacity, usize count, usi
 			usize new_cap_ = (t_).capacity < 8 ? 8 : (t_).capacity * 2; \
 			_table_resize((t_), new_cap_); \
 		} \
-		(t_).k = (k_); \
+		if ((t_).copy_key) { \
+			(t_).k = k_; \
+			u8* tk_; \
+			memcpy(&tk_, &(t_).k, sizeof tk_); \
+			tk_ = (t_).copy_key(tk_); \
+			memcpy(&(t_).k, &tk_, sizeof (t_).k); \
+		} else { \
+			(t_).k = k_; \
+		} \
 		_make_null_table_key(t_, nk_); \
-		u8* el_ = _find_table_el((t_).entries, sizeof *(t_).entries, (t_).capacity, sizeof (t_).k, \
+		u8* el_ = _find_table_el((t_).hash, (t_).compare, (t_).entries, sizeof *(t_).entries, (t_).capacity, sizeof (t_).k, \
 			&(t_).k,\
 			voffsetof((t_).e, key), voffsetof((t_).e, value), voffsetof((t_).e, state), null); \
-		if (memcmp(el_ + voffsetof((t_).e, key), &nk_, sizeof (t_).k) == 0) { \
+		if (memcmp(el_ + voffsetof((t_).e, key), nk_, sizeof (t_).k) == 0) { \
 			(t_).count++; \
 		} \
 		(t_).v = (v_); \
@@ -259,7 +303,7 @@ void* _table_next_key(void* els, usize el_size, usize capacity, usize count, usi
 
 #define table_get(t_, k_) \
 	((t_).k = (k_), \
-		_table_get((t_).entries, sizeof *(t_).entries, (t_).capacity, (t_).count, sizeof (t_).k, \
+		_table_get((t_).hash, (t_).compare, (t_).entries, sizeof *(t_).entries, (t_).capacity, (t_).count, sizeof (t_).k, \
 			&(t_).k,\
 			voffsetof((t_).e, key), voffsetof((t_).e, value), voffsetof((t_).e, state)))
 
@@ -267,23 +311,26 @@ void* _table_next_key(void* els, usize el_size, usize capacity, usize count, usi
 	do { \
 		if ((t_).count > 0) { \
 			(t_).k = (k_); \
-			u8* el_ = _find_table_el((t_).entries, sizeof *(t_).entries, (t_).capacity, sizeof (t_).k, \
+			u8* el_ = _find_table_el((t_).hash, (t_).compare, (t_).entries, sizeof *(t_).entries, (t_).capacity, sizeof (t_).k, \
 				&(t_).k,\
 				voffsetof((t_).e, key), voffsetof((t_).e, value), voffsetof((t_).e, state), null); \
 			_make_null_table_key(t_, nk_); \
-			memcpy(el_ + voffsetof((t_).e, key), &nk_, sizeof (t_).k); \
-			*(el_ + voffsetof((t_).e, state)) = table_el_state_inactive; \
+			if ((t_).free_key) { \
+				(t_).free_key(el_ + voffsetof((t_).e, key)); \
+			} \
+			memcpy(el_ + voffsetof((t_).e, key), nk_, sizeof (t_).k); \
+			el_[voffsetof((t_).e, state)] = table_el_state_inactive; \
 			(t_).count--; \
 		} \
 	} while (0)
 
 #define table_first(t_) \
-	_table_first_key((t_).entries, sizeof *(t_).entries, (t_).capacity, (t_).count, sizeof (t_).k, \
+	_table_first_key((t_).hash, (t_).compare, (t_).entries, sizeof *(t_).entries, (t_).capacity, (t_).count, sizeof (t_).k, \
 			voffsetof((t_).e, key), voffsetof((t_).e, value), voffsetof((t_).e, state))
 
 #define table_next(t_, k_) \
 	((t_).k = (k_), \
-		_table_next_key((t_).entries, sizeof *(t_).entries, (t_).capacity, (t_).count, sizeof (t_).k, \
+		_table_next_key((t_).hash, (t_).compare, (t_).entries, sizeof *(t_).entries, (t_).capacity, (t_).count, sizeof (t_).k, \
 			&(t_).k, \
 			voffsetof((t_).e, key), voffsetof((t_).e, value), voffsetof((t_).e, state)))
 
@@ -396,9 +443,6 @@ struct vector_header {
 
 #define vector_start(v_) (v_)
 #define vector_end(v_) ((v_) != null ? ((v_) + ((((struct vector_header*)(v_)) - 1)->count)) : ((v_) + 1))
-
-/* String manipulation. */
-char* copy_string(const char* str);
 
 /* Optional. */
 #define optional(t_) struct { bool has_value; t_ value; }

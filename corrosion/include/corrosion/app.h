@@ -69,8 +69,6 @@ void __cr_app_update() {
 }
 
 static bool run(i32 argc, const char** argv) {
-	alloc_init();
-
 	struct app_config* cfg = &current_config;
 
 	init_timer();
@@ -110,10 +108,6 @@ static bool run(i32 argc, const char** argv) {
 	deinit_video();
 	deinit_window();
 
-	leak_check();
-
-	alloc_deinit();
-
 	return _impl__cr__app.r;
 }
 
@@ -123,6 +117,8 @@ void reconfigure_app(struct app_config config) {
 }
 
 i32 main(i32 argc, const char** argv) {
+	alloc_init();
+
 #ifndef __EMSCRIPTEN__
 	want_reconfigure = false;
 
@@ -136,6 +132,10 @@ i32 main(i32 argc, const char** argv) {
 
 	run(argc, argv);
 #endif
+
+	leak_check();
+
+	alloc_deinit();
 }
 
 

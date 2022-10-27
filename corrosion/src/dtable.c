@@ -7,7 +7,6 @@ struct dtable new_dtable(const char* name) {
 	struct dtable r = { 0 };
 
 	r.key.len = strlen(name);
-	r.key.hash = elf_hash((const u8*)name, r.key.len);
 	memcpy(r.key.chars, name, cr_min(r.key.len, sizeof r.key.chars));
 
 	r.value.type = dtable_parent;
@@ -443,7 +442,6 @@ static bool parse(struct dtable* dt, struct parser* parser) {
 
 	memcpy(dt->key.chars, tok.start, tok.len);
 	dt->key.len = tok.len;
-	dt->key.hash = elf_hash((const u8*)tok.start, tok.len);
 	consume_tok(tok_equal, "Expected `=' after key.");
 	advance();
 
@@ -645,10 +643,8 @@ void deinit_dtable(struct dtable* dt) {
 }
 
 bool dtable_find_child(const struct dtable* dt, const char* key, struct dtable* dst) {
-	u64 hash = hash_string(key);
-
 	for (usize i = 0; i < vector_count(dt->children); i++) {
-		if (dt->children[i].key.hash == hash) {
+		if (strcmp(dt->children[i].key.chars, key)) {
 			*dst = dt->children[i];
 			return true;
 		}

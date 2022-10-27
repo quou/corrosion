@@ -115,12 +115,15 @@ struct res_config {
 	const void* alt_raw;
 	usize alt_raw_size;
 
+	/* For internal use. */
+	const char* _name;
+
 	void (*on_load)(const char* filename, u8* raw, usize raw_size, void* payload, usize payload_size, void* udata);
 	void (*on_unload)(void* payload, usize payload_size);
 };
 
 struct resource {
-	u64 id;
+	const char* key;
 	void* payload;
 };
 

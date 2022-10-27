@@ -320,13 +320,28 @@ void flip_image_y(struct image* image) {
 
 struct res {
 	u8* payload;
+	const char* config_name;
+	const char* name;
 	usize payload_size;
-	u64 config_id;
 	bool ok;
 };
 
-table(u64, struct res_config) res_registry;
-table(u64, struct res)        res_cache;
+table(const char*, struct res_config) res_registry;
+table(const char*, struct res)        res_cache;
+const char* last_copied_cache_key = null;
+const char* last_copied_type_key = null;
+
+inline static u8* res_cache_table_copy_string(const u8* src) {
+	char* r = copy_string((const char*)src);
+	last_copied_cache_key = r;
+	return (u8*)r;
+}
+
+inline static u8* res_registry_table_copy_string(const u8* src) {
+	char* r = copy_string((const char*)src);
+	last_copied_type_key = r;
+	return (u8*)r;
+}
 
 static void image_on_load(const char* filename, u8* raw, usize raw_size, void* payload, usize payload_size, void* udata) {
 	struct image* image = payload;
@@ -362,6 +377,16 @@ void res_init(const char* argv0) {
 	memset(&res_registry, 0, sizeof res_registry);
 	memset(&res_cache, 0, sizeof res_cache);
 
+	res_registry.hash = table_hash_string;
+	res_registry.compare = table_compare_string;
+	res_registry.free_key = table_free_string;
+	res_registry.copy_key = res_registry_table_copy_string;
+
+	res_cache.hash = table_hash_string;
+	res_cache.compare = table_compare_string;
+	res_cache.free_key = table_free_string;
+	res_cache.copy_key = res_cache_table_copy_string;
+
 	reg_res_type("image", &(struct res_config) {
 		.payload_size = sizeof(struct image),
 		.free_raw_on_load = true,
@@ -385,10 +410,10 @@ void res_init(const char* argv0) {
 }
 
 void res_deinit() {
-	for (u64* i = table_first(res_cache); i; i = table_next(res_cache, *i)) {
+	for (const char** i = table_first(res_cache); i; i = table_next(res_cache, *i)) {
 		struct res* res = table_get(res_cache, *i);
 
-		struct res_config* config = table_get(res_registry, res->config_id);
+		struct res_config* config = table_get(res_registry, res->config_name);
 
 		config->on_unload(res->payload, res->payload_size);
 
@@ -400,52 +425,88 @@ void res_deinit() {
 }
 
 void reg_res_type(const char* type, const struct res_config* config) {
-	table_set(res_registry, string_id(type), *config);
+	table_set(res_registry, type, *config);
+	struct res_config* c = table_get(res_registry, type);
+	c->_name = last_copied_type_key;
+}
+
+static usize base64_size(usize size) {
+	return 4 * ((size + 2) / 3);
+}
+
+static char encoding_table[] = {
+	'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H',
+	'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P',
+	'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X',
+	'Y', 'Z', 'a', 'b', 'c', 'd', 'e', 'f',
+	'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n',
+	'o', 'p', 'q', 'r', 's', 't', 'u', 'v',
+	'w', 'x', 'y', 'z', '0', '1', '2', '3',
+	'4', '5', '6', '7', '8', '9', '+', '/'
+};
+
+static i32 mod_table[] = {0, 2, 1};
+
+/* From: https://stackoverflow.com/a/6782480/9549501 */
+static void base64_encode(char* out, const u8* data, usize size) {
+	usize os = base64_size(size);
+
+	for (usize i = 0, j = 0; i < size;) {
+		u32 octet_a = i < size ? (u8)data[i++] : 0;
+		u32 octet_b = i < size ? (u8)data[i++] : 0;
+		u32 octet_c = i < size ? (u8)data[i++] : 0;
+		
+		u32 triple = (octet_a << 0x10) + (octet_b << 0x08) + octet_c;
+		
+		out[j++] = encoding_table[(triple >> 3 * 6) & 0x3F];
+		out[j++] = encoding_table[(triple >> 2 * 6) & 0x3F];
+		out[j++] = encoding_table[(triple >> 1 * 6) & 0x3F];
+		out[j++] = encoding_table[(triple >> 0 * 6) & 0x3F];
+	}
+	
+	for (int i = 0; i < mod_table[size % 3]; i++) {
+		out[os - 1 - i] = '=';
+	}
 }
 
 /* Get a unique ID buffer for each resource, based on the config type and the user data. This allows
  * the same filename to be used for different resource types and with different user data configs without
  * the system confusing them for each other in the resource cache. */
-static void get_resource_id_bytebuffer(u8* bb, usize bb_max_size, usize* bb_size, const char* filename,
-	const void* udata, u64 config_id, const struct res_config* config) {
-
-	usize end_size = config->udata_size + sizeof config_id;
-
+static char* get_resource_id_bytebuffer(const char* filename, const void* udata, const char* type, const struct res_config* config) {
 	usize filename_len = strlen(filename);
-	*bb_size = end_size + filename_len;
+	usize type_len = strlen(type);
+	usize udata_len = base64_size(config->udata_size);
 
-	memcpy(bb, filename, cr_max(filename_len, bb_max_size - end_size));
-	memcpy(bb + filename_len, &config_id, sizeof config_id);
-	memcpy(bb + filename_len + sizeof config_id, udata, config->udata_size);
+	char* buf = core_alloc(filename_len + type_len + udata_len + 1);
+	memcpy(buf, filename, filename_len);
+	memcpy(buf + filename_len, type, type_len);
+
+	if (udata) {
+		base64_encode(buf + filename_len + type_len, udata, config->udata_size);
+	}
+
+	buf[filename_len + udata_len + type_len] = '\0';
+
+	return buf;
 }
 
 struct resource res_load(const char* type, const char* filename, void* udata) {
-	u64 config_id = string_id(type);
-
-	struct res_config* config = table_get(res_registry, config_id);
+	struct res_config* config = table_get(res_registry, type);
 
 	if (!config) {
 		error("Loading `%s': No resource handler registered for this type of file (%s).", filename, type);
-		return (struct resource) { UINT64_MAX, null };
+		return (struct resource) { null, null };
 	}
 
-	usize resource_id_bb_size;
-	u8 resource_id_bb[1024];
-	get_resource_id_bytebuffer(resource_id_bb, sizeof resource_id_bb, &resource_id_bb_size,
-		filename, udata, config_id, config);
-	u64 resource_id = 0;
+	char* resource_id_buf = get_resource_id_bytebuffer(filename, udata, type, config);
 
-	for (usize i = 0; i < resource_id_bb_size; i++) {
-		resource_id += resource_id_bb[i];
-	}
-
-	struct res* got = table_get(res_cache, resource_id);
-	if (got) { return (struct resource) { resource_id, got->payload }; }
+	struct res* got = table_get(res_cache, resource_id_buf);
+	if (got) { return (struct resource) { got->name, got->payload }; }
 
 	struct res new_res = {
 		.payload = core_calloc(1, config->payload_size),
 		.payload_size = config->payload_size,
-		.config_id = config_id
+		.config_name = config->_name
 	};
 
 	u8* raw;
@@ -478,19 +539,24 @@ struct resource res_load(const char* type, const char* filename, void* udata) {
 		core_free(raw);
 	}
 
-	table_set(res_cache, resource_id, new_res);
+	table_set(res_cache, resource_id_buf, new_res);
 
-	return (struct resource) { resource_id, new_res.payload };
+	struct res* new_res_ptr = table_get(res_cache, resource_id_buf);
+	new_res_ptr->name = last_copied_cache_key;
+
+	core_free(resource_id_buf);
+
+	return (struct resource) { new_res_ptr->name, new_res.payload };
 }
 
 void res_unload(const struct resource* r) {
-	struct res* res = table_get(res_cache, r->id);
+	struct res* res = table_get(res_cache, r->key);
 	if (!res) {
 		error("Failed to unload resource.");
 		return;
 	}
 
-	struct res_config* config = table_get(res_registry, res->config_id);
+	struct res_config* config = table_get(res_registry, res->config_name);
 
 	config->on_unload(res->payload, res->payload_size);
 
@@ -498,7 +564,7 @@ void res_unload(const struct resource* r) {
 		core_free(res->payload);
 	}
 
-	table_delete(res_cache, r->id);
+	table_delete(res_cache, r->key);
 }
 
 struct texture* load_texture(const char* filename, u32 flags, struct resource* r) {

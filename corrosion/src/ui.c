@@ -141,9 +141,9 @@ struct ui_style {
 };
 
 struct ui_stylesheet {
-	table(u64, struct ui_style) normal;
-	table(u64, struct ui_style) hovered;
-	table(u64, struct ui_style) active;
+	table(const char*, struct ui_style) normal;
+	table(const char*, struct ui_style) hovered;
+	table(const char*, struct ui_style) active;
 } default_stylesheet;
 
 struct font* default_font;
@@ -353,17 +353,17 @@ static inline void ui_build_style(struct ui_style* dst, const struct ui_style* s
 	if (src->max_size.has_value)          { dst->max_size          = src->max_size; }
 }
 
-static inline void ui_build_style_variant(struct ui* ui, u64 class_id, struct ui_style* dst, u32 variant) {
+static inline void ui_build_style_variant(struct ui* ui, const char* class_name, struct ui_style* dst, u32 variant) {
 	switch (variant) {
 		case ui_style_variant_hovered: {
-			const struct ui_style* hovered_ptr = table_get(ui->stylesheet->hovered, class_id);
+			const struct ui_style* hovered_ptr = table_get(ui->stylesheet->hovered, class_name);
 
 			if (hovered_ptr) {
 				ui_build_style(dst, hovered_ptr);
 			}
 		} break;
 		case ui_style_variant_active: {
-			const struct ui_style* active_ptr = table_get(ui->stylesheet->active, class_id);
+			const struct ui_style* active_ptr = table_get(ui->stylesheet->active, class_name);
 
 			if (active_ptr) {
 				ui_build_style(dst, active_ptr);
@@ -374,8 +374,7 @@ static inline void ui_build_style_variant(struct ui* ui, u64 class_id, struct ui
 }
 
 static struct ui_style ui_get_style(struct ui* ui, const char* base_class, const char* class, u32 variant) {
-	const u64 base_name_hash = hash_string(base_class);
-	const struct ui_style* base_ptr = table_get(ui->stylesheet->normal, base_name_hash);
+	const struct ui_style* base_ptr = table_get(ui->stylesheet->normal, base_class);
 
 	if (!base_ptr) {
 		error("Base class `%s' not found in stylesheet.", base_class);
@@ -383,7 +382,7 @@ static struct ui_style ui_get_style(struct ui* ui, const char* base_class, const
 	}
 
 	struct ui_style base = *base_ptr;
-	ui_build_style_variant(ui, base_name_hash, &base, variant);
+	ui_build_style_variant(ui, base_class, &base, variant);
 
 	usize class_name_size = strlen(class) + 1;
 	if (class_name_size > ui->temp_str_size) {
@@ -395,13 +394,12 @@ static struct ui_style ui_get_style(struct ui* ui, const char* base_class, const
 
 	char* cur_class = strtok(ui->temp_str, " ");
 	while (cur_class) {
-		const u64 name_hash = hash_string(cur_class);
-		const struct ui_style* class_ptr = table_get(ui->stylesheet->normal, name_hash);
+		const struct ui_style* class_ptr = table_get(ui->stylesheet->normal, cur_class);
 		if (!class_ptr) {
 			error("Class `%s' not found in stylesheet.", cur_class);
 		} else {
 			ui_build_style(&base, class_ptr);
-			ui_build_style_variant(ui, name_hash, &base, variant);
+			ui_build_style_variant(ui, cur_class, &base, variant);
 		}
 
 		cur_class = strtok(null, " ");
@@ -428,13 +426,13 @@ static bool ui_get_style_variant(struct ui* ui, struct ui_style* style, const ch
 }
 
 static void stylesheet_table_from_dtable(void* dst_vptr, struct dtable* src) {
-	table(u64, struct ui_style)* dst = dst_vptr;
+	table(const char*, struct ui_style)* dst = dst_vptr;
 
 	for (usize i = 0; i < vector_count(src->children); i++) {
 		struct dtable* class = src->children + i;
 
 		struct ui_style s = { 0 };
-		struct ui_style* got = table_get(*dst, class->key.hash);
+		struct ui_style* got = table_get(*dst, class->key.chars);
 		if (got) { s = *got; }
 
 		for (usize j = 0; j < vector_count(class->children); j++) {
@@ -442,53 +440,73 @@ static void stylesheet_table_from_dtable(void* dst_vptr, struct dtable* src) {
 
 			switch (child->value.type) {
 				case dtable_colour:
-					if (child->key.hash == hash_string("text_colour")) {
+					if (strcmp(child->key.chars, "text_colour") == 0) {
 						optional_set(s.text_colour, child->value.as.colour);
-					} else if (child->key.hash == hash_string("background_colour")) {
+					} else if (strcmp(child->key.chars, "background_colour") == 0) {
 						optional_set(s.background_colour, child->value.as.colour);
 					}
 					break;
 				case dtable_number: 
-					if (child->key.hash == hash_string("radius")) {
+					if (strcmp(child->key.chars, "radius") == 0) {
 						optional_set(s.radius, (f32)child->value.as.number);
 					}
 				case dtable_string:
-					if (child->key.hash == hash_string("align")) {
+					if (strcmp(child->key.chars, "align") == 0) {
 						optional_set(s.align, strcmp(child->value.as.string, "left") == 0 ? ui_align_left :
 							strcmp(child->value.as.string, "centre") == 0 ? ui_align_centre :
 							ui_align_right);
 					}
 					break;
 				case dtable_v2:
-					if (child->key.hash == hash_string("max_size")) {
+					if (strcmp(child->key.chars, "max_size") == 0) {
 						optional_set(s.max_size, child->value.as.v2);
-					} else if (child->key.hash == hash_string("min_size")) {
+					} else if (strcmp(child->key.chars, "min_size") == 0) {
 						optional_set(s.min_size, child->value.as.v2);
 					}
 					break;
 				case dtable_v4:
-					if (child->key.hash == hash_string("padding")) {	
+					if (strcmp(child->key.chars, "padding") == 0) {	
 						optional_set(s.padding, child->value.as.v4);
 					}
 					break;
 			}
 		}
 
-		table_set(*dst, class->key.hash, s);
+		table_set(*dst, class->key.chars, s);
 	}
 }
 
 static void stylesheet_on_load(const char* filename, u8* raw, usize raw_size, void* payload, usize payload_size, void* udata) {
 	struct ui_stylesheet* stylesheet = payload;
-	for (u64* i = table_first(default_stylesheet.normal); i; i = table_next(default_stylesheet.normal, *i)) {
+
+	stylesheet->normal.hash     = table_hash_string;
+	stylesheet->normal.compare  = table_compare_string;
+	stylesheet->normal.free_key = table_free_string;
+	stylesheet->normal.copy_key = table_copy_string;
+
+	stylesheet->hovered.hash     = table_hash_string;
+	stylesheet->hovered.compare  = table_compare_string;
+	stylesheet->hovered.free_key = table_free_string;
+	stylesheet->hovered.copy_key = table_copy_string;
+
+	stylesheet->active.hash     = table_hash_string;
+	stylesheet->active.compare  = table_compare_string;
+	stylesheet->active.free_key = table_free_string;
+	stylesheet->active.copy_key = table_copy_string;
+
+	for (const char** i = table_first(default_stylesheet.normal); i; i = table_next(default_stylesheet.normal, *i)) {
 		table_set(stylesheet->normal, *i, *(struct ui_style*)table_get(default_stylesheet.normal, *i));
 	}
 
-	for (u64* i = table_first(default_stylesheet.active); i; i = table_next(default_stylesheet.active, *i)) {
+	for (const char** i = table_first(stylesheet->normal); i; i = table_next(stylesheet->normal, *i)) {
+		table_set(stylesheet->normal, *i, *(struct ui_style*)table_get(default_stylesheet.normal, *i));
+	}
+
+	for (const char** i = table_first(default_stylesheet.active); i; i = table_next(default_stylesheet.active, *i)) {
 		table_set(stylesheet->active, *i, *(struct ui_style*)table_get(default_stylesheet.active, *i));
 	}
 
-	for (u64* i = table_first(default_stylesheet.hovered); i; i = table_next(default_stylesheet.hovered, *i)) {
+	for (const char** i = table_first(default_stylesheet.hovered); i; i = table_next(default_stylesheet.hovered, *i)) {
 		table_set(stylesheet->hovered, *i, *(struct ui_style*)table_get(default_stylesheet.hovered, *i));
 	}
 
@@ -524,50 +542,65 @@ void ui_init() {
 	memset(&default_stylesheet.active,  0, sizeof default_stylesheet.active);
 	memset(&default_stylesheet.hovered, 0, sizeof default_stylesheet.hovered);
 
-	table_set(default_stylesheet.normal, hash_string("label"), ((struct ui_style) {
+	default_stylesheet.normal.hash     = table_hash_string;
+	default_stylesheet.normal.compare  = table_compare_string;
+	default_stylesheet.normal.free_key = table_free_string;
+	default_stylesheet.normal.copy_key = table_copy_string;
+
+	default_stylesheet.active.hash     = table_hash_string;
+	default_stylesheet.active.compare  = table_compare_string;
+	default_stylesheet.active.free_key = table_free_string;
+	default_stylesheet.active.copy_key = table_copy_string;
+
+	default_stylesheet.hovered.hash     = table_hash_string;
+	default_stylesheet.hovered.compare  = table_compare_string;
+	default_stylesheet.hovered.free_key = table_free_string;
+	default_stylesheet.hovered.copy_key = table_copy_string;
+
+	table_set(default_stylesheet.normal, "label", ((struct ui_style) {
 		.text_colour       = { true, make_rgba(0xffffff, 255) },
 		.background_colour = { true, make_rgba(0x111111, 0) },
 		.align             = { true, ui_align_left },
 	}));
 
-	table_set(default_stylesheet.normal, hash_string("button"), ((struct ui_style) {
+	table_set(default_stylesheet.normal, "button", ((struct ui_style) {
 		.text_colour       = { true, make_rgba(0xffffff, 255) },
 		.background_colour = { true, make_rgba(0x191b26, 255) },
 		.padding           = { true, make_v4f(3.0f, 3.0f, 3.0f, 3.0f) }
 	}));
 
-	table_set(default_stylesheet.hovered, hash_string("button"), ((struct ui_style) {
+	table_set(default_stylesheet.hovered, "button", ((struct ui_style) {
 		.background_colour = { true, make_rgba(0x252839, 255) },
 	}));
 
-	table_set(default_stylesheet.active, hash_string("button"), ((struct ui_style) {
+	table_set(default_stylesheet.active, "button", ((struct ui_style) {
 		.text_colour       = { true, make_rgba(0x000000, 255) },
 		.background_colour = { true, make_rgba(0x8c91ac, 255) },
 	}));
 
-	table_set(default_stylesheet.normal, hash_string("input"), ((struct ui_style) {
+	table_set(default_stylesheet.normal, "input", ((struct ui_style) {
 		.text_colour       = { true, make_rgba(0xffffff, 255) },
 		.background_colour = { true, make_rgba(0x191b26, 255) },
 		.padding           = { true, make_v4f(3.0f, 3.0f, 3.0f, 3.0f) }
 	}));
 
-	table_set(default_stylesheet.hovered, hash_string("input"), ((struct ui_style) {
+	table_set(default_stylesheet.hovered, "input", ((struct ui_style) {
 		.background_colour = { true, make_rgba(0x252839, 255) },
 	}));
 
-	table_set(default_stylesheet.active, hash_string("input"), ((struct ui_style) {
+	table_set(default_stylesheet.active, "input", ((struct ui_style) {
 		.text_colour       = { true, make_rgba(0x000000, 255) },
 		.background_colour = { true, make_rgba(0x8c91ac, 255) },
 	}));
 
-	table_set(default_stylesheet.normal, hash_string("container"), ((struct ui_style) {
+	table_set(default_stylesheet.normal, "container", ((struct ui_style) {
 		.background_colour = { true, make_rgba(0x111111, 255) },
 		.padding           = { true, make_v4f(5.0f, 5.0f, 5.0f, 5.0f) },
 		.spacing           = { true, 5.0f },
 		.radius            = { true, 10.0f }
 	}));
 
-	table_set(default_stylesheet.normal, hash_string("knob"), ((struct ui_style) {
+	table_set(default_stylesheet.normal, "knob", ((struct ui_style) {
 		.text_colour       = { true, make_rgba(0xffffff, 255) },
 		.background_colour = { true, make_rgba(0x191b26, 255) },
 		.padding           = { true, make_v4f(5.0f, 5.0f, 5.0f, 5.0f) },
@@ -576,17 +609,17 @@ void ui_init() {
 		.align             = { true, ui_align_centre }
 	}));
 
-	table_set(default_stylesheet.hovered, hash_string("knob"), ((struct ui_style) {
+	table_set(default_stylesheet.hovered, "knob", ((struct ui_style) {
 		.text_colour       = { true, make_rgba(0xffffff, 255) },
 		.background_colour = { true, make_rgba(0x252839, 255) },
 	}));
 
-	table_set(default_stylesheet.active, hash_string("knob"), ((struct ui_style) {
+	table_set(default_stylesheet.active, "knob", ((struct ui_style) {
 		.text_colour       = { true, make_rgba(0x000000, 255) },
 		.background_colour = { true, make_rgba(0x8c91ac, 255) },
 	}));
 
-	table_set(default_stylesheet.normal, hash_string("picture"), ((struct ui_style) {
+	table_set(default_stylesheet.normal, "picture", ((struct ui_style) {
 		.text_colour       = { true, make_rgba(0xffffff, 255) },
 		.background_colour = { true, make_rgba(0x191b26, 255) },
 		.padding           = { true, make_v4f(3.0f, 3.0f, 3.0f, 3.0f) },
@@ -595,52 +628,52 @@ void ui_init() {
 		.min_size          = { true, { 100.0f, 100.0f } }
 	}));
 
-	table_set(default_stylesheet.hovered, hash_string("picture"), ((struct ui_style) {
+	table_set(default_stylesheet.hovered, "picture", ((struct ui_style) {
 		.text_colour       = { true, make_rgba(0xd9d9ff, 255) },
 		.background_colour = { true, make_rgba(0x252839, 255) },
 	}));
 
-	table_set(default_stylesheet.active, hash_string("picture"), ((struct ui_style) {
+	table_set(default_stylesheet.active, "picture", ((struct ui_style) {
 		.background_colour = { true, make_rgba(0x8c91ac, 255) },
 	}));
 
-	table_set(default_stylesheet.normal, hash_string("tree_button"), ((struct ui_style) {
+	table_set(default_stylesheet.normal, "tree_button", ((struct ui_style) {
 		.text_colour       = { true, make_rgba(0xffffff, 255) },
 		.background_colour = { true, make_rgba(0x191b26, 255) },
 		.padding           = { true, make_v4f(3.0f, 3.0f, 3.0f, 3.0f) }
 	}));
 
-	table_set(default_stylesheet.hovered, hash_string("tree_button"), ((struct ui_style) {
+	table_set(default_stylesheet.hovered, "tree_button", ((struct ui_style) {
 		.background_colour = { true, make_rgba(0x252839, 255) },
 	}));
 
-	table_set(default_stylesheet.active, hash_string("tree_button"), ((struct ui_style) {
+	table_set(default_stylesheet.active, "tree_button", ((struct ui_style) {
 		.text_colour       = { true, make_rgba(0x000000, 255) },
 		.background_colour = { true, make_rgba(0x8c91ac, 255) },
 	}));
 
-	table_set(default_stylesheet.normal, hash_string("tree_header"), ((struct ui_style) {
+	table_set(default_stylesheet.normal, "tree_header", ((struct ui_style) {
 		.text_colour       = { true, make_rgba(0xffffff, 255) },
 		.background_colour = { true, make_rgba(0x191b26, 255) },
 		.padding           = { true, make_v4f(3.0f, 3.0f, 3.0f, 3.0f) }
 	}));
 
-	table_set(default_stylesheet.hovered, hash_string("tree_header"), ((struct ui_style) {
+	table_set(default_stylesheet.hovered, "tree_header", ((struct ui_style) {
 		.background_colour = { true, make_rgba(0x252839, 255) },
 	}));
 
-	table_set(default_stylesheet.active, hash_string("tree_header"), ((struct ui_style) {
+	table_set(default_stylesheet.active, "tree_header", ((struct ui_style) {
 		.text_colour       = { true, make_rgba(0x000000, 255) },
 		.background_colour = { true, make_rgba(0x8c91ac, 255) },
 	}));
 
-	table_set(default_stylesheet.normal, hash_string("tree_container"), ((struct ui_style) {
+	table_set(default_stylesheet.normal, "tree_container", ((struct ui_style) {
 		.padding           = { true, make_v4f(10.0f, 0.0f, 0.0f, 0.0f) },
 		.spacing           = { true, 5.0f },
 		.radius            = { true, 0.0f }
 	}));
 
-	table_set(default_stylesheet.normal, hash_string("picker"), ((struct ui_style) {
+	table_set(default_stylesheet.normal, "picker", ((struct ui_style) {
 		.text_colour       = { true, make_rgba(0xffffff, 255) },
 		.background_colour = { true, make_rgba(0x262626, 255) },
 		.max_size          = { true, make_v2f(150.0f, 150.0f) },
@@ -648,22 +681,22 @@ void ui_init() {
 		.padding           = { true, 3.0f },
 	}));
 
-	table_set(default_stylesheet.normal, hash_string("combo"), ((struct ui_style) {
+	table_set(default_stylesheet.normal, "combo", ((struct ui_style) {
 		.text_colour       = { true, make_rgba(0xffffff, 255) },
 		.background_colour = { true, make_rgba(0x191b26, 255) },
 		.padding           = { true, make_v4f(3.0f, 3.0f, 3.0f, 3.0f) }
 	}));
 
-	table_set(default_stylesheet.hovered, hash_string("combo"), ((struct ui_style) {
+	table_set(default_stylesheet.hovered, "combo", ((struct ui_style) {
 		.background_colour = { true, make_rgba(0x252839, 255) },
 	}));
 
-	table_set(default_stylesheet.active, hash_string("combo"), ((struct ui_style) {
+	table_set(default_stylesheet.active, "combo", ((struct ui_style) {
 		.text_colour       = { true, make_rgba(0x000000, 255) },
 		.background_colour = { true, make_rgba(0x8c91ac, 255) },
 	}));
 
-	table_set(default_stylesheet.normal, hash_string("combo_container"), ((struct ui_style) {
+	table_set(default_stylesheet.normal, "combo_container", ((struct ui_style) {
 		.padding           = { true, make_v4f(5.0f, 10.0f, 5.0f, 5.0f) },
 		.background_colour = { true, make_rgba(0x0c0c0c, 255) },
 		.spacing           = { true, 5.0f },
