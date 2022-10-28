@@ -644,7 +644,7 @@ void deinit_dtable(struct dtable* dt) {
 
 bool dtable_find_child(const struct dtable* dt, const char* key, struct dtable* dst) {
 	for (usize i = 0; i < vector_count(dt->children); i++) {
-		if (strcmp(dt->children[i].key.chars, key)) {
+		if (strcmp(dt->children[i].key.chars, key) == 0) {
 			*dst = dt->children[i];
 			return true;
 		}

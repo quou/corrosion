@@ -395,6 +395,7 @@ static struct ui_style ui_get_style(struct ui* ui, const char* base_class, const
 	char* cur_class = strtok(ui->temp_str, " ");
 	while (cur_class) {
 		const struct ui_style* class_ptr = table_get(ui->stylesheet->normal, cur_class);
+
 		if (!class_ptr) {
 			error("Class `%s' not found in stylesheet.", cur_class);
 		} else {
@@ -495,10 +496,6 @@ static void stylesheet_on_load(const char* filename, u8* raw, usize raw_size, vo
 	stylesheet->active.copy_key = table_copy_string;
 
 	for (const char** i = table_first(default_stylesheet.normal); i; i = table_next(default_stylesheet.normal, *i)) {
-		table_set(stylesheet->normal, *i, *(struct ui_style*)table_get(default_stylesheet.normal, *i));
-	}
-
-	for (const char** i = table_first(stylesheet->normal); i; i = table_next(stylesheet->normal, *i)) {
 		table_set(stylesheet->normal, *i, *(struct ui_style*)table_get(default_stylesheet.normal, *i));
 	}
 

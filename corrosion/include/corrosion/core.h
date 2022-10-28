@@ -137,14 +137,6 @@ char* copy_string(const char* str);
 
 #define table_load_factor 0.65
 
-#ifndef table_malloc
-#define table_malloc core_alloc
-#endif
-
-#ifndef table_free
-#define table_free core_free
-#endif
-
 /* Takes a struct value instead of a type and gets
  * the offset of a property. */
 #define voffsetof(v_, m_) \
@@ -237,7 +229,7 @@ void* _table_next_key(table_hash_fun hash, table_compare_fun compare, void* els,
 			memcpy(dst_ + voffsetof((t_).e, value), el_ + voffsetof((t_).e, value), sizeof (t_).v); \
 			memcpy(dst_ + voffsetof((t_).e, state), el_ + voffsetof((t_).e, state), sizeof(u8)); \
 		} \
-		if ((t_).entries) { table_free((t_).entries); } \
+		if ((t_).entries) { core_free((t_).entries); } \
 		(t_).entries = (void*)els_; \
 		(t_).capacity = (cap_); \
 	} while (0)
@@ -270,7 +262,7 @@ void* _table_next_key(table_hash_fun hash, table_compare_fun compare, void* els,
 					(t_).free_key(el_ + voffsetof((t_).e, key)); \
 				} \
 			} \
-			table_free((t_).entries); \
+			core_free((t_).entries); \
 		} \
 	} while (0)
 
@@ -280,25 +272,24 @@ void* _table_next_key(table_hash_fun hash, table_compare_fun compare, void* els,
 			usize new_cap_ = (t_).capacity < 8 ? 8 : (t_).capacity * 2; \
 			_table_resize((t_), new_cap_); \
 		} \
-		if ((t_).copy_key) { \
-			(t_).k = k_; \
-			u8* tk_; \
-			memcpy(&tk_, &(t_).k, sizeof tk_); \
-			tk_ = (t_).copy_key(tk_); \
-			memcpy(&(t_).k, &tk_, sizeof (t_).k); \
-		} else { \
-			(t_).k = k_; \
-		} \
 		_make_null_table_key(t_, nk_); \
+		(t_).k = k_; \
 		u8* el_ = _find_table_el((t_).hash, (t_).compare, (t_).entries, sizeof *(t_).entries, (t_).capacity, sizeof (t_).k, \
 			&(t_).k,\
 			voffsetof((t_).e, key), voffsetof((t_).e, value), voffsetof((t_).e, state), null); \
 		if (memcmp(el_ + voffsetof((t_).e, key), nk_, sizeof (t_).k) == 0) { \
 			(t_).count++; \
+			if ((t_).copy_key) { \
+				(t_).k = k_; \
+				u8* tk_; \
+				memcpy(&tk_, &(t_).k, sizeof tk_); \
+				tk_ = (t_).copy_key(tk_); \
+				memcpy(&(t_).k, &tk_, sizeof (t_).k); \
+			} \
 		} \
 		(t_).v = (v_); \
-		memcpy(el_ + voffsetof((t_).e, key),   &(t_).k, sizeof (t_).k); \
 		memcpy(el_ + voffsetof((t_).e, value), &(t_).v, sizeof (t_).v); \
+		memcpy(el_ + voffsetof((t_).e, key),   &(t_).k, sizeof (t_).k); \
 	} while (0)
 
 #define table_get(t_, k_) \
@@ -315,12 +306,14 @@ void* _table_next_key(table_hash_fun hash, table_compare_fun compare, void* els,
 				&(t_).k,\
 				voffsetof((t_).e, key), voffsetof((t_).e, value), voffsetof((t_).e, state), null); \
 			_make_null_table_key(t_, nk_); \
-			if ((t_).free_key) { \
-				(t_).free_key(el_ + voffsetof((t_).e, key)); \
+			if (memcmp(el_ + voffsetof((t_).e, key), nk_, sizeof (t_).k) != 0) { \
+				if ((t_).free_key) { \
+					(t_).free_key(el_ + voffsetof((t_).e, key)); \
+				} \
+				memcpy(el_ + voffsetof((t_).e, key), nk_, sizeof (t_).k); \
+				el_[voffsetof((t_).e, state)] = table_el_state_inactive; \
+				(t_).count--; \
 			} \
-			memcpy(el_ + voffsetof((t_).e, key), nk_, sizeof (t_).k); \
-			el_[voffsetof((t_).e, state)] = table_el_state_inactive; \
-			(t_).count--; \
 		} \
 	} while (0)
 
