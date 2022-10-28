@@ -72,6 +72,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "volume", "demos\volume\volu
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "volume_shaders", "demos\volume_shaders\volume_shaders.vcxproj", "{92DAB560-86BA-4036-999A-0A19B23B6294}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ui", "demos\ui\ui.vcxproj", "{ADC7211E-3D8A-42CE-B07A-7F5310C1AC55}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -232,6 +234,14 @@ Global
 		{92DAB560-86BA-4036-999A-0A19B23B6294}.Release|x64.Build.0 = Release|x64
 		{92DAB560-86BA-4036-999A-0A19B23B6294}.Release|x86.ActiveCfg = Release|Win32
 		{92DAB560-86BA-4036-999A-0A19B23B6294}.Release|x86.Build.0 = Release|Win32
+		{ADC7211E-3D8A-42CE-B07A-7F5310C1AC55}.Debug|x64.ActiveCfg = Debug|x64
+		{ADC7211E-3D8A-42CE-B07A-7F5310C1AC55}.Debug|x64.Build.0 = Debug|x64
+		{ADC7211E-3D8A-42CE-B07A-7F5310C1AC55}.Debug|x86.ActiveCfg = Debug|Win32
+		{ADC7211E-3D8A-42CE-B07A-7F5310C1AC55}.Debug|x86.Build.0 = Debug|Win32
+		{ADC7211E-3D8A-42CE-B07A-7F5310C1AC55}.Release|x64.ActiveCfg = Release|x64
+		{ADC7211E-3D8A-42CE-B07A-7F5310C1AC55}.Release|x64.Build.0 = Release|x64
+		{ADC7211E-3D8A-42CE-B07A-7F5310C1AC55}.Release|x86.ActiveCfg = Release|Win32
+		{ADC7211E-3D8A-42CE-B07A-7F5310C1AC55}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -249,6 +259,7 @@ Global
 		{E6CE1A38-F6DC-49D0-86C4-5151F81807E4} = {9E6AEE40-28AB-4291-899F-A40CC395B6BD}
 		{0C103574-71C8-4A93-83B9-4B1A0BCC8D86} = {9E6AEE40-28AB-4291-899F-A40CC395B6BD}
 		{92DAB560-86BA-4036-999A-0A19B23B6294} = {9E6AEE40-28AB-4291-899F-A40CC395B6BD}
+		{ADC7211E-3D8A-42CE-B07A-7F5310C1AC55} = {9E6AEE40-28AB-4291-899F-A40CC395B6BD}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {69AB0795-893D-4C47-BB22-CD2B7C7C3538}
