@@ -42,7 +42,6 @@ ifeq ($(config),release)
 endif
 
 all: $(target)
-	@echo $(sources)
 	@:
 
 sources = $(wildcard $(srcdir)/*.c $(srcdir)/*/*.c)
