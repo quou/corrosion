@@ -143,8 +143,8 @@ char* copy_string(const char* str);
 	(usize)(((u8*)(&((v_).m_))) - ((u8*)(&(v_))))
 
 enum {
-	table_el_state_active = 0,
-	table_el_state_inactive
+	table_el_state_active = 0, /* A normal element. */
+	table_el_state_inactive    /* An element that has been deleted. */
 };
 
 typedef u64  (*table_hash_fun)(const u8* bytes, usize size);

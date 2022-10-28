@@ -58,6 +58,9 @@ void* _find_table_el(table_hash_fun hash, table_compare_fun compare, void* els_v
 
 	table_lookup_count++;
 
+	/* Find the first element without a key. Otherwise, finds the first element
+	 * with a key matching key_ptr, of course taking into account the table's
+	 * compare function pointer. */
 	for (;;) {
 		u8* el = els + idx * el_size;
 		if (memcmp(el + key_off, nk, key_size) == 0) {
