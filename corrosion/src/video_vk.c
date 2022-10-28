@@ -284,9 +284,9 @@ static VKAPI_ATTR VkBool32 debug_callback(VkDebugUtilsMessageSeverityFlagBitsEXT
 	 * and NVIDIA 3080). The Radeon and Intel one were tested with both the official Windows
 	 * drivers and the Mesa Linux drivers. The 3080 was tested with only the official Windows
 	 * driver. */
-	/*if (data->messageIdNumber == 0x11b37e31 ||
+	if (data->messageIdNumber == 0x11b37e31 ||
 		data->messageIdNumber == 0xd6d77e1e ||
-		data->messageIdNumber == 0x6c16bfb4) { return false; }*/
+		data->messageIdNumber == 0x6c16bfb4) { return false; }
 
 	if (severity > VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT) {
 		switch (severity) {
