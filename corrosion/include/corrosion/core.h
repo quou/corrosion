@@ -284,12 +284,12 @@ void* _table_next_key(table_hash_fun hash, table_compare_fun compare, void* els,
 				u8* tk_; \
 				memcpy(&tk_, &(t_).k, sizeof tk_); \
 				tk_ = (t_).copy_key(tk_); \
-				memcpy(&(t_).k, &tk_, sizeof (t_).k); \
+				memcpy(&(t_).k, &tk_, sizeof tk_); \
 			} \
+			memcpy(el_ + voffsetof((t_).e, key),   &(t_).k, sizeof (t_).k); \
 		} \
 		(t_).v = (v_); \
 		memcpy(el_ + voffsetof((t_).e, value), &(t_).v, sizeof (t_).v); \
-		memcpy(el_ + voffsetof((t_).e, key),   &(t_).k, sizeof (t_).k); \
 	} while (0)
 
 #define table_get(t_, k_) \
