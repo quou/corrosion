@@ -1,0 +1,14 @@
+# Corrosion Debug pkg-config file
+
+prefix=/usr
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib64
+includedir=${prefix}/include
+
+Name: Corrosion
+Description: Graphics library for GNU/Linux and Windows.
+Version: 0.0.0
+Requires: vulkan
+Conflicts:
+Libs: -L${libdir} -lcorrosiond -lm -lX11 -lXi -lvulkan -lGL -lGLX -lpthread
+Cflags: -I${includedir}

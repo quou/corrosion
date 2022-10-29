@@ -172,13 +172,17 @@ installheaderdir = /usr/include/corrosion
 installlibdir = /usr/lib64
 installbindir = /usr/bin
 
-install: shadercompiler corrosion emscripten
-	make --no-print-directory -C corrosion -f emscripten.make config=$(config)
+install:
+	make config=release emscripten
+	make config=debug emscripten
 	install -d $(installheaderdir)
 	install -d $(installlibdir)
 	install -d $(installbindir)
-	install -m 777 ./shadercompiler/bin/$(config)/shadercompiler $(installbindir)/cshc
+	install -m 777 ./shadercompiler/bin/release/shadercompiler $(installbindir)/cshc
 	install ./../../corrosion/include/corrosion/* $(installheaderdir)
-	install ./corrosion/bin/$(config)/libcr.a $(installlibdir)/libcorrosion.a
-	install ./corrosion/bin/$(config)/emscripten/libcr.bc $(installlibdir)/libcorrosion.bc
+	install ./corrosion/bin/debug/libcr.a $(installlibdir)/libcorrosiond.a
+	install ./corrosion/bin/debug/emscripten/libcr.bc $(installlibdir)/libcorrosiond.bc
+	install ./corrosion/bin/release/libcr.a $(installlibdir)/libcorrosion.a
+	install ./corrosion/bin/release/emscripten/libcr.bc $(installlibdir)/libcorrosion.bc
 	install ./corrosion.pc $(installlibdir)/pkgconfig/corrosion.pc
+	install ./corrosiondebug.pc $(installlibdir)/pkgconfig/corrosiondebug.pc
