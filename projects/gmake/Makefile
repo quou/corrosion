@@ -167,6 +167,7 @@ clean:
 	$(silent) make --no-print-directory -C demos/particles clean
 	$(silent) make --no-print-directory -C demos/voxel clean
 	$(silent) make --no-print-directory -C demos/volume clean
+	$(silent) make --no-print-directory -C demos/ui clean
 
 installheaderdir = /usr/include/corrosion
 installlibdir = /usr/lib64
