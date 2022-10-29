@@ -46,10 +46,12 @@ static inline bool compare_keys(const void* a, const void* b, usize size, table_
 	return f ? f((const u8*)a, (const u8*)b) : (memcmp(a, b, size) == 0);
 }
 
-void* _find_table_el(table_hash_fun hash, table_compare_fun compare, void* els_v, usize el_size, usize capacity,
-	usize key_size, const void* key_ptr, usize key_off, usize val_off, usize state_off, usize* ind) {
-	_make_null_table_key_s(key_size, nk);
+static inline bool is_el_null(const u8* el, usize off) {
+	return !*(bool*)(el + off);
+}
 
+void* _find_table_el(table_hash_fun hash, table_compare_fun compare, void* els_v, usize el_size, usize capacity,
+	usize key_size, const void* key_ptr, usize key_off, usize val_off, usize state_off, usize isnt_null_off, usize* ind) {
 	usize idx = hash_key(key_ptr, key_size, hash) % capacity;
 
 	u8* tombstone = null;
@@ -63,7 +65,7 @@ void* _find_table_el(table_hash_fun hash, table_compare_fun compare, void* els_v
 	 * compare function pointer. */
 	for (;;) {
 		u8* el = els + idx * el_size;
-		if (memcmp(el + key_off, nk, key_size) == 0) {
+		if (is_el_null(el, isnt_null_off)) {
 			if (*(el + state_off) != table_el_state_inactive) {
 				if (ind) { *ind = idx; }
 				return tombstone != null ? tombstone : el;
@@ -80,13 +82,11 @@ void* _find_table_el(table_hash_fun hash, table_compare_fun compare, void* els_v
 }
 
 void* _table_get(table_hash_fun hash, table_compare_fun compare, void* els, usize el_size, usize capacity, usize count,
-	usize key_size, const void* key, usize key_off, usize val_off, usize state_off) {
+	usize key_size, const void* key, usize key_off, usize val_off, usize state_off, usize isnt_null_off) {
 	if (count == 0) { return null; }
-	
-	_make_null_table_key_s(key_size, nk);
 
-	u8* el = _find_table_el(hash, compare, els, el_size, capacity, key_size, key, key_off, val_off, state_off, null);
-	if (memcmp(el + key_off, nk, key_size) == 0) {
+	u8* el = _find_table_el(hash, compare, els, el_size, capacity, key_size, key, key_off, val_off, state_off, isnt_null_off, null);
+	if (is_el_null(el, isnt_null_off)) {
 		return null;
 	}
 
@@ -94,14 +94,12 @@ void* _table_get(table_hash_fun hash, table_compare_fun compare, void* els, usiz
 }
 
 void* _table_first_key(table_hash_fun hash, table_compare_fun compare, void* els, usize el_size, usize capacity,
-	usize count, usize key_size, usize key_off, usize val_off, usize state_off) {
+	usize count, usize key_size, usize key_off, usize val_off, usize state_off, usize isnt_null_off) {
 	if (count == 0) { return null; }
-
-	_make_null_table_key_s(key_size, nk);
 
 	for (usize i = 0; i < capacity; i++) {
 		u8* el = (u8*)els + i * el_size;
-		if (memcmp(el + key_off, nk, key_size) != 0) {
+		if (!is_el_null(el, isnt_null_off)) {
 			return el + key_off;
 		}
 	}
@@ -110,15 +108,13 @@ void* _table_first_key(table_hash_fun hash, table_compare_fun compare, void* els
 }
 
 void* _table_next_key(table_hash_fun hash, table_compare_fun compare, void* els, usize el_size, usize capacity,
-	usize count, usize key_size, const void* key, usize key_off, usize val_off, usize state_off) {
+	usize count, usize key_size, const void* key, usize key_off, usize val_off, usize state_off, usize isnt_null_off) {
 	if (count == 0) { return null; }
-
-	_make_null_table_key_s(key_size, nk);
 
 	usize idx = 0;
 
-	u8* el = _find_table_el(hash, compare, els, el_size, capacity, key_size, key, key_off, val_off, state_off, &idx);
-	if (memcmp(el + key_off, nk, key_size) == 0) {
+	u8* el = _find_table_el(hash, compare, els, el_size, capacity, key_size, key, key_off, val_off, state_off, isnt_null_off, &idx);
+	if (is_el_null(el, isnt_null_off)) {
 		return null;
 	}
 
@@ -128,7 +124,7 @@ void* _table_next_key(table_hash_fun hash, table_compare_fun compare, void* els,
 
 	for (usize i = idx + 1; i < capacity; i++) {
 		el = (u8*)els + i * el_size;
-		if (memcmp(el + key_off, nk, key_size) != 0) {
+		if (!is_el_null(el, isnt_null_off)) {
 			return el + key_off;
 		}
 	}
