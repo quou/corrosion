@@ -1209,10 +1209,22 @@ bool ui_knob_ex(struct ui* ui, const char* class, f32* val, f32 min, f32 max) {
 
 		v2i mouse_pos = get_mouse_pos();
 		v2f v = v2f_sub(make_v2f(mouse_pos.x, mouse_pos.y), knob_origin);
+		f32 old_angle = angle;
 		angle = atan2f(-v.x, -v.y) + to_rad(180.0f);
 
 		angle += ui->knob_angle_offset;
 		angle = clamp(angle, min_angle, max_angle);
+
+		/* If the difference between the old angle and the new angle is too great,
+		 * then assume that the knob has been rotated from 0 to the maximum, which
+		 * shouldn't be allowed, so reset the angle to the angle before any movement.
+		 *
+		 * Theoretically this could also be caused by the user moving his or her mouse
+		 * very quickly at a low framerate, but in practice this is a much more minor
+		 * issue than we are trying to solve, so it can be effectively ignored. */
+		if (fabsf(old_angle - angle) > 2.0f) {
+			angle = old_angle;
+		}
 
 		*val = map(angle, min_angle, max_angle, max, min);
 		*val = clamp(*val, min, max);
