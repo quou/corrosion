@@ -8,7 +8,6 @@ layout (location = 2) in vec4 colour;
 layout (location = 3) in float use_texture;
 layout (location = 4) in float radius;
 layout (location = 5) in vec4 rect;
-layout (location = 6) in float z;
 
 layout (location = 0) out VSOut {
 	vec2 uv;
@@ -16,7 +15,6 @@ layout (location = 0) out VSOut {
 	float use_texture;
 	float radius;
 	vec4 rect;
-	float z;
 	vec2 frag_pos;
 } fs_in;
 
@@ -30,7 +28,6 @@ void main() {
 	fs_in.use_texture = use_texture;
 	fs_in.radius = radius;
 	fs_in.rect = rect;
-	fs_in.z = z;
 
 	vec4 p = (projection * vec4(position, 0.0, 1.0));
 
@@ -51,7 +48,6 @@ layout (location = 0) in VSOut {
 	float use_texture;
 	float radius;
 	vec4 rect;
-	float z;
 	vec2 frag_pos;
 } fs_in;
 
@@ -79,8 +75,6 @@ void main() {
 	}
 
 	colour = mix(vec4(0.0), texture_colour * fs_in.colour, a);
-
-	gl_FragDepth = fs_in.z;
 }
 
 #end fragment

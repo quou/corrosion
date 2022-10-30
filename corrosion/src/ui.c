@@ -6,18 +6,6 @@
 #include "ui.h"
 #include "ui_render.h"
 
-#define ui_layer_count 10.0f
-#define ui_sublayer_count 7.0f
-
-#define ui_z_decrease (1.0f / (ui_layer_count * ui_sublayer_count))
-#define z_layer_1 (container->z - ui_z_decrease * 1.0f)
-#define z_layer_2 (container->z - ui_z_decrease * 2.0f)
-#define z_layer_3 (container->z - ui_z_decrease * 3.0f)
-#define z_layer_4 (container->z - ui_z_decrease * 4.0f)
-#define z_layer_5 (container->z - ui_z_decrease * 5.0f)
-#define z_layer_6 (container->z - ui_z_decrease * 6.0f)
-#define z_step (ui_z_decrease * ui_sublayer_count)
-
 enum {
 	ui_cmd_draw_rect,
 	ui_cmd_draw_gradient,
@@ -38,7 +26,6 @@ struct ui_cmd_draw_rect {
 	v2f dimensions;
 	v4f colour;
 	f32 radius;
-	f32 z;
 };
 
 struct ui_cmd_draw_gradient {
@@ -50,7 +37,6 @@ struct ui_cmd_draw_gradient {
 	v4f bot_left;
 	v4f bot_right;
 	f32 radius;
-	f32 z;
 };
 
 struct ui_cmd_draw_circle {
@@ -58,7 +44,6 @@ struct ui_cmd_draw_circle {
 	v2f position;
 	v4f colour;
 	f32 radius;
-	f32 z;
 };
 
 struct ui_cmd_draw_text {
@@ -67,7 +52,6 @@ struct ui_cmd_draw_text {
 	v2f position;
 	v2f dimensions;
 	v4f colour;
-	f32 z;
 };
 
 struct ui_cmd_clip {
@@ -149,6 +133,11 @@ struct ui_stylesheet {
 	table(const char*, struct ui_style) active;
 } default_stylesheet;
 
+struct container_commander {
+	i32 z;
+	usize offset;
+};
+
 struct font* default_font;
 
 struct ui {
@@ -181,7 +170,7 @@ struct ui {
 	u64 last_input_id;
 	char* last_input_buf;
 
-	f32 current_z;
+	i32 current_z;
 
 	vector(void*) cmd_free_queue;
 
@@ -265,7 +254,7 @@ static void push_back_other_containers(struct ui* ui, const struct ui_container_
 	}
 }
 
-void ui_draw_rect(struct ui* ui, v2f position, f32 z, v2f dimensions, v4f colour, f32 radius) {
+void ui_draw_rect(struct ui* ui, v2f position, v2f dimensions, v4f colour, f32 radius) {
 	struct ui_cmd_draw_rect* cmd = ui_cmd_add(ui, sizeof(struct ui_cmd_draw_rect));
 	cmd->cmd.type = ui_cmd_draw_rect;
 	cmd->cmd.size = sizeof *cmd;
@@ -273,10 +262,9 @@ void ui_draw_rect(struct ui* ui, v2f position, f32 z, v2f dimensions, v4f colour
 	cmd->dimensions = dimensions;
 	cmd->colour = colour;
 	cmd->radius = radius;
-	cmd->z = z;
 }
 
-void ui_draw_gradient(struct ui* ui, v2f position, f32 z, v2f dimensions, v4f top_left, v4f top_right, v4f bot_left, v4f bot_right, f32 radius) {
+void ui_draw_gradient(struct ui* ui, v2f position, v2f dimensions, v4f top_left, v4f top_right, v4f bot_left, v4f bot_right, f32 radius) {
 	struct ui_cmd_draw_gradient* cmd = ui_cmd_add(ui, sizeof(struct ui_cmd_draw_gradient));
 	cmd->cmd.type = ui_cmd_draw_gradient;
 	cmd->cmd.size = sizeof *cmd;
@@ -287,20 +275,18 @@ void ui_draw_gradient(struct ui* ui, v2f position, f32 z, v2f dimensions, v4f to
 	cmd->bot_left = bot_left;
 	cmd->bot_right = bot_right;
 	cmd->radius = radius;
-	cmd->z = z;
 }
 
-void ui_draw_circle(struct ui* ui, v2f position, f32 z, f32 radius, v4f colour) {
+void ui_draw_circle(struct ui* ui, v2f position, f32 radius, v4f colour) {
 	struct ui_cmd_draw_circle* cmd = ui_cmd_add(ui, sizeof(struct ui_cmd_draw_circle));
 	cmd->cmd.type = ui_cmd_draw_circle;
 	cmd->cmd.size = sizeof *cmd;
 	cmd->position = position;
 	cmd->colour = colour;
 	cmd->radius = radius;
-	cmd->z = z;
 }
 
-void ui_draw_text(struct ui* ui, v2f position, f32 z, v2f dimensions, const char* text, v4f colour) {
+void ui_draw_text(struct ui* ui, v2f position, v2f dimensions, const char* text, v4f colour) {
 	usize len = strlen(text);
 
 	struct ui_cmd_draw_text* cmd = ui_cmd_add(ui, sizeof(struct ui_cmd_draw_text) + len + 1);
@@ -310,7 +296,6 @@ void ui_draw_text(struct ui* ui, v2f position, f32 z, v2f dimensions, const char
 	cmd->dimensions = dimensions;
 	cmd->colour = colour;
 	cmd->font = ui->font;
-	cmd->z = z;
 
 	memcpy(cmd + 1, text, len);
 	((char*)(cmd + 1))[len] = '\0';
@@ -325,7 +310,7 @@ void ui_clip(struct ui* ui, v4f rect) {
 	ui->current_clip = rect;
 }
 
-void ui_draw_texture(struct ui* ui, v2f position, f32 z, v2f dimensions, const struct texture* texture, v4i rect, v4f colour, f32 radius) {
+void ui_draw_texture(struct ui* ui, v2f position, v2f dimensions, const struct texture* texture, v4i rect, v4f colour, f32 radius) {
 	struct ui_cmd_texture* cmd = ui_cmd_add(ui, sizeof(struct ui_cmd_texture));
 	cmd->cmd.type = ui_cmd_draw_texture;
 	cmd->cmd.size = sizeof *cmd;
@@ -335,7 +320,6 @@ void ui_draw_texture(struct ui* ui, v2f position, f32 z, v2f dimensions, const s
 	cmd->texture = texture;
 	cmd->colour = colour;
 	cmd->radius = radius;
-	cmd->z = z;
 }
 
 v2f ui_get_cursor_pos(const struct ui* ui) {
@@ -776,7 +760,7 @@ struct ui_stylesheet* load_stylesheet(const char* filename, struct resource* r) 
 void ui_begin(struct ui* ui) {
 	ui->cmd_buffer_idx = 0;
 
-	ui->current_z = 1.0f;
+	ui->current_z = 0;
 
 	ui->hovered = 0;
 
@@ -806,14 +790,14 @@ static i32 container_z_cmp(const void* a_v, const void* b_v) {
 	const struct ui_container_meta* a = *(void**)a_v;
 	const struct ui_container_meta* b = *(void**)b_v;
 
-	return a->z < b->z;
+	return b->z - a->z;
 }
 
 static i32 rev_container_z_cmp(const void* a_v, const void* b_v) {
 	const struct ui_container_meta* a = *(void**)a_v;
 	const struct ui_container_meta* b = *(void**)b_v;
 
-	return b->z < a->z;
+	return b->z - a->z;
 }
 
 void ui_end(struct ui* ui) {
@@ -879,7 +863,8 @@ void ui_begin_container_ex(struct ui* ui, const char* class, v4f rect, bool scro
 	struct ui_container_meta* meta = get_container_meta(ui, id);
 	meta->head = ui->cmd_buffer_idx;
 
-	meta->z = ui->current_z -= z_step;
+	ui->current_z++;
+	meta->z = ui->current_z;
 	meta->floating = false;
 	meta->visible = true;
 
@@ -909,7 +894,7 @@ void ui_begin_container_ex(struct ui* ui, const char* class, v4f rect, bool scro
 			rect.w * (f32)(parent->rect.w) - (style.padding.value.y + style.padding.value.w));
 
 		ui_clip(ui, clip);
-		ui_draw_rect(ui, make_v2f(clip.x, clip.y), meta->z, make_v2f(clip.z, clip.w), style.background_colour.value, style.radius.value);
+		ui_draw_rect(ui, make_v2f(clip.x, clip.y), make_v2f(clip.z, clip.w), style.background_colour.value, style.radius.value);
 	} else {
 		clip = make_v4f(
 			rect.x * (f32)window_size.x + 5.0f,
@@ -937,7 +922,7 @@ void ui_begin_container_ex(struct ui* ui, const char* class, v4f rect, bool scro
 	ui->cursor_pos = make_v2f(clip.x + padding.x + scroll.x, clip.y + padding.y + scroll.y);
 }
 
-void ui_begin_floating_container_ex(struct ui* ui, const char* class, v4f rect, bool scrollable, f32 z) {
+void ui_begin_floating_container_ex(struct ui* ui, const char* class, v4f rect, bool scrollable) {
 	u64 id = ui->container_id++;
 
 	struct ui_container_meta* meta = get_container_meta(ui, id);
@@ -951,15 +936,17 @@ void ui_begin_floating_container_ex(struct ui* ui, const char* class, v4f rect, 
 
 	const struct ui_style style = ui_get_style(ui, "container", class, ui_style_variant_none);
 
+	ui->current_z++;
+
 	meta->head = ui->cmd_buffer_idx;
 	meta->position = make_v2f(rect.x, rect.y);
 	meta->dimensions = make_v2f(rect.z, rect.w);
 	meta->floating = true;
 	meta->visible = true;
-	meta->z = z;
+	meta->z = ui->current_z;
 
 	ui_clip(ui, rect);
-	ui_draw_rect(ui, make_v2f(rect.x, rect.y), meta->z, make_v2f(rect.z, rect.w), style.background_colour.value, style.radius.value);
+	ui_draw_rect(ui, make_v2f(rect.x, rect.y), make_v2f(rect.z, rect.w), style.background_colour.value, style.radius.value);
 
 	vector_push(ui->container_stack, ((struct ui_container) {
 		.rect = rect,
@@ -1023,7 +1010,7 @@ void ui_end_container(struct ui* ui) {
 		ui_clip(ui, parent->rect);
 	}
 
-	ui->current_z += z_step;
+	ui->current_z--;
 }
 
 void ui_font(struct ui* ui, struct font* font) {
@@ -1070,7 +1057,6 @@ void ui_advance(struct ui* ui, v2f dimensions) {
 	ui->cursor_pos.x += ui->columns[ui->column] * container->rect.z;
 	ui->column++;
 
-
 	if (ui->column >= ui->column_count) {
 		ui->cursor_pos.x = container->left_bound;
 		ui->cursor_pos.y += ui->current_item_height;
@@ -1079,10 +1065,6 @@ void ui_advance(struct ui* ui, v2f dimensions) {
 		ui->column = 0;
 		ui->current_item_height = 0.0f;
 	}
-}
-
-f32 ui_advance_z(struct ui* ui) {
-	return ui->current_z -= ui_z_decrease;
 }
 
 v4f ui_get_container_rect(struct ui* ui) {
@@ -1133,11 +1115,11 @@ bool ui_label_ex(struct ui* ui, const char* class, const char* text) {
 	const v2f dimensions = make_v2f(text_dimensions.x + style.padding.value.x + style.padding.value.z,
 		text_dimensions.y + style.padding.value.y + style.padding.value.w);
 
-	ui_draw_rect(ui, get_ui_el_position(ui, &style, dimensions), z_layer_1, make_v2f(dimensions.x, dimensions.y),
+	ui_draw_rect(ui, get_ui_el_position(ui, &style, dimensions), make_v2f(dimensions.x, dimensions.y),
 		style.background_colour.value, style.radius.value);
 	struct ui_cmd_draw_rect* rect_cmd = ui_last_cmd(ui);
 
-	ui_draw_text(ui, v2f_add(rect_cmd->position, style.padding.value), z_layer_2,
+	ui_draw_text(ui, v2f_add(rect_cmd->position, style.padding.value),
 		text_dimensions, text, style.text_colour.value);
 	struct ui_cmd_draw_text* text_cmd = ui_last_cmd(ui);
 
@@ -1179,9 +1161,9 @@ bool ui_knob_ex(struct ui* ui, const char* class, f32* val, f32 min, f32 max) {
 	const v2f dimensions = make_v2f(style.radius.value * 2.0f, style.radius.value * 2.0f);
 	const v2f position = get_ui_el_position(ui, &style, dimensions);
 
-	ui_draw_circle(ui, position, z_layer_1, style.radius.value, style.background_colour.value);
+	ui_draw_circle(ui, position, style.radius.value, style.background_colour.value);
 	struct ui_cmd_draw_circle* knob_cmd = ui_last_cmd(ui);
-	ui_draw_circle(ui, make_v2f(0.0f, 0.0f), z_layer_2, handle_radius, style.text_colour.value);
+	ui_draw_circle(ui, make_v2f(0.0f, 0.0f), handle_radius, style.text_colour.value);
 	struct ui_cmd_draw_circle* handle_cmd = ui_last_cmd(ui);
 
 	bool hovered = container->interactable && mouse_over_circle(position, knob_cmd->radius);
@@ -1286,12 +1268,12 @@ bool ui_picture_ex(struct ui* ui, const char* class, const struct texture* textu
 	const v2f rect_dimensions = make_v2f(dimensions.x + style.padding.value.x + style.padding.value.z,
 		dimensions.y + style.padding.value.y + style.padding.value.w);
 
-	ui_draw_rect(ui, get_ui_el_position(ui, &style, dimensions), container->z - ui_z_decrease,
+	ui_draw_rect(ui, get_ui_el_position(ui, &style, dimensions),
 		rect_dimensions,
 		style.background_colour.value, style.radius.value);
 	struct ui_cmd_draw_rect* rect_cmd = ui_last_cmd(ui);
 
-	ui_draw_texture(ui, v2f_add(rect_cmd->position, style.padding.value), container->z - ui_z_decrease * 2.0f, dimensions,
+	ui_draw_texture(ui, v2f_add(rect_cmd->position, style.padding.value), dimensions,
 		texture, rect, style.text_colour.value, style.radius.value);
 	struct ui_cmd_texture* text_cmd = ui_last_cmd(ui);
 
@@ -1355,7 +1337,7 @@ bool ui_input_ex2(struct ui* ui, const char* class, char* buf, usize buf_size, u
 		cursor_x_off = get_text_n_dimensions(ui->font, buf, ui->input_cursor).x;
 	}
 
-	ui_draw_rect(ui, get_ui_el_position(ui, &style, dimensions), z_layer_1, dimensions,
+	ui_draw_rect(ui, get_ui_el_position(ui, &style, dimensions), dimensions,
 		style.background_colour.value, style.radius.value);
 	struct ui_cmd_draw_rect* rect_cmd = ui_last_cmd(ui);
 
@@ -1392,7 +1374,7 @@ bool ui_input_ex2(struct ui* ui, const char* class, char* buf, usize buf_size, u
 	if (active) {
 		scroll = cr_min(dimensions.x - cursor_x_off - style.padding.value.x - get_font_height(ui->font), 0.0f);
 
-		ui_draw_rect(ui, v2f_add(text_pos, make_v2f(cursor_x_off + scroll, 0.0f)), z_layer_2, make_v2f(1.0f, get_font_height(ui->font)),
+		ui_draw_rect(ui, v2f_add(text_pos, make_v2f(cursor_x_off + scroll, 0.0f)), make_v2f(1.0f, get_font_height(ui->font)),
 			style.text_colour.value, 0.0f);
 		cursor_cmd = ui_last_cmd(ui);
 
@@ -1450,11 +1432,11 @@ bool ui_input_ex2(struct ui* ui, const char* class, char* buf, usize buf_size, u
 	if (is_password) {	
 		f32 x = text_pos.x + scroll;
 		for (usize i = 0; i < buf_len; i++) {
-			ui_draw_text(ui, make_v2f(x, text_pos.y), z_layer_2, text_dimensions, "*", style.text_colour.value);
+			ui_draw_text(ui, make_v2f(x, text_pos.y), text_dimensions, "*", style.text_colour.value);
 			x += star_size.x;
 		}
 	} else {
-		ui_draw_text(ui, make_v2f(text_pos.x + scroll, text_pos.y), z_layer_2, text_dimensions, buf, style.text_colour.value);
+		ui_draw_text(ui, make_v2f(text_pos.x + scroll, text_pos.y), text_dimensions, buf, style.text_colour.value);
 	}
 
 	struct ui_cmd_draw_text* text_cmd = ui_last_cmd(ui);
@@ -1522,7 +1504,7 @@ bool ui_selectable_tree_node_ex(struct ui* ui, const char* class, const char* te
 			button_style.padding.value.x + button_style.padding.value.z,
 			button_style.padding.value.y + button_style.padding.value.w));
 
-		ui_draw_rect(ui, ui->cursor_pos, z_layer_1, button_dimensions,
+		ui_draw_rect(ui, ui->cursor_pos, button_dimensions,
 			button_style.background_colour.value, button_style.radius.value);
 		struct ui_cmd_draw_rect* rect_cmd = ui_last_cmd(ui);
 
@@ -1545,11 +1527,11 @@ bool ui_selectable_tree_node_ex(struct ui* ui, const char* class, const char* te
 		container->rect.z - (header_pos.x - container->rect.x) - container->padding.z,
 		text_dimensions.y + background_style.padding.value.y + background_style.padding.value.w);
 
-	ui_draw_rect(ui, header_pos, z_layer_1,
+	ui_draw_rect(ui, header_pos,
 		background_dimensions, background_style.background_colour.value, background_style.radius.value);
 	struct ui_cmd_draw_rect* back_cmd = ui_last_cmd(ui);
 
-	ui_draw_text(ui, v2f_add(header_pos, background_style.padding.value), z_layer_2,
+	ui_draw_text(ui, v2f_add(header_pos, background_style.padding.value),
 		text_dimensions, text, background_style.text_colour.value);
 	struct ui_cmd_draw_text* text_cmd = ui_last_cmd(ui);
 	bool back_hovered = container->interactable && mouse_over_rect(back_cmd->position, back_cmd->dimensions);
@@ -1573,7 +1555,7 @@ bool ui_selectable_tree_node_ex(struct ui* ui, const char* class, const char* te
 	}
 
 	if (!leaf) {
-		ui_draw_text(ui, v2f_add(button_pos, button_style.padding.value), z_layer_2,
+		ui_draw_text(ui, v2f_add(button_pos, button_style.padding.value),
 			text_dimensions, open ? " -" : "+", button_style.text_colour.value);
 	}
 
@@ -1610,7 +1592,7 @@ bool ui_combo_ex(struct ui* ui, const char* class, i32* item, const char** items
 		container->rect.z - (style.padding.value.x * 2.0f + style.padding.value.z) - (container->padding.x + container->padding.z), get_font_height(ui->font)),
 		make_v2f(0.0f, style.padding.value.y + style.padding.value.w));
 
-	ui_draw_rect(ui, get_ui_el_position(ui, &style, dimensions), z_layer_1, dimensions,
+	ui_draw_rect(ui, get_ui_el_position(ui, &style, dimensions), dimensions,
 		style.background_colour.value, style.radius.value);
 	struct ui_cmd_draw_rect* rect_cmd = ui_last_cmd(ui);
 
@@ -1637,7 +1619,7 @@ bool ui_combo_ex(struct ui* ui, const char* class, i32* item, const char** items
 		const v2f text_pos = v2f_add(rect_cmd->position, style.padding.value);
 		const v2f text_dimensions = get_text_dimensions(ui->font, items[*item]);
 	
-		ui_draw_text(ui, text_pos, z_layer_2, text_dimensions, items[*item], style.text_colour.value);
+		ui_draw_text(ui, text_pos, text_dimensions, items[*item], style.text_colour.value);
 	}
 
 	bool changed = false;
@@ -1647,7 +1629,7 @@ bool ui_combo_ex(struct ui* ui, const char* class, i32* item, const char** items
 		ui_begin_floating_container_ex(ui, "combo_container", make_v4f(
 			rect_cmd->position.x,
 			rect_cmd->position.y + rect_cmd->dimensions.y,
-			rect_cmd->dimensions.x, 100.0f), true, z_layer_2);
+			rect_cmd->dimensions.x, 100.0f), true);
 
 		for (usize i = 0; i < item_count; i++) {
 			bool selected = false;
@@ -1707,7 +1689,7 @@ bool ui_colour_picker_ex(struct ui* ui, const char* class, v4f* colour, u64 id) 
 	};
 
 	for (i32 i = 0; i < 6; i++) {
-		ui_draw_gradient(ui, make_v2f(slider_pos.x, slider_pos.y + slider_dimensions.y * slider_gradient_size * (f32)i), z_layer_1,
+		ui_draw_gradient(ui, make_v2f(slider_pos.x, slider_pos.y + slider_dimensions.y * slider_gradient_size * (f32)i),
 			make_v2f(slider_dimensions.x, slider_dimensions.y * slider_gradient_size),
 			hues[i], hues[i],
 			hues[i + 1], hues[i + 1], 0.0f);
@@ -1725,11 +1707,11 @@ bool ui_colour_picker_ex(struct ui* ui, const char* class, v4f* colour, u64 id) 
 
 	const f32 hue_handle_y_pos = hsva.h * slider_dimensions.y;
 	ui_draw_rect(ui,
-		make_v2f(slider_pos.x, slider_pos.y + hue_handle_y_pos), z_layer_2,
+		make_v2f(slider_pos.x, slider_pos.y + hue_handle_y_pos),
 		make_v2f(slider_dimensions.x, 1.0f), make_rgba(0x000000, 255), 0.0f);
 	
 	/* Alpha slider. */
-	ui_draw_gradient(ui, a_slider_pos, z_layer_1, slider_dimensions,
+	ui_draw_gradient(ui, a_slider_pos, slider_dimensions,
 		make_rgba(0xffffff, 255), make_rgba(0xffffff, 255),
 		make_rgba(0x000000, 255), make_rgba(0x000000, 255), style.radius.value);
 
@@ -1745,17 +1727,17 @@ bool ui_colour_picker_ex(struct ui* ui, const char* class, v4f* colour, u64 id) 
 
 	const f32 a_handle_y_pos = (1.0f - hsva.a) * slider_dimensions.y;
 	ui_draw_rect(ui,
-		make_v2f(a_slider_pos.x, a_slider_pos.y + a_handle_y_pos), z_layer_2,
+		make_v2f(a_slider_pos.x, a_slider_pos.y + a_handle_y_pos),
 		make_v2f(slider_dimensions.x, 1.0f), make_rgba(0x000000, 255), 0.0f);
 
 	/* Saturation and Value control. The second rectangle dictates the brightness,
 	 * the first dictates the hue. This is because the rasterizer's interpolation
 	 * isn't really good enough as it produces visible triangles. */
 	v4f hue_rgb = hsva_to_rgba((v4f) { hsva.h, 1.0f, 1.0f, 1.0f });
-	ui_draw_gradient(ui, position, z_layer_1, box_dimensions,
+	ui_draw_gradient(ui, position, box_dimensions,
 		make_rgba(0xffffff, 255), hue_rgb,
 		make_rgba(0xffffff, 255), hue_rgb, style.radius.value);
-	ui_draw_gradient(ui, position, z_layer_2, box_dimensions,
+	ui_draw_gradient(ui, position, box_dimensions,
 		make_rgba(0x000000, 0),   make_rgba(0x000000, 0),
 		make_rgba(0x000000, 255), make_rgba(0x000000, 255), style.radius.value);
 
@@ -1772,8 +1754,8 @@ bool ui_colour_picker_ex(struct ui* ui, const char* class, v4f* colour, u64 id) 
 	v2f handle_pos = make_v2f(hsva.s * box_dimensions.x, (1.0f - hsva.v) * box_dimensions.y);
 
 	v2f handle_off = v2f_sub(position, make_v2f(2.5f, 2.5f));
-	ui_draw_circle(ui, v2f_add(handle_off, handle_pos), z_layer_3, 5.0f, make_rgba(0x000000, 255));
-	ui_draw_circle(ui, v2f_add(handle_off, v2f_add(handle_pos, make_v2f(1.0f, 1.0f))), z_layer_4, 4.0f, style.text_colour.value);
+	ui_draw_circle(ui, v2f_add(handle_off, handle_pos), 5.0f, make_rgba(0x000000, 255));
+	ui_draw_circle(ui, v2f_add(handle_off, v2f_add(handle_pos, make_v2f(1.0f, 1.0f))), 4.0f, style.text_colour.value);
 	
 	v4f rgb_col = hsva_to_rgba(hsva);
 	bool changed = false;
@@ -1783,8 +1765,8 @@ bool ui_colour_picker_ex(struct ui* ui, const char* class, v4f* colour, u64 id) 
 	}
 
 	/* Result. A checkerboard is drawn underneath to showcase transparency. */
-	ui_draw_texture(ui, result_pos, z_layer_1, result_dimensions, ui->alpha_texture, make_v4i(0, 0, 64, 64), make_rgba(0xffffff, 255), style.radius.value);
-	ui_draw_rect(ui, result_pos, z_layer_2, result_dimensions, *colour, style.radius.value);
+	ui_draw_texture(ui, result_pos, result_dimensions, ui->alpha_texture, make_v4i(0, 0, 64, 64), make_rgba(0xffffff, 255), style.radius.value);
+	ui_draw_rect(ui, result_pos, result_dimensions, *colour, style.radius.value);
 
 	ui_advance(ui, make_v2f(dimensions.x, dimensions.y + container->spacing));
 
@@ -1801,116 +1783,115 @@ void ui_grab_input(struct ui* ui) {
 }
 
 void ui_draw(const struct ui* ui) {
-	struct ui_cmd* cmd = (void*)ui->cmd_buffer;
-	struct ui_cmd* end = (void*)(((u8*)ui->cmd_buffer) + ui->cmd_buffer_idx);
+	for (i64 i = (i64)vector_count(ui->sorted_containers) - 1; i >= 0; i--) {
+		struct ui_container_meta* meta = ui->sorted_containers[i];
 
-#ifdef ui_print_commands
-	info(" == UI Command Dump == ");
-	info("End: %llu", ui->cmd_buffer_idx);
-#endif
+		struct ui_cmd* cmd = (void*)(((u8*)ui->cmd_buffer) + meta->head);
+		struct ui_cmd* end = (void*)(((u8*)ui->cmd_buffer) + meta->tail);
 
-	while (cmd != end) {
-		switch (cmd->type) {
-			case ui_cmd_draw_rect: {
-				struct ui_cmd_draw_rect* rect = (struct ui_cmd_draw_rect*)cmd;
+	#ifdef ui_print_commands
+		info(" == UI Command Dump == ");
+		info("End: %llu", ui->cmd_buffer_idx);
+	#endif
 
-				ui_renderer_push(ui->renderer, &(struct ui_renderer_quad) {
-					.position   = make_v2f(rect->position.x,   rect->position.y),
-					.dimensions = make_v2f(rect->dimensions.x, rect->dimensions.y),
-					.colour     = rect->colour,
-					.radius     = rect->radius,
-					.z          = rect->z
-				});
+		while (cmd != end) {
+			switch (cmd->type) {
+				case ui_cmd_draw_rect: {
+					struct ui_cmd_draw_rect* rect = (struct ui_cmd_draw_rect*)cmd;
 
-#ifdef ui_print_commands
-				info("%llu\t\t%s", ((u8*)cmd) - ui->cmd_buffer, "rect");
-#endif
-			} break;
-			case ui_cmd_draw_gradient: {
-				struct ui_cmd_draw_gradient* grad = (struct ui_cmd_draw_gradient*)cmd;
+					ui_renderer_push(ui->renderer, &(struct ui_renderer_quad) {
+						.position   = make_v2f(rect->position.x,   rect->position.y),
+						.dimensions = make_v2f(rect->dimensions.x, rect->dimensions.y),
+						.colour     = rect->colour,
+						.radius     = rect->radius
+					});
 
-				ui_renderer_push_gradient(ui->renderer, &(struct ui_renderer_gradient_quad) {
-					.position = grad->position,
-					.dimensions = grad->dimensions,
-					.colours = {
-						.top_left = grad->top_left,
-						.top_right = grad->top_right,
-						.bot_left = grad->bot_left,
-						.bot_right = grad->bot_right
-					},
-					.radius = grad->radius,
-					.z = grad->z
-				});
+	#ifdef ui_print_commands
+					info("%llu\t\t%s", ((u8*)cmd) - ui->cmd_buffer, "rect");
+	#endif
+				} break;
+				case ui_cmd_draw_gradient: {
+					struct ui_cmd_draw_gradient* grad = (struct ui_cmd_draw_gradient*)cmd;
 
-#ifdef ui_print_commands
-				info("%llu\t\t%s", ((u8*)cmd) - ui->cmd_buffer, "gradient");
-#endif
-			} break;
-			case ui_cmd_draw_circle: {
-				struct ui_cmd_draw_circle* circle = (struct ui_cmd_draw_circle*)cmd;
+					ui_renderer_push_gradient(ui->renderer, &(struct ui_renderer_gradient_quad) {
+						.position = grad->position,
+						.dimensions = grad->dimensions,
+						.colours = {
+							.top_left = grad->top_left,
+							.top_right = grad->top_right,
+							.bot_left = grad->bot_left,
+							.bot_right = grad->bot_right
+						},
+						.radius = grad->radius
+					});
 
-				v2f dimensions = make_v2f(circle->radius * 2.0f, circle->radius * 2.0f);
+	#ifdef ui_print_commands
+					info("%llu\t\t%s", ((u8*)cmd) - ui->cmd_buffer, "gradient");
+	#endif
+				} break;
+				case ui_cmd_draw_circle: {
+					struct ui_cmd_draw_circle* circle = (struct ui_cmd_draw_circle*)cmd;
 
-				ui_renderer_push(ui->renderer, &(struct ui_renderer_quad) {
-					.position   = make_v2f(circle->position.x, circle->position.y),
-					.dimensions = dimensions,
-					.colour     = circle->colour,
-					.radius     = circle->radius,
-					.z          = circle->z
-				});
+					v2f dimensions = make_v2f(circle->radius * 2.0f, circle->radius * 2.0f);
 
-#ifdef ui_print_commands
-				info("%llu\t\t%s", ((u8*)cmd) - ui->cmd_buffer, "circle");
-#endif
-			} break;
-			case ui_cmd_draw_text: {
-				struct ui_cmd_draw_text* text = (struct ui_cmd_draw_text*)cmd;
+					ui_renderer_push(ui->renderer, &(struct ui_renderer_quad) {
+						.position   = make_v2f(circle->position.x, circle->position.y),
+						.dimensions = dimensions,
+						.colour     = circle->colour,
+						.radius     = circle->radius
+					});
 
-				ui_renderer_push_text(ui->renderer, &(struct ui_renderer_text) {
-					.position = text->position,
-					.text     = (char*)(text + 1),
-					.colour   = text->colour,
-					.font     = text->font,
-					.z        = text->z
-				});
+	#ifdef ui_print_commands
+					info("%llu\t\t%s", ((u8*)cmd) - ui->cmd_buffer, "circle");
+	#endif
+				} break;
+				case ui_cmd_draw_text: {
+					struct ui_cmd_draw_text* text = (struct ui_cmd_draw_text*)cmd;
 
-#ifdef ui_print_commands
-				info("%llu\t\t%s", ((u8*)cmd) - ui->cmd_buffer, "text");
-#endif
-			} break;
-			case ui_cmd_clip: {
-				struct ui_cmd_clip* clip = (struct ui_cmd_clip*)cmd;
+					ui_renderer_push_text(ui->renderer, &(struct ui_renderer_text) {
+						.position = text->position,
+						.text     = (char*)(text + 1),
+						.colour   = text->colour,
+						.font     = text->font
+					});
 
-				ui_renderer_clip(ui->renderer, clip->rect);
+	#ifdef ui_print_commands
+					info("%llu\t\t%s", ((u8*)cmd) - ui->cmd_buffer, "text");
+	#endif
+				} break;
+				case ui_cmd_clip: {
+					struct ui_cmd_clip* clip = (struct ui_cmd_clip*)cmd;
 
-#ifdef ui_print_commands
-				info("%llu\t\t%s", ((u8*)cmd) - ui->cmd_buffer, "clip");
-#endif
-			} break;
-			case ui_cmd_draw_texture: {
-				struct ui_cmd_texture* texture = (struct ui_cmd_texture*)cmd;
+					ui_renderer_clip(ui->renderer, clip->rect);
 
-				ui_renderer_push(ui->renderer, &(struct ui_renderer_quad) {
-					.position   = texture->position,
-					.dimensions = texture->dimensions,
-					.colour     = texture->colour,
-					.rect       = make_v4f(
-						(f32)texture->rect.x,
-						(f32)texture->rect.y,
-						(f32)texture->rect.z,
-						(f32)texture->rect.w),
-					.texture    = texture->texture,
-					.radius     = texture->radius,
-					.z          = texture->z
-				});
+	#ifdef ui_print_commands
+					info("%llu\t\t%s", ((u8*)cmd) - ui->cmd_buffer, "clip");
+	#endif
+				} break;
+				case ui_cmd_draw_texture: {
+					struct ui_cmd_texture* texture = (struct ui_cmd_texture*)cmd;
 
-#ifdef ui_print_commands
-				info("%llu\t\t%s", ((u8*)cmd) - ui->cmd_buffer, "texture");
-#endif
-			} break;
+					ui_renderer_push(ui->renderer, &(struct ui_renderer_quad) {
+						.position   = texture->position,
+						.dimensions = texture->dimensions,
+						.colour     = texture->colour,
+						.rect       = make_v4f(
+							(f32)texture->rect.x,
+							(f32)texture->rect.y,
+							(f32)texture->rect.z,
+							(f32)texture->rect.w),
+						.texture    = texture->texture,
+						.radius     = texture->radius
+					});
+
+	#ifdef ui_print_commands
+					info("%llu\t\t%s", ((u8*)cmd) - ui->cmd_buffer, "texture");
+	#endif
+				} break;
+			}
+
+			cmd = (void*)(((u8*)cmd) + cmd->size);
 		}
-
-		cmd = (void*)(((u8*)cmd) + cmd->size);
 	}
 
 	ui_renderer_flush(ui->renderer);

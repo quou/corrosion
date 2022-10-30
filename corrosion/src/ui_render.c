@@ -4,7 +4,7 @@
 
 static void create_pipeline(struct ui_renderer* renderer) {
 	renderer->pipeline = video.new_pipeline(
-		pipeline_flags_blend | pipeline_flags_dynamic_scissor | pipeline_flags_draw_tris | pipeline_flags_depth_test,
+		pipeline_flags_blend | pipeline_flags_dynamic_scissor | pipeline_flags_draw_tris,
 		renderer->shader,
 		renderer->framebuffer,
 		(struct pipeline_attribute_bindings) {
@@ -47,15 +47,9 @@ static void create_pipeline(struct ui_renderer* renderer) {
 								.location = 5,
 								.offset   = offsetof(struct ui_renderer_vertex, rect),
 								.type     = pipeline_attribute_vec4
-							},
-							{
-								.name     = "z",
-								.location = 6,
-								.offset   = offsetof(struct ui_renderer_vertex, z),
-								.type     = pipeline_attribute_float
 							}
 						},
-						.count = 7,
+						.count = 6,
 					},
 					.stride = sizeof(struct ui_renderer_vertex),
 					.rate = pipeline_attribute_rate_per_vertex,
@@ -111,8 +105,7 @@ static void draw_text_character(void* uptr, const struct texture* atlas, v2f pos
 		.dimensions = make_v2f(rect.z, rect.w),
 		.colour = colour,
 		.rect = rect,
-		.texture = atlas,
-		.z = ((struct ui_renderer*)uptr)->text_z
+		.texture = atlas
 	});
 }
 
@@ -246,10 +239,10 @@ void ui_renderer_push(struct ui_renderer* renderer, const struct ui_renderer_qua
 	f32 use_texture = quad->texture != null ? 1.0f : 0.0f;
  
  	struct ui_renderer_vertex verts[] = {
- 		{ .position = { x1, y2 }, .uv = { tx,      ty + th }, .colour = quad->colour, .use_texture = use_texture, .radius = quad->radius, .rect = { x1, y1, quad->dimensions.x, quad->dimensions.y }, .z = quad->z },
-		{ .position = { x2, y2 }, .uv = { tx + tw, ty + th }, .colour = quad->colour, .use_texture = use_texture, .radius = quad->radius, .rect = { x1, y1, quad->dimensions.x, quad->dimensions.y }, .z = quad->z },
-		{ .position = { x2, y1 }, .uv = { tx + tw, ty      }, .colour = quad->colour, .use_texture = use_texture, .radius = quad->radius, .rect = { x1, y1, quad->dimensions.x, quad->dimensions.y }, .z = quad->z },
-		{ .position = { x1, y1 }, .uv = { tx,      ty      }, .colour = quad->colour, .use_texture = use_texture, .radius = quad->radius, .rect = { x1, y1, quad->dimensions.x, quad->dimensions.y }, .z = quad->z }
+ 		{ .position = { x1, y2 }, .uv = { tx,      ty + th }, .colour = quad->colour, .use_texture = use_texture, .radius = quad->radius, .rect = { x1, y1, quad->dimensions.x, quad->dimensions.y } },
+		{ .position = { x2, y2 }, .uv = { tx + tw, ty + th }, .colour = quad->colour, .use_texture = use_texture, .radius = quad->radius, .rect = { x1, y1, quad->dimensions.x, quad->dimensions.y } },
+		{ .position = { x2, y1 }, .uv = { tx + tw, ty      }, .colour = quad->colour, .use_texture = use_texture, .radius = quad->radius, .rect = { x1, y1, quad->dimensions.x, quad->dimensions.y } },
+		{ .position = { x1, y1 }, .uv = { tx,      ty      }, .colour = quad->colour, .use_texture = use_texture, .radius = quad->radius, .rect = { x1, y1, quad->dimensions.x, quad->dimensions.y } }
 	};
 
 	video.update_vertex_buffer(renderer->vb, verts, sizeof(verts),
@@ -299,10 +292,10 @@ void ui_renderer_push_gradient(struct ui_renderer* renderer, const struct ui_ren
 	f32 use_texture = quad->texture != null ? 1.0f : 0.0f;
  
  	struct ui_renderer_vertex verts[] = {
- 		{ .position = { x1, y2 }, .uv = { tx,      ty + th }, .colour = quad->colours.bot_left,  .use_texture = use_texture, .radius = quad->radius, .rect = { x1, y1, quad->dimensions.x, quad->dimensions.y }, .z = quad->z },
-		{ .position = { x2, y2 }, .uv = { tx + tw, ty + th }, .colour = quad->colours.bot_right, .use_texture = use_texture, .radius = quad->radius, .rect = { x1, y1, quad->dimensions.x, quad->dimensions.y }, .z = quad->z },
-		{ .position = { x2, y1 }, .uv = { tx + tw, ty      }, .colour = quad->colours.top_right, .use_texture = use_texture, .radius = quad->radius, .rect = { x1, y1, quad->dimensions.x, quad->dimensions.y }, .z = quad->z },
-		{ .position = { x1, y1 }, .uv = { tx,      ty      }, .colour = quad->colours.top_left,  .use_texture = use_texture, .radius = quad->radius, .rect = { x1, y1, quad->dimensions.x, quad->dimensions.y }, .z = quad->z }
+ 		{ .position = { x1, y2 }, .uv = { tx,      ty + th }, .colour = quad->colours.bot_left,  .use_texture = use_texture, .radius = quad->radius, .rect = { x1, y1, quad->dimensions.x, quad->dimensions.y } },
+		{ .position = { x2, y2 }, .uv = { tx + tw, ty + th }, .colour = quad->colours.bot_right, .use_texture = use_texture, .radius = quad->radius, .rect = { x1, y1, quad->dimensions.x, quad->dimensions.y } },
+		{ .position = { x2, y1 }, .uv = { tx + tw, ty      }, .colour = quad->colours.top_right, .use_texture = use_texture, .radius = quad->radius, .rect = { x1, y1, quad->dimensions.x, quad->dimensions.y } },
+		{ .position = { x1, y1 }, .uv = { tx,      ty      }, .colour = quad->colours.top_left,  .use_texture = use_texture, .radius = quad->radius, .rect = { x1, y1, quad->dimensions.x, quad->dimensions.y } }
 	};
 
 	video.update_vertex_buffer(renderer->vb, verts, sizeof(verts),
@@ -340,7 +333,6 @@ void ui_renderer_clip(struct ui_renderer* renderer, v4i clip) {
 }
 
 void ui_renderer_push_text(struct ui_renderer* renderer, const struct ui_renderer_text* text) {
-	renderer->text_z = text->z;
 	render_text(&renderer->text_renderer, text->font, text->text, text->position, text->colour);
 }
 

@@ -20,17 +20,16 @@ struct ui_stylesheet* load_stylesheet(const char* path, struct resource* r);
 void ui_begin(struct ui* ui);
 void ui_end(struct ui* ui);
 
-void ui_draw_rect(struct ui* ui, v2f position, f32 z, v2f dimensions, v4f colour, f32 radius);
-void ui_draw_gradient(struct ui* ui, v2f position, f32 z, v2f dimensions, v4f top_left, v4f top_right, v4f bot_left, v4f bot_right, f32 radius);
-void ui_draw_circle(struct ui* ui, v2f position, f32 z, f32 radius, v4f colour);
-void ui_draw_text(struct ui* ui, v2f position, f32 z, v2f dimensions, const char* text, v4f colour);
-void ui_draw_texture(struct ui* ui, v2f position, f32 z, v2f dimensions, const struct texture* texture, v4i rect, v4f colour, f32 radius);
+void ui_draw_rect(struct ui* ui, v2f position, v2f dimensions, v4f colour, f32 radius);
+void ui_draw_gradient(struct ui* ui, v2f position, v2f dimensions, v4f top_left, v4f top_right, v4f bot_left, v4f bot_right, f32 radius);
+void ui_draw_circle(struct ui* ui, v2f position, f32 radius, v4f colour);
+void ui_draw_text(struct ui* ui, v2f position, v2f dimensions, const char* text, v4f colour);
+void ui_draw_texture(struct ui* ui, v2f position, v2f dimensions, const struct texture* texture, v4i rect, v4f colour, f32 radius);
 void ui_clip(struct ui* ui, v4f rect);
 
 v2f ui_get_cursor_pos(const struct ui* ui);
 void ui_set_cursor_pos(struct ui* ui, v2f pos);
 void ui_advance(struct ui* ui, v2f dimensions);
-f32 ui_advance_z(struct ui* ui);
 
 v4f ui_get_container_rect(struct ui* ui);
 
@@ -41,9 +40,9 @@ void ui_font(struct ui* ui, struct font* font);
 void ui_stylesheet(struct ui* ui, struct ui_stylesheet* ss);
 
 void ui_begin_container_ex(struct ui* ui, const char* klass, v4f rect, bool scrollable);
-void ui_begin_floating_container_ex(struct ui* ui, const char* klass, v4f rect, bool scrollable, f32 z);
+void ui_begin_floating_container_ex(struct ui* ui, const char* klass, v4f rect, bool scrollable);
 #define ui_begin_container(ui_, r_, s_) ui_begin_container_ex(ui_, "", r_, s_)
-#define ui_begin_floating_container(ui_, r_, s_) ui_begin_floating_container_ex(ui_, "", r_, s_, ui_advance_z(ui_))
+#define ui_begin_floating_container(ui_, r_, s_) ui_begin_floating_container_ex(ui_, "", r_, s_)
 void ui_end_container(struct ui* ui);
 
 void ui_columns(struct ui* ui, usize count, f32* columns);
