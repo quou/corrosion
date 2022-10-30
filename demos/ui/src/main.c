@@ -125,12 +125,12 @@ void cr_update(f64 ts) {
 		ui_columns(app.ui, 2, (f32[]) { 0.25f, 0.75f });
 		ui_label(app.ui, "Colour Picker:");
 
-		static v4f colour = { 255, 255, 0, 255 };
+		static v4f colour = make_rgba(0x967317, 255);
 		ui_colour_picker(app.ui, &colour);
 
 		ui_label(app.ui, "Colour Picker:");
 
-		static v4f colour2 = { 0, 90, 255, 255 };
+		static v4f colour2 = make_rgba(0xdf20b9, 255);
 		ui_colour_picker(app.ui, &colour2);
 
 		ui_tree_pop(app.ui);
