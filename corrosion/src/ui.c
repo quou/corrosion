@@ -6,14 +6,17 @@
 #include "ui.h"
 #include "ui_render.h"
 
-#define ui_z_decrease 0.01f
-#define z_layer_1 container->z - ui_z_decrease * 1.0f
-#define z_layer_2 container->z - ui_z_decrease * 2.0f
-#define z_layer_3 container->z - ui_z_decrease * 3.0f
-#define z_layer_4 container->z - ui_z_decrease * 4.0f
-#define z_layer_5 container->z - ui_z_decrease * 5.0f
-#define z_layer_6 container->z - ui_z_decrease * 6.0f
-#define z_step ui_z_decrease * 7.0f
+#define ui_layer_count 10.0f
+#define ui_sublayer_count 7.0f
+
+#define ui_z_decrease (1.0f / (ui_layer_count * ui_sublayer_count))
+#define z_layer_1 (container->z - ui_z_decrease * 1.0f)
+#define z_layer_2 (container->z - ui_z_decrease * 2.0f)
+#define z_layer_3 (container->z - ui_z_decrease * 3.0f)
+#define z_layer_4 (container->z - ui_z_decrease * 4.0f)
+#define z_layer_5 (container->z - ui_z_decrease * 5.0f)
+#define z_layer_6 (container->z - ui_z_decrease * 6.0f)
+#define z_step (ui_z_decrease * ui_sublayer_count)
 
 enum {
 	ui_cmd_draw_rect,
@@ -1019,6 +1022,8 @@ void ui_end_container(struct ui* ui) {
 
 		ui_clip(ui, parent->rect);
 	}
+
+	ui->current_z += z_step;
 }
 
 void ui_font(struct ui* ui, struct font* font) {
