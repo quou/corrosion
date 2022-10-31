@@ -14,7 +14,7 @@ static struct model_node process_node(ufbx_scene* scene, ufbx_node* node) {
 		(f32)t.x,   (f32)t.y,   (f32)t.z,   1.0f,
 	};
 
-	rnode.transform = m4f_mul(rnode.transform, m4f_scale(make_v3f(0.01f, 0.01f, 0.01f)));
+	rnode.transform = m4f_mul(m4f_scale(make_v3f(0.01f, 0.01f, 0.01f)), rnode.transform);
 
 	return rnode;
 }
