@@ -501,7 +501,10 @@ struct resource res_load(const char* type, const char* filename, void* udata) {
 	char* resource_id_buf = get_resource_id_bytebuffer(filename, udata, type, config);
 
 	struct res* got = table_get(res_cache, resource_id_buf);
-	if (got) { return (struct resource) { got->name, got->payload }; }
+	if (got) {
+		core_free(resource_id_buf);
+		return (struct resource) { got->name, got->payload };
+	}
 
 	struct res new_res = {
 		.payload = core_calloc(1, config->payload_size),
