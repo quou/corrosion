@@ -512,3 +512,12 @@ void lock_mouse(bool lock) {
 		ShowCursor(true);
 	}
 }
+
+bool get_clipboard_text(char* buf, usize buf_len) {
+	abort_with("Not implemented.");
+	return false;
+}
+
+void set_clipboard_text(const char* text) {
+	abort_with("Not implemented.");
+}

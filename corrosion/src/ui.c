@@ -119,6 +119,7 @@ enum {
 struct ui_style {
 	optional(v4f) text_colour;
 	optional(v4f) background_colour;
+	optional(v4f) select_colour;
 	optional(u32) align;
 	optional(v4f) padding;
 	optional(f32) radius;
@@ -175,6 +176,7 @@ struct ui {
 	vector(void*) cmd_free_queue;
 
 	u32 input_cursor;
+	u32 input_select_start;
 
 	f32 knob_angle_offset;
 
@@ -432,6 +434,8 @@ static void stylesheet_table_from_dtable(void* dst_vptr, struct dtable* src) {
 						optional_set(s.text_colour, child->value.as.colour);
 					} else if (strcmp(child->key.chars, "background_colour") == 0) {
 						optional_set(s.background_colour, child->value.as.colour);
+					} else if (strcmp(child->key.chars, "selection_colour") == 0) {
+						optional_set(s.select_colour, child->value.as.colour);
 					}
 					break;
 				case dtable_number: 
@@ -565,7 +569,8 @@ void ui_init() {
 	table_set(default_stylesheet.normal, "input", ((struct ui_style) {
 		.text_colour       = { true, make_rgba(0xffffff, 255) },
 		.background_colour = { true, make_rgba(0x191b26, 255) },
-		.padding           = { true, make_v4f(3.0f, 3.0f, 3.0f, 3.0f) }
+		.padding           = { true, make_v4f(3.0f, 3.0f, 3.0f, 3.0f) },
+		.select_colour     = { true, make_rgba(0x191b26, 128) },
 	}));
 
 	table_set(default_stylesheet.hovered, "input", ((struct ui_style) {
@@ -1338,17 +1343,7 @@ bool ui_input_ex2(struct ui* ui, const char* class, char* buf, usize buf_size, u
 
 	v2f star_size;
 	v2f text_dimensions;
-	f32 cursor_x_off;
-
-	if (is_password) {
-		star_size = get_char_dimensions(ui->font, "*");
-		text_dimensions = make_v2f(star_size.x * buf_len, get_font_height(ui->font));
-		cursor_x_off = star_size.x * (f32)ui->input_cursor;
-	} else {
-		text_dimensions = get_text_dimensions(ui->font, buf);
-		cursor_x_off = get_text_n_dimensions(ui->font, buf, ui->input_cursor).x;
-	}
-
+	
 	ui_draw_rect(ui, get_ui_el_position(ui, &style, dimensions), dimensions,
 		style.background_colour.value, style.radius.value);
 	struct ui_cmd_draw_rect* rect_cmd = ui_last_cmd(ui);
@@ -1363,6 +1358,7 @@ bool ui_input_ex2(struct ui* ui, const char* class, char* buf, usize buf_size, u
 		if (mouse_btn_just_released(mouse_btn_left)) {
 			ui->active = id;
 			ui->input_cursor = (u32)strlen(buf);
+			ui->input_select_start = ui->input_cursor;
 		}
 	}
 
@@ -1384,27 +1380,93 @@ bool ui_input_ex2(struct ui* ui, const char* class, char* buf, usize buf_size, u
 
 	f32 scroll = 0.0f;
 	if (active) {
-		scroll = cr_min(dimensions.x - cursor_x_off - style.padding.value.x - get_font_height(ui->font), 0.0f);
-
-		ui_draw_rect(ui, v2f_add(text_pos, make_v2f(cursor_x_off + scroll, 0.0f)), make_v2f(1.0f, get_font_height(ui->font)),
-			style.text_colour.value, 0.0f);
-		cursor_cmd = ui_last_cmd(ui);
-
 		usize input_len;
 		const char* input_string;
+		bool reset_select = false;
 
-		if (get_input_string(&input_string, &input_len) && buf_len + input_len < buf_size) {
+		bool input = get_input_string(&input_string, &input_len);
+
+		if (ui->input_cursor != ui->input_select_start) {
+			i32 start = ui->input_select_start;
+			i32 end = ui->input_cursor;
+
+			if (start > end) {
+				i32 temp = start;
+				start = end;
+				end = temp;
+			}
+
+			i32 range = end - start;
+
+			if (input || key_just_pressed(key_backspace) || key_just_pressed(key_delete) ||
+				((key_just_pressed(key_V) || key_just_pressed(key_X)) && key_pressed(key_control))) {
+				for (i32 i = start; i < (buf_len - range) + 1; i++) {
+					buf[i] = buf[i + range];
+				}
+
+				ui->input_cursor = start;
+				ui->input_select_start = ui->input_cursor;
+			}
+		} else if (ui->input_cursor > 0 && key_just_pressed(key_backspace)) {
+			for (u32 i = ui->input_cursor - 1; i < buf_len - 1; i++) {
+				buf[i] = buf[i + 1];
+			}
+
+			buf[buf_len - 1] = '\0';
+			ui->input_cursor--;
+
+			reset_select = true;
+		} else if (ui->input_cursor < buf_len && buf_len > 0 && key_just_pressed(key_delete)) {
+			for (u32 i = ui->input_cursor; i < buf_len - 1; i++) {
+				buf[i] = buf[i + 1];
+			}
+
+			buf[buf_len - 1] = '\0';
+
+			reset_select = true;
+		}
+
+		u32 old_input_cursor = ui->input_cursor;
+
+		bool selecting = false;
+
+		if (input && buf_len + input_len < buf_size) {
+			for (i64 i = buf_len; i >= ui->input_cursor; i--) {
+				buf[i + input_len] = buf[i];
+			}
+
 			for (usize i = 0; i < input_len; i++) {
+				if (i + ui->input_cursor >= buf_size) { break; }
+
 				if (filter(input_string[i])) {
-					for (i64 ii = buf_len + 1; ii >= ui->input_cursor + (u32)input_len; ii--) {
-						buf[ii] = buf[ii - 1];
-					}
-
-					memcpy(buf + ui->input_cursor, input_string, input_len);
-
-					ui->input_cursor += input_len;
+					buf[i + ui->input_cursor] = input_string[i];
 				}
 			}
+
+			ui->input_cursor += (u32)input_len;
+		} else {
+			selecting = key_pressed(key_shift);
+		}
+
+		if (key_just_pressed(key_V) && key_pressed(key_control)) {
+			char b[256];
+			get_clipboard_text(b, sizeof b);
+
+			usize copy_len = strlen(b);
+
+			for (i64 i = buf_len; i >= ui->input_cursor; i--) {
+				buf[i + copy_len] = buf[i];
+			}
+
+			for (usize i = 0; i < copy_len; i++) {
+				if (i + ui->input_cursor >= buf_size) { break; }
+
+				if (filter(b[i])) {
+					buf[i + ui->input_cursor] = b[i];
+				}
+			}
+
+			ui->input_cursor += (u32)copy_len;
 		}
 
 		if (key_just_pressed(key_return)) {
@@ -1413,31 +1475,72 @@ bool ui_input_ex2(struct ui* ui, const char* class, char* buf, usize buf_size, u
 			active = false;
 		}
 
-		if (ui->input_cursor > 0 && key_just_pressed(key_backspace)) {
-			for (u32 i = ui->input_cursor - 1; i < buf_len - 1; i++) {
-				buf[i] = buf[i + 1];
-			}
-
-			buf[buf_len - 1] = '\0';
-			ui->input_cursor--;
-		}
-
 		if (ui->input_cursor > 0 && key_just_pressed(key_left)) {
-			ui->input_cursor--;
+			if (key_pressed(key_control)) {
+				i32 i;
+				ui->input_cursor--;
+				for (i = (i32)ui->input_cursor; i > 0 && buf[i] != ' '; i--, ui->input_cursor--) {}
+			} else {
+				ui->input_cursor--;
+			}
 		}
 
-		if (ui->input_cursor < buf_len) {
-			if (key_just_pressed(key_right)) {
+		if (ui->input_cursor < buf_len && key_just_pressed(key_right)) {
+			if (key_pressed(key_control)) {
+				ui->input_cursor++;
+				for (i32 i = ui->input_cursor; i < buf_len && buf[i] != ' '; i++, ui->input_cursor++) {}
+			} else {
 				ui->input_cursor++;
 			}
+		}
 
-			if (buf_len > 0 && key_just_pressed(key_delete)) {
-				for (u32 i = ui->input_cursor; i < buf_len - 1; i++) {
-					buf[i] = buf[i + 1];
-				}
+		if (key_just_pressed(key_home)) {
+			ui->input_cursor = 0;
+		} else if (key_just_pressed(key_end)) {
+			ui->input_cursor = (u32)buf_len;
+		}
 
-				buf[buf_len - 1] = '\0';
+		if (old_input_cursor != ui->input_cursor && !selecting || reset_select) {
+			ui->input_select_start = ui->input_cursor;
+		}
+
+		if (key_just_pressed(key_A) && key_pressed(key_control)) {
+			ui->input_select_start = 0;
+			ui->input_cursor = (u32)buf_len;
+		}
+
+		f32 cursor_x_off;
+		f32 select_x_off;
+
+		if (is_password) {
+			star_size = get_char_dimensions(ui->font, "*");
+			text_dimensions = make_v2f(star_size.x * buf_len, get_font_height(ui->font));
+			cursor_x_off = star_size.x * (f32)ui->input_cursor;
+			select_x_off = star_size.x * (f32)ui->input_select_start;
+		} else {
+			text_dimensions = get_text_dimensions(ui->font, buf);
+			cursor_x_off = get_text_n_dimensions(ui->font, buf, ui->input_cursor).x;
+			select_x_off = get_text_n_dimensions(ui->font, buf, ui->input_select_start).x;
+		}
+
+		scroll = cr_min(dimensions.x - cursor_x_off - style.padding.value.x - get_font_height(ui->font), 0.0f);
+
+		ui_draw_rect(ui, v2f_add(text_pos, make_v2f(cursor_x_off + scroll, 0.0f)), make_v2f(1.0f, get_font_height(ui->font)),
+			style.text_colour.value, 0.0f);
+		cursor_cmd = ui_last_cmd(ui);
+
+		if (ui->input_select_start != ui->input_cursor) {
+			f32 x_start = cursor_x_off + scroll;
+			f32 x_end = select_x_off + scroll;
+
+			if (x_start > x_end) {
+				f32 t = x_start;
+				x_start = x_end;
+				x_end = t;
 			}
+
+			ui_draw_rect(ui, v2f_add(text_pos, make_v2f(x_start, 0.0f)), make_v2f(x_end - x_start, get_font_height(ui->font)),
+				style.select_colour.value, 0.0f);
 		}
 	}
 

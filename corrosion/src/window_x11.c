@@ -548,3 +548,41 @@ void lock_mouse(bool lock) {
 	window.mouse_locked = lock;
 }
 
+bool get_clipboard_text(char* buf, usize buf_size) {
+	Atom bufid = XInternAtom(display, "CLIPBOARD", false);
+	Atom fmtid = XInternAtom(display, "UTF8_STRING", false);
+	Atom propid = XInternAtom(display, "XSEL_DATA", false);
+	Atom incrid = XInternAtom(display, "INCR", false);
+
+	XConvertSelection(display, bufid, fmtid, propid, window.window, CurrentTime);
+
+	XEvent event;
+	do {
+		XNextEvent(display, &event);
+	} while (event.type != SelectionNotify || event.xselection.selection != bufid);
+
+	if (event.xselection.property) {
+		char *result;
+		u64 ressize, restail;
+		i32 resbits;
+
+		XGetWindowProperty(display, window.window, propid, 0, buf_size, False, AnyPropertyType,
+			&fmtid, &resbits, &ressize, &restail, (u8**)&result);
+
+		if (fmtid == incrid) {
+			XFree(result);
+			return false;
+		} else {
+		 	memcpy(buf, result, ressize);
+		}
+
+		XFree(result);
+		return true;
+	} else {
+		return false;
+	}
+}
+
+void set_clipboard_text(const char* text) {
+	abort_with("Not implemented.");
+}
