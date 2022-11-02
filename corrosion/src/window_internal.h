@@ -62,6 +62,9 @@ struct window {
 #elif defined(__EMSCRIPTEN__)
 	const char* canvas_name;
 
+	char* clipboard_text;
+	usize clipboard_text_len;
+
 	EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context;
 
 	table(i32, u32) keymap;

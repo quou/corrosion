@@ -304,11 +304,24 @@ void lock_mouse(bool lock) {
 	abort_with("Not implemented.");
 }
 
-bool get_clipboard_text(char* buf, usize buf_len) {
-	abort_with("Not implemented.");
-	return false;
+bool get_clipboard_text(char* buf, usize buf_size) {
+	if (!buf) { return false; }
+
+	usize len = cr_min(buf_size - 1, window.clipboard_text_len);
+	memcpy(buf, window.clipboard_text, len);
+	buf[len] = '\0';
+
+	return true;
 }
 
-void set_clipboard_text(const char* text) {
-	abort_with("Not implemented.");
+bool set_clipboard_text(const char* text, usize n) {
+	if (window.clipboard_text) { core_free(window.clipboard_text); }
+
+	window.clipboard_text = core_alloc(n + 1);
+	memcpy(window.clipboard_text, text, n);
+	window.clipboard_text[n] = '\0';
+
+	window.clipboard_text_len = n;
+
+	return true;
 }
