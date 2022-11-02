@@ -25,6 +25,9 @@ swap_interval_func glx_swap_interval;
 
 Display* display;
 Atom wm_delete_window_id, wm_protocols_id;
+Atom clipboard_at_id, targets_at_id, text_at_id, utf8_at_id;
+Atom incr_at_id, xsel_at_id;
+Atom XA_ATOM = 4, XA_STRING = 31;
 
 void init_window(const struct window_config* config, u32 api) {
 	memset(&window, 0, sizeof window);
@@ -32,8 +35,17 @@ void init_window(const struct window_config* config, u32 api) {
 	XInitThreads();
 
 	display = XOpenDisplay(null);
-	wm_protocols_id = XInternAtom(display, "WM_PROTOCOLS", False);
-	wm_delete_window_id = XInternAtom(display, "WM_DELETE_WINDOW", False);
+	wm_protocols_id = XInternAtom(display, "WM_PROTOCOLS", false);
+	wm_delete_window_id = XInternAtom(display, "WM_DELETE_WINDOW", false);
+
+	clipboard_at_id = XInternAtom(display, "CLIPBOARD", false);
+	targets_at_id = XInternAtom(display, "TARGETS", false);
+	text_at_id = XInternAtom(display, "TEXT", false);
+	utf8_at_id = XInternAtom(display, "UTF8_STRING", true);
+	incr_at_id = XInternAtom(display, "INCR", false);
+	xsel_at_id = XInternAtom(display, "XSEL_DATA", false);
+
+	if (utf8_at_id == None) { utf8_at_id = XA_STRING; }
 
 	window.api = api;
 
@@ -313,6 +325,8 @@ void deinit_window() {
 
 	XCloseDisplay(display);
 
+	if (window.clipboard_text) { core_free(window.clipboard_text); }
+
 	for (usize i = 0; i < window_event_count; i++) {
 		free_vector(window.event_handlers[i]);
 	}
@@ -514,6 +528,62 @@ void update_events() {
 					}
 				}
 			} break;
+			case SelectionRequest: {
+				if (e.xselectionrequest.selection != clipboard_at_id) { break; }
+
+				XSelectionRequestEvent* xsr = &e.xselectionrequest;
+				XSelectionEvent ev = {0};
+				int R = 0;
+				ev.type = SelectionNotify, ev.display = xsr->display, ev.requestor = xsr->requestor,
+				ev.selection = xsr->selection, ev.time = xsr->time, ev.target = xsr->target, ev.property = xsr->property;
+
+				if (ev.target == targets_at_id) {
+					R = XChangeProperty(ev.display, ev.requestor, ev.property, XA_ATOM, 32,
+						PropModeReplace, (unsigned char*)&utf8_at_id, 1);
+				} else if (ev.target == XA_STRING || ev.target == text_at_id) {
+					R = XChangeProperty(ev.display, ev.requestor, ev.property, XA_STRING, 8, PropModeReplace,
+						window.clipboard_text, window.clipboard_text_len);
+				} else if (ev.target == utf8_at_id) {
+					R = XChangeProperty(ev.display, ev.requestor, ev.property, utf8_at_id, 8, PropModeReplace,
+						window.clipboard_text, window.clipboard_text_len);
+				} else {
+					ev.property = None;
+				}
+
+				if ((R & 2) == 0) {
+					XSendEvent(display, ev.requestor, 0, 0, (XEvent *)&ev);
+				}
+
+				break;
+			} break;
+			case SelectionNotify: {
+				if (e.xselection.property) {
+					char *result;
+					u64 ressize, restail;
+					i32 resbits;
+
+					XGetWindowProperty(display, window.window, xsel_at_id, 0, 1024, False, AnyPropertyType,
+						&utf8_at_id, &resbits, &ressize, &restail, (u8**)&result);
+
+					if (utf8_at_id == incr_at_id) {
+						XFree(result);
+						break;
+					} else {
+						if (window.clipboard_text) {
+							core_free(window.clipboard_text);
+						}
+
+						window.clipboard_text_len = ressize;
+						window.clipboard_text = core_alloc(ressize + 1);
+
+		 				memcpy(window.clipboard_text, result, ressize);
+		 				window.clipboard_text[window.clipboard_text_len] = '\0';
+					}
+
+					XFree(result);
+					break;
+				}
+			} break;
 			default: break;
 		}
 	}
@@ -549,40 +619,29 @@ void lock_mouse(bool lock) {
 }
 
 bool get_clipboard_text(char* buf, usize buf_size) {
-	Atom bufid = XInternAtom(display, "CLIPBOARD", false);
-	Atom fmtid = XInternAtom(display, "UTF8_STRING", false);
-	Atom propid = XInternAtom(display, "XSEL_DATA", false);
-	Atom incrid = XInternAtom(display, "INCR", false);
+	if (!buf) { return false; }
 
-	XConvertSelection(display, bufid, fmtid, propid, window.window, CurrentTime);
+	usize len = cr_min(buf_size - 1, window.clipboard_text_len);
+	memcpy(buf, window.clipboard_text, len);
+	buf[len] = '\0';
 
-	XEvent event;
-	do {
-		XNextEvent(display, &event);
-	} while (event.type != SelectionNotify || event.xselection.selection != bufid);
-
-	if (event.xselection.property) {
-		char *result;
-		u64 ressize, restail;
-		i32 resbits;
-
-		XGetWindowProperty(display, window.window, propid, 0, buf_size, False, AnyPropertyType,
-			&fmtid, &resbits, &ressize, &restail, (u8**)&result);
-
-		if (fmtid == incrid) {
-			XFree(result);
-			return false;
-		} else {
-		 	memcpy(buf, result, ressize);
-		}
-
-		XFree(result);
-		return true;
-	} else {
-		return false;
-	}
+	return true;
 }
 
-void set_clipboard_text(const char* text) {
-	abort_with("Not implemented.");
+bool set_clipboard_text(const char* text, usize n) {
+	XSetSelectionOwner(display, clipboard_at_id, window.window, 0);
+
+	if (XGetSelectionOwner(display, clipboard_at_id) != window.window) {
+		return false;
+	}
+
+	if (window.clipboard_text) { core_free(window.clipboard_text); }
+
+	window.clipboard_text = core_alloc(n + 1);
+	memcpy(window.clipboard_text, text, n);
+	window.clipboard_text[n] = '\0';
+
+	window.clipboard_text_len = n;
+
+	return true;
 }

@@ -46,6 +46,9 @@ struct window {
 #elif defined(__linux__) || defined(__FreeBSD__)
 	Window window;
 
+	char* clipboard_text;
+	usize clipboard_text_len;
+
 #ifndef cr_no_opengl
 	/* Context handle is a void pointer and not a GLXContext because
 	 * including `GL/glx.h' will cause conflicts with Glad. */

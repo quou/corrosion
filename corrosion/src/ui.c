@@ -1406,6 +1406,8 @@ bool ui_input_ex2(struct ui* ui, const char* class, char* buf, usize buf_size, u
 
 				ui->input_cursor = start;
 				ui->input_select_start = ui->input_cursor;
+			} else if (key_just_pressed(key_C) && key_pressed(key_control)) {
+				set_clipboard_text(&buf[start], (usize)(end - start));
 			}
 		} else if (ui->input_cursor > 0 && key_just_pressed(key_backspace)) {
 			for (u32 i = ui->input_cursor - 1; i < buf_len - 1; i++) {

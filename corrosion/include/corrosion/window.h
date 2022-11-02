@@ -152,4 +152,4 @@ v2i get_scroll();
 bool get_input_string(const char** string, usize* len);
 
 bool get_clipboard_text(char* buf, usize buf_size);
-void set_clipboard_text(const char* text);
+bool set_clipboard_text(const char* text, usize n);
