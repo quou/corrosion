@@ -293,7 +293,7 @@ bool is_opengl_supported() {
 #endif
 
 void deinit_window() {
-
+	if (window.clipboard_text) { core_free(window.clipboard_text); }
 }
 
 void update_events() {
