@@ -82,7 +82,7 @@ struct ui_container {
 	bool scrollable;
 	bool interactable;
 
-	f32 z;
+	i32 z;
 
 	v2f content_size;
 	f32 left_bound;
@@ -93,7 +93,7 @@ struct ui_container_meta {
 	v2f dimensions;
 
 	v2f scroll;
-	f32 z;
+	i32 z;
 
 	bool floating;
 	bool visible;
@@ -1546,7 +1546,15 @@ bool ui_input_ex2(struct ui* ui, const char* class, char* buf, usize buf_size, u
 			ui_draw_rect(ui, v2f_add(text_pos, make_v2f(x_start, 0.0f)), make_v2f(x_end - x_start, get_font_height(ui->font)),
 				style.select_colour.value, 0.0f);
 		}
+	} else {
+		if (is_password) {
+			star_size = get_char_dimensions(ui->font, "*");
+			text_dimensions = make_v2f(star_size.x * buf_len, get_font_height(ui->font));
+		} else {
+			text_dimensions = get_text_dimensions(ui->font, buf);
+		}
 	}
+
 
 	if (is_password) {	
 		f32 x = text_pos.x + scroll;

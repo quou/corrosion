@@ -50,6 +50,10 @@ static inline bool is_el_null(const u8* el, usize off) {
 	return !*(bool*)(el + off);
 }
 
+void table_free_string(u8* ptr) {
+	core_free(*(u8**)ptr);
+}
+
 void* _find_table_el(table_hash_fun hash, table_compare_fun compare, void* els_v, usize el_size, usize capacity,
 	usize key_size, const void* key_ptr, usize key_off, usize val_off, usize state_off, usize isnt_null_off, usize* ind) {
 	usize idx = hash_key(key_ptr, key_size, hash) % capacity;

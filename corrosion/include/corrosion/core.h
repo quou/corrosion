@@ -160,9 +160,7 @@ inline static bool table_compare_string(const u8* a, const u8* b) {
 	return strcmp(*(const char**)a, *(const char**)b) == 0;
 }
 
-inline static void table_free_string(u8* ptr) {
-	core_free(*(u8**)ptr);
-}
+void table_free_string(u8* ptr);
 
 inline static u8* table_copy_string(const u8* src) {
 	return (u8*)copy_string((const char*)src);

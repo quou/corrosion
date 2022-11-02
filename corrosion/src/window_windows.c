@@ -552,4 +552,6 @@ bool set_clipboard_text(const char* text, usize n) {
 	EmptyClipboard();
 	SetClipboardData(CF_TEXT, obj);
 	CloseClipboard();
+
+	return true;
 }
