@@ -36,7 +36,7 @@
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
-    <ProjectGuid>{D016FBD7-ADA6-4ABC-87C5-2B2541F9DCEE}</ProjectGuid>
+    <ProjectGuid>{944F27C8-E84F-4788-BBCA-909994A180E7}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -111,78 +111,95 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <NMakeBuildCommandLine>install.bat $(SolutionDir) DebugCompile ReleaseCompile</NMakeBuildCommandLine>
-    <NMakeCleanCommandLine>uninstall.bat</NMakeCleanCommandLine>
-    <NMakeReBuildCommandLine>uninstall.bat &amp;&amp; install.bat $(SolutionDir) DebugCompile ReleaseCompile</NMakeReBuildCommandLine>
-    <NMakePreprocessorDefinitions>
-    </NMakePreprocessorDefinitions>
-    <OutDir>C:\Program Files\corrosion</OutDir>
+    <NMakeOutput>
+    </NMakeOutput>
+    <NMakePreprocessorDefinitions>_DEBUG;$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
+    <OutDir>$(SolutionDir)</OutDir>
     <IntDir>$(ProjectDir)\int</IntDir>
+    <NMakeCleanCommandLine>cleanall.bat</NMakeCleanCommandLine>
+    <NMakeBuildCommandLine>buildall.bat $(SolutionPath)</NMakeBuildCommandLine>
+    <NMakeReBuildCommandLine>cleanall.bat &amp;&amp; buildall.bat $(SolutionPath)</NMakeReBuildCommandLine>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DebugCompile|x64'">
-    <NMakeBuildCommandLine>install.bat $(SolutionDir) $(Configuration) d</NMakeBuildCommandLine>
-    <NMakeCleanCommandLine>uninstall.bat</NMakeCleanCommandLine>
-    <NMakeReBuildCommandLine>uninstall.bat &amp;&amp; install.bat $(SolutionDir) $(Configuration) d</NMakeReBuildCommandLine>
-    <NMakePreprocessorDefinitions />
-    <OutDir>C:\Program Files\corrosion</OutDir>
+    <NMakeOutput />
+    <NMakePreprocessorDefinitions>_DEBUG;$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
+    <OutDir>$(SolutionDir)</OutDir>
     <IntDir>$(ProjectDir)\int</IntDir>
+    <NMakeCleanCommandLine>cleanall.bat</NMakeCleanCommandLine>
+    <NMakeBuildCommandLine>buildall.bat $(SolutionPath)</NMakeBuildCommandLine>
+    <NMakeReBuildCommandLine>cleanall.bat &amp;&amp; buildall.bat $(SolutionPath)</NMakeReBuildCommandLine>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <NMakeBuildCommandLine>install.bat $(SolutionDir) DebugCompile ReleaseCompile</NMakeBuildCommandLine>
-    <NMakeCleanCommandLine>uninstall.bat</NMakeCleanCommandLine>
-    <NMakeReBuildCommandLine>uninstall.bat &amp;&amp; install.bat $(SolutionDir) DebugCompile ReleaseCompile</NMakeReBuildCommandLine>
-    <NMakePreprocessorDefinitions>
-    </NMakePreprocessorDefinitions>
-    <OutDir>C:\Program Files\corrosion</OutDir>
+    <NMakeOutput>
+    </NMakeOutput>
+    <NMakePreprocessorDefinitions>WIN32;_DEBUG;$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
+    <OutDir>$(SolutionDir)</OutDir>
     <IntDir>$(ProjectDir)\int</IntDir>
+    <NMakeCleanCommandLine>cleanall.bat</NMakeCleanCommandLine>
+    <NMakeBuildCommandLine>buildall.bat $(SolutionPath)</NMakeBuildCommandLine>
+    <NMakeReBuildCommandLine>cleanall.bat &amp;&amp; buildall.bat $(SolutionPath)</NMakeReBuildCommandLine>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DebugCompile|Win32'">
-    <NMakeBuildCommandLine>install.bat $(SolutionDir) $(Configuration) d</NMakeBuildCommandLine>
-    <NMakeCleanCommandLine>uninstall.bat</NMakeCleanCommandLine>
-    <NMakeReBuildCommandLine>uninstall.bat &amp;&amp; install.bat $(SolutionDir) $(Configuration) d</NMakeReBuildCommandLine>
-    <NMakePreprocessorDefinitions />
-    <OutDir>C:\Program Files\corrosion</OutDir>
+    <NMakeOutput />
+    <NMakePreprocessorDefinitions>WIN32;_DEBUG;$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
+    <OutDir>$(SolutionDir)</OutDir>
     <IntDir>$(ProjectDir)\int</IntDir>
+    <NMakeCleanCommandLine>cleanall.bat</NMakeCleanCommandLine>
+    <NMakeBuildCommandLine>buildall.bat $(SolutionPath)</NMakeBuildCommandLine>
+    <NMakeReBuildCommandLine>cleanall.bat &amp;&amp; buildall.bat $(SolutionPath)</NMakeReBuildCommandLine>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <NMakeBuildCommandLine>install.bat $(SolutionDir) DebugCompile ReleaseCompile</NMakeBuildCommandLine>
-    <NMakeCleanCommandLine>uninstall.bat</NMakeCleanCommandLine>
-    <NMakeReBuildCommandLine>uninstall.bat &amp;&amp; install.bat $(SolutionDir) DebugCompile ReleaseCompile</NMakeReBuildCommandLine>
-    <NMakePreprocessorDefinitions>
-    </NMakePreprocessorDefinitions>
-    <OutDir>C:\Program Files\corrosion</OutDir>
+    <NMakeOutput>
+    </NMakeOutput>
+    <NMakePreprocessorDefinitions>WIN32;NDEBUG;$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
+    <OutDir>$(SolutionDir)</OutDir>
     <IntDir>$(ProjectDir)\int</IntDir>
+    <NMakeCleanCommandLine>cleanall.bat</NMakeCleanCommandLine>
+    <NMakeBuildCommandLine>buildall.bat $(SolutionPath)</NMakeBuildCommandLine>
+    <NMakeReBuildCommandLine>cleanall.bat &amp;&amp; buildall.bat $(SolutionPath)</NMakeReBuildCommandLine>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseCompile|Win32'">
-    <NMakeBuildCommandLine>install.bat $(SolutionDir) $(Configuration)</NMakeBuildCommandLine>
-    <NMakeCleanCommandLine>uninstall.bat</NMakeCleanCommandLine>
-    <NMakeReBuildCommandLine>uninstall.bat &amp;&amp; install.bat $(SolutionDir) $(Configuration)</NMakeReBuildCommandLine>
-    <NMakePreprocessorDefinitions />
-    <OutDir>C:\Program Files\corrosion</OutDir>
+    <NMakeOutput />
+    <NMakePreprocessorDefinitions>WIN32;NDEBUG;$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
+    <OutDir>$(SolutionDir)</OutDir>
     <IntDir>$(ProjectDir)\int</IntDir>
+    <NMakeCleanCommandLine>cleanall.bat</NMakeCleanCommandLine>
+    <NMakeBuildCommandLine>buildall.bat $(SolutionPath)</NMakeBuildCommandLine>
+    <NMakeReBuildCommandLine>cleanall.bat &amp;&amp; buildall.bat $(SolutionPath)</NMakeReBuildCommandLine>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <NMakeBuildCommandLine>install.bat $(SolutionDir) DebugCompile ReleaseCompile</NMakeBuildCommandLine>
-    <NMakeCleanCommandLine>uninstall.bat</NMakeCleanCommandLine>
-    <NMakeReBuildCommandLine>uninstall.bat &amp;&amp; install.bat $(SolutionDir) DebugCompile ReleaseCompile</NMakeReBuildCommandLine>
-    <NMakePreprocessorDefinitions>
-    </NMakePreprocessorDefinitions>
-    <OutDir>C:\Program Files\corrosion</OutDir>
+    <NMakeOutput>
+    </NMakeOutput>
+    <NMakePreprocessorDefinitions>NDEBUG;$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
+    <OutDir>$(SolutionDir)</OutDir>
     <IntDir>$(ProjectDir)\int</IntDir>
+    <NMakeCleanCommandLine>cleanall.bat</NMakeCleanCommandLine>
+    <NMakeBuildCommandLine>buildall.bat $(SolutionPath)</NMakeBuildCommandLine>
+    <NMakeReBuildCommandLine>cleanall.bat &amp;&amp; buildall.bat $(SolutionPath)</NMakeReBuildCommandLine>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseCompile|x64'">
-    <NMakeBuildCommandLine>install.bat $(SolutionDir) $(Configuration)</NMakeBuildCommandLine>
-    <NMakeCleanCommandLine>uninstall.bat</NMakeCleanCommandLine>
-    <NMakeReBuildCommandLine>uninstall.bat &amp;&amp; install.bat $(SolutionDir) $(Configuration)</NMakeReBuildCommandLine>
-    <NMakePreprocessorDefinitions />
-    <OutDir>C:\Program Files\corrosion</OutDir>
+    <NMakeOutput />
+    <NMakePreprocessorDefinitions>NDEBUG;$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
+    <OutDir>$(SolutionDir)</OutDir>
     <IntDir>$(ProjectDir)\int</IntDir>
+    <NMakeCleanCommandLine>cleanall.bat</NMakeCleanCommandLine>
+    <NMakeBuildCommandLine>buildall.bat $(SolutionPath)</NMakeBuildCommandLine>
+    <NMakeReBuildCommandLine>cleanall.bat &amp;&amp; buildall.bat $(SolutionPath)</NMakeReBuildCommandLine>
   </PropertyGroup>
   <ItemDefinitionGroup>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <None Include="install.bat" />
-    <None Include="uninstall.bat" />
+    <None Include="buildall.bat">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(SolutionDir)</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugCompile|Win32'">$(SolutionDir)</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(SolutionDir)</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseCompile|Win32'">$(SolutionDir)</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(SolutionDir)</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='DebugCompile|x64'">$(SolutionDir)</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(SolutionDir)</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='ReleaseCompile|x64'">$(SolutionDir)</ExcludedFromBuild>
+    </None>
+    <None Include="cleanall.bat" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
