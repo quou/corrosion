@@ -513,11 +513,43 @@ void lock_mouse(bool lock) {
 	}
 }
 
-bool get_clipboard_text(char* buf, usize buf_len) {
-	abort_with("Not implemented.");
-	return false;
+bool get_clipboard_text(char* buf, usize buf_size) {
+	HANDLE obj;
+	LPSTR* buffer;
+
+	OpenClipboard(window.hwnd);
+
+	obj = GetClipboardData(CF_TEXT);
+	if (!obj) {
+		CloseClipboard();
+		return false;
+	}
+
+	buffer = GlobalLock(obj);
+	if (!buffer) {
+		CloseClipboard();
+		return false;
+	}
+
+	GlobalUnlock(obj);
+
+	usize buffer_len = strlen(buffer);
+	buffer_len = cr_min(buffer_len, buf_size - 1);
+	memcpy(buf, buffer, buffer_len);
+	buf[buffer_len] = '\0';
+	
+	CloseClipboard();
+
+	return true;
 }
 
-void set_clipboard_text(const char* text) {
-	abort_with("Not implemented.");
+bool set_clipboard_text(const char* text, usize n) {
+	HGLOBAL obj =  GlobalAlloc(GMEM_MOVEABLE, n + 1);
+	memcpy(GlobalLock(obj), text, n + 1);
+
+	GlobalUnlock(obj);
+	OpenClipboard(window.hwnd);
+	EmptyClipboard();
+	SetClipboardData(CF_TEXT, obj);
+	CloseClipboard();
 }
