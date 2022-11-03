@@ -24,20 +24,6 @@ u64 hash_string(const char* str) {
 	return elf_hash((const u8*)str, strlen(str));
 }
 
-u64 buffer_id(const u8* data, usize size) {
-	u64 id = 0;
-
-	for (usize i = 0; i < size; i++) {
-		id += data[i];
-	}
-
-	return id;
-}
-
-u64 string_id(const char* str) {
-	return buffer_id((const u8*)str, strlen(str));
-}
-
 static inline u64 hash_key(const u8* bytes, usize size, table_hash_fun f) {
 	return f ? f(bytes, size) : elf_hash(bytes, size);
 }
