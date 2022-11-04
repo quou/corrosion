@@ -23,6 +23,15 @@ struct dtable new_number_dtable(const char* name, f64 value) {
 	return r;
 }
 
+struct dtable new_uinteger_dtable(const char* name, u64 value) {
+	struct dtable r = new_dtable(name);
+
+	r.value.type = dtable_uinteger;
+	r.value.as.uinteger = value;
+
+	return r;
+}
+
 struct dtable new_bool_dtable(const char* name, bool value) {
 	struct dtable r = new_dtable(name);
 
@@ -111,6 +120,9 @@ static void write_dtable_value(const struct dtable_value* val, FILE* file) {
 	switch (val->type) {
 		case dtable_number:
 			fprintf(file, "%g", val->as.number);
+			break;
+		case dtable_uinteger:
+			fprintf(file, "#%llx", val->as.uinteger);
 			break;
 		case dtable_bool:
 			fprintf(file, val->as.boolean ? "true" : "false");
@@ -472,6 +484,11 @@ static bool parse(struct dtable* dt, struct parser* parser) {
 		case tok_number:
 			dt->value.type = dtable_number;
 			dt->value.as.number = strtod(tok.start, null);
+			after_value();
+			break;
+		case tok_hex:
+			dt->value.type = dtable_uinteger;
+			dt->value.as.uinteger = strtol(tok.start, null, 16);
 			after_value();
 			break;
 		case tok_string:

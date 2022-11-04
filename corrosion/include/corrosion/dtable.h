@@ -58,6 +58,7 @@ struct dtable_key {
 enum {
 	dtable_parent = 0,
 	dtable_number,
+	dtable_uinteger,
 	dtable_bool,
 	dtable_string,
 	dtable_colour,
@@ -71,6 +72,7 @@ struct dtable_value {
 
 	union {
 		f64 number;
+		u64 uinteger;
 		bool boolean;
 		char* string;
 		v4f colour;
@@ -90,6 +92,7 @@ struct dtable {
 
 struct dtable new_dtable(const char* name);
 struct dtable new_number_dtable(const char* name, f64 value);
+struct dtable new_uinteger_dtable(const char* name, u64 value);
 struct dtable new_bool_dtable(const char* name, bool value);
 struct dtable new_string_dtable(const char* name, const char* string);
 struct dtable new_string_n_dtable(const char* name, const char* string, usize n);
