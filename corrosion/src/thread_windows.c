@@ -16,6 +16,7 @@ DWORD WINAPI _thread_worker(LPVOID lparam) {
 }
 
 void init_thread(struct thread* thread, thread_worker_t worker) {
+	thread->working = false;
 	thread->worker = worker;
 }
 

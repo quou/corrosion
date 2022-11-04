@@ -16,6 +16,7 @@ void* _thread_worker(void* ptr) {
 
 void init_thread(struct thread* thread, thread_worker_t worker) {
 	thread->worker = worker;
+	thread->working = false;
 }
 
 void deinit_thread(struct thread* thread) {
