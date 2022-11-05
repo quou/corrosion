@@ -32,7 +32,10 @@ static u64 file_mod_time(const char* name) {
 bool get_file_info(const char* path, struct file_info* info) {
 	DWORD attribs = GetFileAttributesA(path);
 	if (attribs == INVALID_FILE_ATTRIBUTES) {
-		info->type = file_other;
+		if (info) {
+			info->type = file_other;
+		}
+
 		return false;
 	}
 
@@ -130,4 +133,8 @@ bool dir_iter_next(struct dir_iter* it) {
 	}
 
 	return it->handle != 0;
+}
+
+bool create_dir(const char* name) {
+	return (bool)CreateDirectoryA(name, null);
 }
