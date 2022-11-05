@@ -87,3 +87,9 @@ bool dir_iter_next(struct dir_iter* it) {
 
 	return true;
 }
+
+bool create_dir(const char* name) {
+	i32 r = mkdir(name, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+
+	return r == 0;
+}

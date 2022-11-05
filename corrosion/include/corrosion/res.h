@@ -55,6 +55,8 @@ bool dir_iter_next(struct dir_iter* it);
 
 bool get_file_info(const char* path, struct file_info* info);
 
+bool create_dir(const char* name);
+
 /* If a PAK archive is currently
  * bound, read_raw and read_raw_text will read from the currently
  * bound PAK archive. Otherwise, they read from a file.
