@@ -1404,7 +1404,7 @@ bool ui_input_ex2(struct ui* ui, const char* class, char* buf, usize buf_size, u
 
 			if (input || key_just_pressed(key_backspace) || key_just_pressed(key_delete) ||
 				((key_just_pressed(key_V) || key_just_pressed(key_X)) && key_pressed(key_control))) {
-				for (i32 i = start; i < (buf_len - range) + 1; i++) {
+				for (i32 i = start; i < ((i32)buf_len - range) + 1; i++) {
 					buf[i] = buf[i + range];
 				}
 
