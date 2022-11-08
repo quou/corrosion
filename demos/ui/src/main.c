@@ -39,12 +39,14 @@ void cr_init() {
 
 void cr_update(f64 ts) {
 	static char fps_buf[32];
+	static char frame_time_buf[32];
 	static f64 fps_timer = 0.0;
 	
 	fps_timer += ts;
 	if (fps_timer > 1.0) {
 		fps_timer = 0;
 		sprintf(fps_buf, "%g", 1.0 / ts);
+		//sprintf(frame_time_buf, "%.3f", ts * 1000.0);
 	}
 
 	ui_begin(app.ui);
@@ -59,6 +61,8 @@ void cr_update(f64 ts) {
 
 	ui_label(app.ui, "FPS:");
 	ui_label(app.ui, fps_buf);
+	ui_label(app.ui, "Frame time (ms):");
+	ui_label(app.ui, frame_time_buf);
 
 	ui_label(app.ui, "Emscripten?");
 #ifdef __EMSCRIPTEN__

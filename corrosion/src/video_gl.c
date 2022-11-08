@@ -429,7 +429,7 @@ static void init_pipeline(struct video_gl_pipeline* pipeline, u32 flags, const s
 
 	pipeline->flags = flags;
 
-	pipeline->shader = (const struct video_gl_shader*)shader;
+	pipeline->shader = (struct video_gl_shader*)shader;
 	pipeline->framebuffer = (const struct video_gl_framebuffer*)framebuffer;
 
 	memset(&pipeline->descriptor_sets, 0, sizeof pipeline->descriptor_sets);
@@ -683,8 +683,11 @@ void video_gl_bind_pipeline_descriptor_set(struct pipeline* pipeline_, const cha
 			case pipeline_resource_texture: {
 				const struct video_gl_texture* texture = (const struct video_gl_texture*)desc->resource.texture;
 
-				check_gl(glActiveTexture(GL_TEXTURE0 + binding));
-				check_gl(glBindTexture(GL_TEXTURE_2D, texture->id));
+				u32* loc_ptr = table_get(pipeline->shader->sampler_locs, binding);
+				if (loc_ptr) {
+					check_gl(glActiveTexture(GL_TEXTURE0 + (*loc_ptr)));
+					check_gl(glBindTexture(GL_TEXTURE_2D, texture->id));
+				}
 			} break;
 			case pipeline_resource_uniform_buffer: {
 				check_gl(glBindBufferBase(GL_UNIFORM_BUFFER, binding, desc->ub_id));
@@ -1066,14 +1069,17 @@ static void init_shader(struct video_gl_shader* shader, const struct shader_head
 
 		check_gl(glUseProgram(shader->program));
 
+		memset(&shader->sampler_locs, 0, sizeof shader->sampler_locs);
+
 		/* Read in the sampler names and set their values. */
 		struct shader_sampler_name_table_header* snth = (void*)(data + header->raster_header.sampler_name_table_offset);
 		u8* ptr = (void*)(snth + 1);
 		for (u64 i = 0; i < snth->count; i++) {
 			struct shader_sampler_name* n = (void*)ptr;
 
+			table_set(shader->sampler_locs, n->binding, n->location);
 			check_gl(u32 location = glGetUniformLocation(shader->program, n->name));
-			check_gl(glUniform1i(location, n->binding));
+			check_gl(glUniform1i(location, n->location));
 
 			ptr += sizeof *n;
 		}
@@ -1085,6 +1091,7 @@ static void init_shader(struct video_gl_shader* shader, const struct shader_head
 }
 
 static void deinit_shader(struct video_gl_shader* shader) {
+	free_table(shader->sampler_locs);
 	check_gl(glDeleteProgram(shader->program));
 }
 

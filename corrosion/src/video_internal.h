@@ -33,6 +33,7 @@ struct shader_compute_header {
 
 struct shader_sampler_name {
 	u32 binding;
+	u32 location;
 	char name[32];
 };
 
@@ -362,7 +363,7 @@ struct video_gl_pipeline {
 	table(u32, struct pipeline_attribute_binding) attribute_bindings;
 	table(u64, struct video_gl_descriptor_set) descriptor_sets;
 
-	const struct video_gl_shader* shader;
+	struct video_gl_shader* shader;
 	const struct video_gl_framebuffer* framebuffer;
 
 	struct pipeline_config config;
@@ -383,6 +384,7 @@ struct video_gl_desc_id {
 
 struct video_gl_shader {
 	u32 program;
+	table(u32, u32) sampler_locs;
 };
 
 struct video_gl_vertex_buffer {

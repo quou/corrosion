@@ -135,8 +135,13 @@ struct DescSet {
 	std::vector<Desc> bindings;
 };
 
+struct NamedSamplerBinding {
+	std::string name;
+	u32 location;
+};
+
 std::unordered_map<u32, DescSet> sets;
-std::unordered_map<u32, std::string> sampler_names;
+std::unordered_map<u32, NamedSamplerBinding> sampler_names;
 
 static std::string convert_filename(const std::string& path, const std::string& name) {
 	usize slash = path.find_last_of("/");
@@ -144,6 +149,7 @@ static std::string convert_filename(const std::string& path, const std::string& 
 }
 
 static void compute_set_bindings() {
+	u32 sampler_count = 0;
 	for (auto& sp : sets) {
 		auto id = sp.first;
 		auto& set = sp.second;
@@ -154,7 +160,7 @@ static void compute_set_bindings() {
 			desc.compiler.set_decoration((spirv_cross::ID)desc.id, spv::DecorationBinding, binding);
 
 			if (desc.is_sampler) {
-				sampler_names[binding] = desc.name;
+				sampler_names[binding] = NamedSamplerBinding { desc.name, sampler_count++ };
 			}
 		}
 	}
@@ -381,7 +387,8 @@ i32 main(i32 argc, const char** argv) {
 		fwrite(&count, 1, sizeof count, outfile);
 		for (auto& n : sampler_names) {
 			fwrite(&n.first, 1, sizeof n.first, outfile);
-			fwrite(n.second.c_str(), 1, n.second.size() + 1, outfile);
+			fwrite(&n.second.location, 1, sizeof n.second.location, outfile);
+			fwrite(n.second.name.c_str(), 1, n.second.name.size() + 1, outfile);
 		}
 
 		fclose(outfile);
