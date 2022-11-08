@@ -685,6 +685,7 @@ void video_gl_bind_pipeline_descriptor_set(struct pipeline* pipeline_, const cha
 
 				u32* loc_ptr = table_get(pipeline->shader->sampler_locs, binding);
 				if (loc_ptr) {
+					//info("%u", *loc_ptr);
 					check_gl(glActiveTexture(GL_TEXTURE0 + (*loc_ptr)));
 					check_gl(glBindTexture(GL_TEXTURE_2D, texture->id));
 				}
@@ -1081,7 +1082,7 @@ static void init_shader(struct video_gl_shader* shader, const struct shader_head
 			check_gl(u32 location = glGetUniformLocation(shader->program, n->name));
 			check_gl(glUniform1i(location, n->location));
 
-			ptr += sizeof *n;
+			ptr += sizeof(u64) + strlen(n->name) + 1;
 		}
 
 		if (gctx.bound_pipeline) {
