@@ -555,3 +555,15 @@ bool set_clipboard_text(const char* text, usize n) {
 
 	return true;
 }
+
+void set_window_size(v2i size) {
+	abort_with("Not implemented.");
+}
+
+void set_window_title(const char* title) {
+	abort_with("Not implemented.");
+}
+
+void set_window_fullscreen(bool fullscreen) {
+	abort_with("Not implemented.");
+}
