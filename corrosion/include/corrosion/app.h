@@ -9,6 +9,7 @@ struct window_config {
 	const char* title;
 	v2i size;
 	bool resizable;
+	bool fullscreen;
 };
 
 struct video_config {

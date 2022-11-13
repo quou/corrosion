@@ -52,6 +52,12 @@ void window_event_unsubscribe(u32 type, window_event_handler_t callback);
 void window_event_unsubscribe_all(u32 type);
 
 v2i get_window_size();
+void set_window_size(v2i size);
+
+void set_window_title(const char* title);
+
+bool is_window_fullscreen();
+void set_window_fullscreen(bool fullscreen);
 
 enum {
 	key_unknown = 0,

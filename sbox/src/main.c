@@ -493,7 +493,8 @@ struct app_config cr_config() {
 		.window_config = (struct window_config) {
 			.title = "Sandbox",
 			.size = make_v2i(800, 600),
-			.resizable = true
+			.resizable = true,
+			.fullscreen = false
 		}
 	};
 }
@@ -713,6 +714,15 @@ void cr_update(f64 ts) {
 		}
 
 		ui_tree_pop(app.ui);
+	}
+
+	if (key_just_pressed(key_F)) {
+		set_window_fullscreen(!is_window_fullscreen());
+	}
+
+	if (key_just_pressed(key_space)) {
+		set_window_title("Haha");
+		set_window_size(make_v2i(10, 10));
 	}
 
 	ui_linebreak(app.ui);

@@ -77,6 +77,7 @@ void res_deinit();
 struct res_pak;
 
 void res_use_pak(const struct res_pak* pak);
+const struct res_pak* res_bound_pack();
 
 struct res_pak* pak_open(const char* path, usize offset);
 void pak_close(struct res_pak* pak);

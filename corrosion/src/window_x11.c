@@ -29,6 +29,31 @@ Atom clipboard_at_id, targets_at_id, text_at_id, utf8_at_id;
 Atom incr_at_id, xsel_at_id;
 Atom XA_ATOM = 4, XA_STRING = 31;
 
+static void update_window_size(v2i size) {
+	if (size.x != window.size.x || size.y != window.size.y) {
+		window.size = size;
+#ifndef cr_no_vulkan
+		if (window.api == video_api_vulkan) {
+			video_vk_want_recreate();
+		} else if (window.api == video_api_opengl) {
+#endif
+#ifndef cr_no_opengl
+			video_gl_want_recreate();
+#endif
+#ifndef cr_no_vulkan
+		}
+#endif
+	}
+
+	struct window_event resize_event = {
+		.type = window_event_size_changed,
+		.size_changed.new_size = window.size
+	};
+
+	dispatch_event(&resize_event);
+}
+
+
 void init_window(const struct window_config* config, u32 api) {
 	memset(&window, 0, sizeof window);
 
@@ -52,6 +77,7 @@ void init_window(const struct window_config* config, u32 api) {
 	window.size = config->size;
 	window.open = true;
 	window.resizable = config->resizable;
+	window.fullscreen = config->fullscreen;
 
 	Window root = DefaultRootWindow(display);
 
@@ -70,7 +96,7 @@ void init_window(const struct window_config* config, u32 api) {
 		0, 0, InputOutput, XDefaultVisual(display, 0), CWEventMask, &attribs);
 	XSetWMProtocols(display, window.window, &wm_delete_window_id, 1);
 
-	XStoreName(display, window.window, config->title);
+	set_window_title(config->title);
 
 	if (!config->resizable) {
 		XSizeHints* hints = XAllocSizeHints();
@@ -83,6 +109,11 @@ void init_window(const struct window_config* config, u32 api) {
 		XSetWMNormalHints(display, window.window, hints);
 
 		XFree(hints);
+	}
+
+	if (window.fullscreen) {
+		window.fullscreen = false;
+		set_window_fullscreen(true);
 	}
 
 	XClearWindow(display, window.window);
@@ -173,6 +204,36 @@ i32 get_preferred_gpu_idx() {
 	if (!dri_prime_str) { return -1; }
 
 	return atoi(dri_prime_str);
+}
+
+void set_window_fullscreen(bool yes) {
+	if (yes != window.fullscreen) {
+		window.fullscreen = yes;
+		Atom wm_state = XInternAtom(display, "_NET_WM_STATE", False);
+		Atom fullscreen = XInternAtom(display, "_NET_WM_STATE_FULLSCREEN", False);
+		XEvent xev = { 0 };
+		xev.type = ClientMessage;
+		xev.xclient.window = window.window;
+		xev.xclient.message_type = wm_state;
+		xev.xclient.format = 32;
+		xev.xclient.data.l[0] = (window.fullscreen ? 1 : 0);
+		xev.xclient.data.l[1] = fullscreen;
+		xev.xclient.data.l[2] = 0;
+		xev.xclient.data.l[3] = 0;
+		XMapWindow(display, window.window);
+		XSendEvent(display, DefaultRootWindow(display), False,
+			SubstructureRedirectMask | SubstructureNotifyMask, &xev);
+		XFlush(display);
+		XWindowAttributes gwa;
+		XGetWindowAttributes(display, window.window, &gwa);
+		window.size.x = gwa.width;
+		window.size.y = gwa.height;
+		update_window_size(make_v2i(gwa.width, gwa.height));
+	}
+}
+
+void set_window_title(const char* title) {
+	XStoreName(display, window.window, title);
 }
 
 #ifndef cr_no_vulkan
@@ -334,6 +395,11 @@ void deinit_window() {
 	free_table(window.keymap);
 }
 
+void set_window_size(v2i size) {
+	XResizeWindow(display, window.window, size.x, size.y);
+	update_window_size(size);
+}
+
 void update_events() {
 	memset(window.pressed_keys, 0, sizeof window.pressed_keys);
 	memset(window.released_keys, 0, sizeof window.released_keys);
@@ -360,28 +426,7 @@ void update_events() {
 				XWindowAttributes gwa;
 				XGetWindowAttributes(display, window.window, &gwa);
 
-				if (gwa.width != window.size.x || gwa.height != window.size.y) {
-					window.size.x = gwa.width;
-					window.size.y = gwa.height;
-#ifndef cr_no_vulkan
-					if (window.api == video_api_vulkan) {
-						video_vk_want_recreate();
-					} else if (window.api == video_api_opengl) {
-#endif
-#ifndef cr_no_opengl
-						video_gl_want_recreate();
-#endif
-#ifndef cr_no_vulkan
-					}
-#endif
-
-					struct window_event resize_event = {
-						.type = window_event_size_changed,
-						.size_changed.new_size = window.size
-					};
-
-					dispatch_event(&resize_event);
-				}
+				set_window_size(make_v2i(gwa.width, gwa.height));
 			} break;
 			case KeyPress: {
 				KeySym sym = XLookupKeysym(&e.xkey, 0);

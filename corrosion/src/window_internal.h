@@ -30,6 +30,7 @@ struct window {
 	bool open;
 	bool resizable;
 	bool mouse_locked;
+	bool fullscreen;
 
 	u32 api;
 

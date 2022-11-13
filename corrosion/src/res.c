@@ -33,6 +33,10 @@ void res_use_pak(const struct res_pak* pak) {
 	bound_pak = pak;
 }
 
+const struct res_pak* res_bound_pack() {
+	return bound_pak;
+}
+
 struct res_pak* pak_open(const char* path, usize header_offset) {
 	FILE* handle = fopen(path, "rb");
 	if (!handle) {

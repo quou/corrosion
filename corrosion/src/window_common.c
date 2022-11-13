@@ -11,6 +11,10 @@ v2i get_window_size() {
 	return window.size;
 }
 
+bool is_window_fullscreen() {
+	return window.fullscreen;
+}
+
 bool key_pressed(u32 code) {
 	return window.held_keys[code];
 }
