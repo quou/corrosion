@@ -203,3 +203,46 @@ void* release_core_realloc(void* p, usize size) {
 void release_core_free(void* p) {
 	if (p) { free(p); }
 }
+
+static usize impl_align_address(usize address, usize alignment) {
+	usize mask = alignment - 1;
+#if debug
+	if ((alignment & mask) != 0) {
+		abort_with("Alignment should be a power of two.");
+	}
+#endif
+	return (address + mask) & ~mask;
+}
+
+void* align_address(void* address, usize alignment) {
+	return (void*)impl_align_address((usize)address, alignment);
+}
+
+void* aligned_alloc(usize size, usize alignment) {
+	usize actual_size = size + alignment;
+
+	u8* raw = core_alloc(actual_size);
+
+	u8* aligned = align_address(raw, alignment);
+	if (aligned == raw) {
+		aligned += alignment;
+	}
+
+	usize shift = aligned - raw;
+	aligned[-1] = (u8)(shift & 0xff);
+
+	return aligned;
+}
+
+void aligned_free(void* ptr) {
+	if (ptr) {
+		u8* aligned = ptr;
+
+		usize shift = aligned[-1];
+		if (shift == 0) { shift = 256; }
+
+		u8* raw = aligned - shift;
+
+		core_free(raw);
+	}
+}

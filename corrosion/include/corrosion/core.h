@@ -88,6 +88,10 @@ void debug_leak_check();
 #define leak_check() release_leak_check()
 #endif
 
+void* align_address(void* address, usize alignment);
+void* aligned_alloc(usize size, usize alignment);
+void aligned_free(void* ptr);
+
 /* String manipulation. */
 char* copy_string(const char* str);
 
