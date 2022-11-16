@@ -7,13 +7,15 @@ layout (location = 1) in vec2 uv;
 layout (location = 2) in vec4 colour;
 layout (location = 3) in float use_texture;
 layout (location = 4) in float radius;
-layout (location = 5) in vec4 rect;
+layout (location = 5) in float outline;
+layout (location = 6) in vec4 rect;
 
 layout (location = 0) out VSOut {
 	vec2 uv;
 	vec4 colour;
 	float use_texture;
 	float radius;
+	float outline;
 	vec4 rect;
 	vec2 frag_pos;
 } fs_in;
@@ -28,6 +30,7 @@ void main() {
 	fs_in.use_texture = use_texture;
 	fs_in.radius = radius;
 	fs_in.rect = rect;
+	fs_in.outline = outline;
 
 	vec4 p = (projection * vec4(position, 0.0, 1.0));
 
@@ -47,6 +50,7 @@ layout (location = 0) in VSOut {
 	vec4 colour;
 	float use_texture;
 	float radius;
+	float outline;
 	vec4 rect;
 	vec2 frag_pos;
 } fs_in;
@@ -67,8 +71,16 @@ void main() {
 
 	float r = fs_in.radius;
 
-	float d = rounded_box_sdf(fs_in.frag_pos - position - (dimentions * 0.5), dimentions * 0.5, r);
-	float a = 1.0 - smoothstep(0.0, softness * 2.0, d);
+	float d0 = rounded_box_sdf(fs_in.frag_pos - position - (dimentions * 0.5), dimentions * 0.5, r);
+	float d1 = 0.0f;
+	if (fs_in.outline > 0.0f) {
+		float ho = fs_in.outline * 0.5f;
+		d1 = rounded_box_sdf(
+			fs_in.frag_pos - (position + ho) - ((dimentions - fs_in.outline) * 0.5),
+			(dimentions - fs_in.outline) * 0.5, r);
+	}
+
+	float a = 1.0 - smoothstep(0.0, softness * 2.0, max(-d1, d0));
 
 	if (fs_in.use_texture > 0.0f) {
 		texture_colour = texture(atlas, fs_in.uv);

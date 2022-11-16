@@ -43,13 +43,19 @@ static void create_pipeline(struct ui_renderer* renderer) {
 								.type     = pipeline_attribute_float
 							},
 							{
-								.name     = "rect",
+								.name     = "outline",
 								.location = 5,
+								.offset   = offsetof(struct ui_renderer_vertex, outline),
+								.type     = pipeline_attribute_float
+							},
+							{
+								.name     = "rect",
+								.location = 6,
 								.offset   = offsetof(struct ui_renderer_vertex, rect),
 								.type     = pipeline_attribute_vec4
 							}
 						},
-						.count = 6,
+						.count = 7,
 					},
 					.stride = sizeof(struct ui_renderer_vertex),
 					.rate = pipeline_attribute_rate_per_vertex,
@@ -239,10 +245,10 @@ void ui_renderer_push(struct ui_renderer* renderer, const struct ui_renderer_qua
 	f32 use_texture = quad->texture != null ? 1.0f : 0.0f;
  
  	struct ui_renderer_vertex verts[] = {
- 		{ .position = { x1, y2 }, .uv = { tx,      ty + th }, .colour = quad->colour, .use_texture = use_texture, .radius = quad->radius, .rect = { x1, y1, quad->dimensions.x, quad->dimensions.y } },
-		{ .position = { x2, y2 }, .uv = { tx + tw, ty + th }, .colour = quad->colour, .use_texture = use_texture, .radius = quad->radius, .rect = { x1, y1, quad->dimensions.x, quad->dimensions.y } },
-		{ .position = { x2, y1 }, .uv = { tx + tw, ty      }, .colour = quad->colour, .use_texture = use_texture, .radius = quad->radius, .rect = { x1, y1, quad->dimensions.x, quad->dimensions.y } },
-		{ .position = { x1, y1 }, .uv = { tx,      ty      }, .colour = quad->colour, .use_texture = use_texture, .radius = quad->radius, .rect = { x1, y1, quad->dimensions.x, quad->dimensions.y } }
+ 		{ .position = { x1, y2 }, .uv = { tx,      ty + th }, .colour = quad->colour, .use_texture = use_texture, .radius = quad->radius, .outline = quad->outline, .rect = { x1, y1, quad->dimensions.x, quad->dimensions.y } },
+		{ .position = { x2, y2 }, .uv = { tx + tw, ty + th }, .colour = quad->colour, .use_texture = use_texture, .radius = quad->radius, .outline = quad->outline, .rect = { x1, y1, quad->dimensions.x, quad->dimensions.y } },
+		{ .position = { x2, y1 }, .uv = { tx + tw, ty      }, .colour = quad->colour, .use_texture = use_texture, .radius = quad->radius, .outline = quad->outline, .rect = { x1, y1, quad->dimensions.x, quad->dimensions.y } },
+		{ .position = { x1, y1 }, .uv = { tx,      ty      }, .colour = quad->colour, .use_texture = use_texture, .radius = quad->radius, .outline = quad->outline, .rect = { x1, y1, quad->dimensions.x, quad->dimensions.y } }
 	};
 
 	video.update_vertex_buffer(renderer->vb, verts, sizeof(verts),
@@ -292,10 +298,10 @@ void ui_renderer_push_gradient(struct ui_renderer* renderer, const struct ui_ren
 	f32 use_texture = quad->texture != null ? 1.0f : 0.0f;
  
  	struct ui_renderer_vertex verts[] = {
- 		{ .position = { x1, y2 }, .uv = { tx,      ty + th }, .colour = quad->colours.bot_left,  .use_texture = use_texture, .radius = quad->radius, .rect = { x1, y1, quad->dimensions.x, quad->dimensions.y } },
-		{ .position = { x2, y2 }, .uv = { tx + tw, ty + th }, .colour = quad->colours.bot_right, .use_texture = use_texture, .radius = quad->radius, .rect = { x1, y1, quad->dimensions.x, quad->dimensions.y } },
-		{ .position = { x2, y1 }, .uv = { tx + tw, ty      }, .colour = quad->colours.top_right, .use_texture = use_texture, .radius = quad->radius, .rect = { x1, y1, quad->dimensions.x, quad->dimensions.y } },
-		{ .position = { x1, y1 }, .uv = { tx,      ty      }, .colour = quad->colours.top_left,  .use_texture = use_texture, .radius = quad->radius, .rect = { x1, y1, quad->dimensions.x, quad->dimensions.y } }
+ 		{ .position = { x1, y2 }, .uv = { tx,      ty + th }, .colour = quad->colours.bot_left,  .use_texture = use_texture, .radius = quad->radius, .outline = quad->outline, .rect = { x1, y1, quad->dimensions.x, quad->dimensions.y } },
+		{ .position = { x2, y2 }, .uv = { tx + tw, ty + th }, .colour = quad->colours.bot_right, .use_texture = use_texture, .radius = quad->radius, .outline = quad->outline, .rect = { x1, y1, quad->dimensions.x, quad->dimensions.y } },
+		{ .position = { x2, y1 }, .uv = { tx + tw, ty      }, .colour = quad->colours.top_right, .use_texture = use_texture, .radius = quad->radius, .outline = quad->outline, .rect = { x1, y1, quad->dimensions.x, quad->dimensions.y } },
+		{ .position = { x1, y1 }, .uv = { tx,      ty      }, .colour = quad->colours.top_left,  .use_texture = use_texture, .radius = quad->radius, .outline = quad->outline, .rect = { x1, y1, quad->dimensions.x, quad->dimensions.y } }
 	};
 
 	video.update_vertex_buffer(renderer->vb, verts, sizeof(verts),

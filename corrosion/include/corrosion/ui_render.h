@@ -17,6 +17,7 @@ struct ui_renderer_vertex {
 	v4f colour;
 	f32 use_texture;
 	f32 radius;
+	f32 outline;
 	v4f rect;
 };
 
@@ -49,6 +50,7 @@ struct ui_renderer_quad {
 	v4f colour;
 	v4f rect;
 	f32 radius;
+	f32 outline;
 	const struct texture* texture;
 };
 
@@ -63,6 +65,7 @@ struct ui_renderer_gradient_quad {
 	v2f position;
 	v2f dimensions;
 	f32 radius;
+	f32 outline;
 	v4f rect;
 	const struct texture* texture;
 };
