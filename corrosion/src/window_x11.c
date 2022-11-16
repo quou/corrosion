@@ -396,6 +396,8 @@ void deinit_window() {
 }
 
 void set_window_size(v2i size) {
+	if (size.x <= 0 || size.y <= 0) { return; }
+
 	XResizeWindow(display, window.window, size.x, size.y);
 	update_window_size(size);
 }
