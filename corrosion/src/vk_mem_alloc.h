@@ -3737,6 +3737,8 @@ static void VmaFree(const VkAllocationCallbacks* pAllocationCallbacks, void* ptr
     }
 }
 
+#include <iostream>
+
 template<typename T>
 static T* VmaAllocate(const VkAllocationCallbacks* pAllocationCallbacks)
 {

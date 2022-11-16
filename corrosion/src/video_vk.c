@@ -508,7 +508,7 @@ static VkImageView new_image_view(VkImage image, VkFormat format, VkImageAspectF
 			.subresourceRange.levelCount = 1,
 			.subresourceRange.baseArrayLayer = 0,
 			.subresourceRange.layerCount = 1
-		}, null, &view) != VK_SUCCESS) {
+		}, &vctx.ac, &view) != VK_SUCCESS) {
 		abort_with("Failed to create image view.");
 	}
 
@@ -566,6 +566,48 @@ static void new_depth_resources(VkImage* image, VkImageView* view, VmaAllocation
 	*view = new_image_view(*image, depth_format, VK_IMAGE_ASPECT_DEPTH_BIT);
 }
 
+static void* vk_allocation_function(void* uptr, usize size, usize alignment, VkSystemAllocationScope scope) {
+	if (size == 0) {
+		return null;
+	}
+
+	size += sizeof(usize);
+
+	u8* r = aligned_core_alloc(size, alignment);
+
+	((usize*)r)[0] = size;
+
+	return r + sizeof(usize);
+}
+
+static void vk_free_function(void* uptr, void* ptr) {
+	if (!ptr) {
+		return;
+	}
+
+	aligned_core_free(&(((usize*)ptr)[-1]));
+}
+
+static void* vk_reallocation_function(void* uptr, void* original, usize size, usize alignment, VkSystemAllocationScope scope) {
+	if (!original) {
+		return vk_allocation_function(uptr, size, alignment, scope);
+	}
+
+	if (size == 0) {
+		vk_free_function(uptr, original);
+		return null;
+	}
+
+	usize original_size = ((usize*)original)[-1];
+	void* new = vk_allocation_function(uptr, size, alignment, scope);
+
+	memcpy(new, original, original_size);
+
+	vk_free_function(uptr, original);
+
+	return new;
+}
+
 static void init_swapchain(VkSwapchainKHR);
 static void deinit_swapchain();
 static void recreate();
@@ -594,6 +636,10 @@ void video_vk_init(const struct video_config* config) {
 
 no_validation:
 
+	vctx.ac.pfnAllocation   = vk_allocation_function;
+	vctx.ac.pfnReallocation = vk_reallocation_function;
+	vctx.ac.pfnFree         = vk_free_function;
+
 	if (vkCreateInstance(&(VkInstanceCreateInfo) {
 			.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
 			.pApplicationInfo = &(VkApplicationInfo) {
@@ -604,7 +650,7 @@ no_validation:
 			.ppEnabledExtensionNames = extensions,
 			.enabledLayerCount = (u32)vector_count(layers),
 			.ppEnabledLayerNames = layers
-		}, null, &vctx.instance) != VK_SUCCESS) {
+		}, &vctx.ac, &vctx.instance) != VK_SUCCESS) {
 		abort_with("Failed to create Vulkan instance.");
 	}
 
@@ -627,7 +673,7 @@ no_validation:
 				VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
 				VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT,
 			.pfnUserCallback = debug_callback
-		}, null, &vctx.messenger) != VK_SUCCESS) {
+		}, &vctx.ac, &vctx.messenger) != VK_SUCCESS) {
 			abort_with("Failed to create debug messenger.");
 		}
 	}
@@ -671,7 +717,7 @@ no_validation:
 				.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES_KHR,
 				.dynamicRendering = VK_TRUE
 			}
-		}, null, &vctx.device) != VK_SUCCESS) {
+		}, &vctx.ac, &vctx.device) != VK_SUCCESS) {
 		abort_with("Failed to create a Vulkan device.");
 	}
 
@@ -704,7 +750,7 @@ no_validation:
 			.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
 			.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
 			.queueFamilyIndex = (u32)vctx.qfs.graphics_compute
-		}, null, &vctx.command_pool) != VK_SUCCESS) {
+		}, &vctx.ac, &vctx.command_pool) != VK_SUCCESS) {
 		abort_with("Failed to create command pool.");
 	}
 
@@ -730,9 +776,9 @@ no_validation:
 
 	for (u32 i = 0; i < max_frames_in_flight; i++) {
 		if (
-			vkCreateSemaphore(vctx.device, &semaphore_info, null, &vctx.image_avail_semaphores[i])    != VK_SUCCESS ||
-			vkCreateSemaphore(vctx.device, &semaphore_info, null, &vctx.render_finish_semaphores[i])  != VK_SUCCESS ||
-			vkCreateFence(vctx.device, &fence_info, null, &vctx.in_flight_fences[i])) {
+			vkCreateSemaphore(vctx.device, &semaphore_info, &vctx.ac, &vctx.image_avail_semaphores[i])    != VK_SUCCESS ||
+			vkCreateSemaphore(vctx.device, &semaphore_info, &vctx.ac, &vctx.render_finish_semaphores[i])  != VK_SUCCESS ||
+			vkCreateFence(vctx.device, &fence_info, &vctx.ac, &vctx.in_flight_fences[i])) {
 			abort_with("Failed to create synchronisation objects.");
 		}
 	}
@@ -791,16 +837,16 @@ void video_vk_deinit() {
 	video_vk_free_framebuffer(vctx.default_fb);
 
 	for (u32 i = 0; i < max_frames_in_flight; i++) {
-		vkDestroySemaphore(vctx.device, vctx.image_avail_semaphores[i], null);
-		vkDestroySemaphore(vctx.device, vctx.render_finish_semaphores[i], null);
-		vkDestroyFence(vctx.device, vctx.in_flight_fences[i], null);
+		vkDestroySemaphore(vctx.device, vctx.image_avail_semaphores[i], &vctx.ac);
+		vkDestroySemaphore(vctx.device, vctx.render_finish_semaphores[i], &vctx.ac);
+		vkDestroyFence(vctx.device, vctx.in_flight_fences[i], &vctx.ac);
 		
 		if (vctx.update_queues[i].capacity > 0) {
 			core_free(vctx.update_queues[i].bytes);
 		}
 	}
 
-	vkDestroyCommandPool(vctx.device, vctx.command_pool, null);
+	vkDestroyCommandPool(vctx.device, vctx.command_pool, &vctx.ac);
 
 	deinit_swapchain(true);
 
@@ -808,11 +854,11 @@ void video_vk_deinit() {
 
 	vmaDestroyAllocator(vctx.allocator);
 
-	vkDestroyDevice(vctx.device, null);
+	vkDestroyDevice(vctx.device, &vctx.ac);
 
-	destroy_debug_utils_messenger_ext(vctx.instance, vctx.messenger, null);
+	destroy_debug_utils_messenger_ext(vctx.instance, vctx.messenger, &vctx.ac);
 
-	vkDestroyInstance(vctx.instance, null);
+	vkDestroyInstance(vctx.instance, &vctx.ac);
 }
 
 bool is_vulkan_supported() {
@@ -993,7 +1039,7 @@ static void init_swapchain(VkSwapchainKHR old_swapchain) {
 		swap_info.pQueueFamilyIndices = null;
 	}
 
-	if (vkCreateSwapchainKHR(vctx.device, &swap_info, null, &vctx.swapchain) != VK_SUCCESS) {
+	if (vkCreateSwapchainKHR(vctx.device, &swap_info, &vctx.ac, &vctx.swapchain) != VK_SUCCESS) {
 		abort_with("Failed to create swapchain.");
 	}
 
@@ -1014,10 +1060,10 @@ static void init_swapchain(VkSwapchainKHR old_swapchain) {
 
 static void deinit_swapchain() {
 	for (u32 i = 0; i < vctx.swapchain_image_count; i++) {
-		vkDestroyImageView(vctx.device, vctx.swapchain_image_views[i], null);
+		vkDestroyImageView(vctx.device, vctx.swapchain_image_views[i], &vctx.ac);
 	}
 
-	vkDestroySwapchainKHR(vctx.device, vctx.swapchain, null);
+	vkDestroySwapchainKHR(vctx.device, vctx.swapchain, &vctx.ac);
 
 	core_free(vctx.swapchain_images);
 	core_free(vctx.swapchain_image_views);
@@ -1033,10 +1079,10 @@ static void recreate() {
 	init_swapchain(vctx.swapchain);
 
 	for (u32 i = 0; i < vctx.swapchain_image_count; i++) {
-		vkDestroyImageView(vctx.device, old_swapchain_image_views[i], null);
+		vkDestroyImageView(vctx.device, old_swapchain_image_views[i], &vctx.ac);
 	}
 
-	vkDestroySwapchainKHR(vctx.device, old_swapchain, null);
+	vkDestroySwapchainKHR(vctx.device, old_swapchain, &vctx.ac);
 
 	core_free(old_swapchain_images);
 	core_free(old_swapchain_image_views);
@@ -1140,7 +1186,7 @@ static void init_vk_framebuffer(struct video_vk_framebuffer* fb,
 				.compareEnable = VK_FALSE,
 				.compareOp = VK_COMPARE_OP_ALWAYS,
 				.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR
-			}, null, &fb->sampler) != VK_SUCCESS) {
+			}, &vctx.ac, &fb->sampler) != VK_SUCCESS) {
 			abort_with("Failed to create texture sampler.");
 		}
 
@@ -1193,15 +1239,15 @@ static void deinit_vk_framebuffer(struct video_vk_framebuffer* fb) {
 
 	if (fb->is_headless) {
 		for (usize i = 0; i < fb->colour_count; i++) {
-			vkDestroyImageView(vctx.device, fb->colours[i].texture->view, null);
+			vkDestroyImageView(vctx.device, fb->colours[i].texture->view, &vctx.ac);
 			vmaDestroyImage(vctx.allocator, fb->colours[i].texture->image, fb->colours[i].texture->memory);
 		}
 
-		vkDestroySampler(vctx.device, fb->sampler, null);
+		vkDestroySampler(vctx.device, fb->sampler, &vctx.ac);
 	}
 
 	if (fb->use_depth) {
-		vkDestroyImageView(vctx.device, fb->depth.texture->view, null);
+		vkDestroyImageView(vctx.device, fb->depth.texture->view, &vctx.ac);
 		vmaDestroyImage(vctx.allocator, fb->depth.texture->image, fb->depth.texture->memory);
 	}
 
@@ -1666,7 +1712,7 @@ static VkDescriptorSetLayout* init_pipeline_descriptors(struct video_vk_pipeline
 			.poolSizeCount = (u32)pool_size_count,
 			.pPoolSizes = pool_sizes,
 			.maxSets = max_frames_in_flight * (u32)descriptor_sets->count
-		}, null, &pipeline->descriptor_pool) != VK_SUCCESS) {
+		}, &vctx.ac, &pipeline->descriptor_pool) != VK_SUCCESS) {
 		abort_with("Failed to create descriptor pool.");
 	}
 
@@ -1718,7 +1764,7 @@ static VkDescriptorSetLayout* init_pipeline_descriptors(struct video_vk_pipeline
 				.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
 				.bindingCount = (u32)set->count,
 				.pBindings = layout_bindings
-			}, null, &v_set->layout) != VK_SUCCESS) {
+			}, &vctx.ac, &v_set->layout) != VK_SUCCESS) {
 			abort_with("Failed to create descriptor set layout.");
 		}
 
@@ -2010,7 +2056,7 @@ static void init_pipeline(struct video_vk_pipeline* pipeline, u32 flags, const s
 			.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
 			.setLayoutCount = (u32)descriptor_sets->count,
 			.pSetLayouts = set_layouts,
-		}, null, &pipeline->layout) != VK_SUCCESS) {
+		}, &vctx.ac, &pipeline->layout) != VK_SUCCESS) {
 		abort_with("Failed to create pipeline layout.");
 	}
 
@@ -2046,7 +2092,7 @@ static void init_pipeline(struct video_vk_pipeline* pipeline, u32 flags, const s
 				.pColorAttachmentFormats = framebuffer->colour_formats,
 				.depthAttachmentFormat = framebuffer->depth_format
 			}
-		}, null, &pipeline->pipeline) != VK_SUCCESS) {
+		}, &vctx.ac, &pipeline->pipeline) != VK_SUCCESS) {
 		abort_with("Failed to create pipeline.");
 	}
 
@@ -2089,7 +2135,7 @@ static void init_compute_pipeline(struct video_vk_pipeline* pipeline, u32 flags,
 			.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
 			.setLayoutCount = (u32)descriptor_sets->count,
 			.pSetLayouts = set_layouts,
-		}, null, &pipeline->layout) != VK_SUCCESS) {
+		}, &vctx.ac, &pipeline->layout) != VK_SUCCESS) {
 		abort_with("Failed to create pipeline layout.");
 	}
 
@@ -2097,7 +2143,7 @@ static void init_compute_pipeline(struct video_vk_pipeline* pipeline, u32 flags,
 			.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
 			.stage = stage,
 			.layout = pipeline->layout,
-		}, null, &pipeline->pipeline) != VK_SUCCESS) {
+		}, &vctx.ac, &pipeline->pipeline) != VK_SUCCESS) {
 		abort_with("Failed to create compute pipeline.");
 	}
 
@@ -2109,7 +2155,7 @@ static void deinit_pipeline(struct video_vk_pipeline* pipeline) {
 
 	if (pipeline->desc_sets) {
 		for (usize i = 0; i < pipeline->descriptor_set_count; i++) {
-			vkDestroyDescriptorSetLayout(vctx.device, pipeline->desc_sets[i].layout, null);
+			vkDestroyDescriptorSetLayout(vctx.device, pipeline->desc_sets[i].layout, &vctx.ac);
 
 			free_table(pipeline->desc_sets[i].uniforms);
 		}
@@ -2131,13 +2177,13 @@ static void deinit_pipeline(struct video_vk_pipeline* pipeline) {
 	}
 
 	if (pipeline->descriptor_set_count > 0) {
-		vkDestroyDescriptorPool(vctx.device, pipeline->descriptor_pool, null);
+		vkDestroyDescriptorPool(vctx.device, pipeline->descriptor_pool, &vctx.ac);
 	}
 
 	free_table(pipeline->set_table);
 
-	vkDestroyPipelineLayout(vctx.device, pipeline->layout, null);
-	vkDestroyPipeline(vctx.device, pipeline->pipeline, null);
+	vkDestroyPipelineLayout(vctx.device, pipeline->layout, &vctx.ac);
+	vkDestroyPipeline(vctx.device, pipeline->pipeline, &vctx.ac);
 }
 
 struct pipeline* video_vk_new_pipeline(u32 flags, const struct shader* shader, const struct framebuffer* framebuffer,
@@ -2864,7 +2910,7 @@ static VkShaderModule new_shader_module(const u8* buf, usize buf_size) {
 			.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
 			.codeSize = buf_size,
 			.pCode = (u32*)buf
-		}, null, &m) != VK_SUCCESS) {
+		}, &vctx.ac, &m) != VK_SUCCESS) {
 		error("Failed to create shader module.");
 		return VK_NULL_HANDLE;
 	}
@@ -2885,10 +2931,10 @@ static void init_shader(struct video_vk_shader* shader, const struct shader_head
 
 static void deinit_shader(struct video_vk_shader* shader) {
 	if (shader->is_compute) {
-		vkDestroyShaderModule(vctx.device, shader->compute, null);
+		vkDestroyShaderModule(vctx.device, shader->compute, &vctx.ac);
 	} else {
-		vkDestroyShaderModule(vctx.device, shader->vertex,   null);
-		vkDestroyShaderModule(vctx.device, shader->fragment, null);
+		vkDestroyShaderModule(vctx.device, shader->vertex,   &vctx.ac);
+		vkDestroyShaderModule(vctx.device, shader->fragment, &vctx.ac);
 	}
 }
 
@@ -3003,7 +3049,7 @@ static void init_texture(struct video_vk_texture* texture, const struct image* i
 			.compareEnable = VK_FALSE,
 			.compareOp = VK_COMPARE_OP_ALWAYS,
 			.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR
-		}, null, &texture->sampler) != VK_SUCCESS) {
+		}, &vctx.ac, &texture->sampler) != VK_SUCCESS) {
 		abort_with("Failed to create texture sampler.");
 	}
 }
@@ -3056,7 +3102,7 @@ static void init_texture_3d(struct video_vk_texture* texture, v3i size, u32 flag
 			.subresourceRange.levelCount = 1,
 			.subresourceRange.baseArrayLayer = 0,
 			.subresourceRange.layerCount = 1
-		}, null, &texture->view) != VK_SUCCESS) {
+		}, &vctx.ac, &texture->view) != VK_SUCCESS) {
 		abort_with("Failed to create image view.");
 	}
 
@@ -3082,7 +3128,7 @@ static void init_texture_3d(struct video_vk_texture* texture, v3i size, u32 flag
 		.compareEnable = VK_FALSE,
 		.compareOp = VK_COMPARE_OP_ALWAYS,
 		.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR
-	}, null, & texture->sampler) != VK_SUCCESS) {
+	}, &vctx.ac, & texture->sampler) != VK_SUCCESS) {
 		abort_with("Failed to create texture sampler.");
 	}
 }
@@ -3090,8 +3136,8 @@ static void init_texture_3d(struct video_vk_texture* texture, v3i size, u32 flag
 static void deinit_texture(struct video_vk_texture* texture) {
 	vkDeviceWaitIdle(vctx.device);
 
-	vkDestroySampler(vctx.device, texture->sampler, null);
-	vkDestroyImageView(vctx.device, texture->view, null);
+	vkDestroySampler(vctx.device, texture->sampler, &vctx.ac);
+	vkDestroyImageView(vctx.device, texture->view, &vctx.ac);
 	vmaDestroyImage(vctx.allocator, texture->image, texture->memory);
 }
 

@@ -121,6 +121,8 @@ struct vk_video_context {
 	VkSemaphore render_finish_semaphores[max_frames_in_flight];
 	VkFence in_flight_fences[max_frames_in_flight];
 
+	VkAllocationCallbacks ac;
+
 	bool in_frame;
 	vector(struct free_queue_item) free_queue;
 

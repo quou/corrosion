@@ -218,7 +218,7 @@ void* align_address(void* address, usize alignment) {
 	return (void*)impl_align_address((usize)address, alignment);
 }
 
-void* aligned_alloc(usize size, usize alignment) {
+void* aligned_core_alloc(usize size, usize alignment) {
 	usize actual_size = size + alignment;
 
 	u8* raw = core_alloc(actual_size);
@@ -234,7 +234,7 @@ void* aligned_alloc(usize size, usize alignment) {
 	return aligned;
 }
 
-void aligned_free(void* ptr) {
+void aligned_core_free(void* ptr) {
 	if (ptr) {
 		u8* aligned = ptr;
 
