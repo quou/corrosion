@@ -218,7 +218,7 @@ static bool rect_outside_clip(v2f position, v2f dimensions, v4i clip) {
 static v2f get_container_max_scroll(const struct ui_container* container, const struct ui_container_meta* meta) {
 	return make_v2f(
 		container->content_size.x - container->rect.z - meta->scroll.x,
-		container->content_size.y - container->rect.w - meta->scroll.y);
+		container->content_size.y - container->rect.w + container->padding.y);
 }
 
 /* Position is the top left of a bounding box around the circle. */
@@ -976,7 +976,6 @@ void ui_end_container(struct ui* ui) {
 
 	meta->tail = ui->cmd_buffer_idx;
 
-	container->content_size.y = (ui->cursor_pos.y - container->rect.y);
 	container->content_size.x += container->padding.x;
 
 	if (container->scrollable && container->interactable && mouse_over_rect(make_v2f(container->rect.x, container->rect.y), make_v2f(container->rect.z, container->rect.w))) {
@@ -1675,6 +1674,7 @@ bool ui_selectable_tree_node_ex(struct ui* ui, const char* class, const char* te
 	}
 
 	ui->cursor_pos.y += background_dimensions.y;
+	container->content_size.y += background_dimensions.y;
 
 	if (button_hovered && mouse_btn_just_released(mouse_btn_left)) {
 		open = !open;
@@ -1694,6 +1694,7 @@ bool ui_selectable_tree_node_ex(struct ui* ui, const char* class, const char* te
 	}
 
 	ui->cursor_pos.y += container->spacing;
+	container->content_size.y += container->spacing;
 
 	return open;
 }
