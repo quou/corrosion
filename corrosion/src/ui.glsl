@@ -77,7 +77,7 @@ void main() {
 		float ho = fs_in.outline * 0.5f;
 		d1 = rounded_box_sdf(
 			fs_in.frag_pos - (position + ho) - ((dimentions - fs_in.outline) * 0.5),
-			(dimentions - fs_in.outline) * 0.5, r);
+			(dimentions - fs_in.outline) * 0.5, max(r, 1.0));
 	}
 
 	float a = 1.0 - smoothstep(0.0, softness * 2.0, max(-d1, d0));

@@ -21,6 +21,7 @@ void ui_begin(struct ui* ui);
 void ui_end(struct ui* ui);
 
 void ui_draw_rect(struct ui* ui, v2f position, v2f dimensions, v4f colour, f32 radius);
+void ui_draw_outline(struct ui* ui, v2f position, v2f dimensions, v4f colour, f32 radius, f32 thickness);
 void ui_draw_gradient(struct ui* ui, v2f position, v2f dimensions, v4f top_left, v4f top_right, v4f bot_left, v4f bot_right, f32 radius);
 void ui_draw_circle(struct ui* ui, v2f position, f32 radius, v4f colour);
 void ui_draw_text(struct ui* ui, v2f position, v2f dimensions, const char* text, v4f colour);
