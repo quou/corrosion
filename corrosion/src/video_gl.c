@@ -685,7 +685,6 @@ void video_gl_bind_pipeline_descriptor_set(struct pipeline* pipeline_, const cha
 
 				u32* loc_ptr = table_get(pipeline->shader->sampler_locs, binding);
 				if (loc_ptr) {
-					//info("%u", *loc_ptr);
 					check_gl(glActiveTexture(GL_TEXTURE0 + (*loc_ptr)));
 					check_gl(glBindTexture(GL_TEXTURE_2D, texture->id));
 				}

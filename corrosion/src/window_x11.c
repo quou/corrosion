@@ -75,6 +75,7 @@ void init_window(const struct window_config* config, u32 api) {
 	window.api = api;
 
 	window.size = config->size;
+	window.new_size = window.size;
 	window.open = true;
 	window.resizable = config->resizable;
 	window.fullscreen = config->fullscreen;

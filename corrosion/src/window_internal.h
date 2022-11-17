@@ -40,6 +40,8 @@ struct window {
 #if defined(_WIN32)
 	HWND hwnd;
 
+	v2i old_size;
+
 	HDC device_context;
 	HGLRC render_context;
 

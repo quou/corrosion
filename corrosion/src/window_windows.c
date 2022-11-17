@@ -12,6 +12,7 @@
 #include "video.h"
 #include "video_internal.h"
 #include "video_vk.h"
+#include "video_gl.h"
 #include "window.h"
 #include "window_internal.h"
 
@@ -20,6 +21,20 @@ typedef void (*swap_interval_func)(i32 interval);
 
 swap_interval_func wgl_swap_interval;
 #endif
+
+static void request_api_recreate() {
+#ifndef cr_no_vulkan
+		if (window.api == video_api_vulkan) {
+			video_vk_want_recreate();
+		} else if (window.api == video_api_opengl) {
+#endif
+#ifndef cr_no_opengl
+			video_gl_want_recreate();
+#endif
+#ifndef cr_no_vulkan
+		}
+#endif
+}
 
 static LRESULT CALLBACK win32_event_callback(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
 	switch (msg) {
@@ -229,6 +244,8 @@ static LRESULT CALLBACK win32_event_callback(HWND hwnd, UINT msg, WPARAM wparam,
 void init_window(const struct window_config* config, u32 api) {
 	memset(&window, 0, sizeof window);
 
+	window.api = api;
+
 	WNDCLASSA wc = { 0 };
 	wc.hIcon = LoadIcon(null, IDI_APPLICATION);
 	wc.hCursor = LoadCursor(null, IDC_ARROW);
@@ -257,6 +274,7 @@ void init_window(const struct window_config* config, u32 api) {
 	i32 create_height = win_rect.bottom - win_rect.top;
 
 	window.size = make_v2i(create_width, create_height);
+	window.new_size = window.size;
 
 	SetProcessDpiAwareness(PROCESS_PER_MONITOR_DPI_AWARE);
 
@@ -470,11 +488,7 @@ void update_events() {
 
 		window.size = window.new_size;
 
-#ifndef cr_no_vulkan
-		if (window.api == video_api_vulkan) {
-			video_vk_want_recreate();
-		}
-#endif
+		request_api_recreate();
 
 		struct window_event resize_event = {
 			.type = window_event_size_changed,
@@ -557,13 +571,53 @@ bool set_clipboard_text(const char* text, usize n) {
 }
 
 void set_window_size(v2i size) {
-	abort_with("Not implemented.");
+	if (size.x <= 0 || size.y <= 0) { return; }
+	
+	window.new_size = make_v2i(size.x, size.y);
+
+	SetWindowPos(window.hwnd, 0, 0, 0, size.x, size.y, SWP_NOMOVE | SWP_NOACTIVATE | SWP_NOZORDER);
 }
 
 void set_window_title(const char* title) {
-	abort_with("Not implemented.");
+	SetWindowTextA(window.hwnd, title);
 }
 
 void set_window_fullscreen(bool fullscreen) {
-	abort_with("Not implemented.");
+	if (fullscreen == window.fullscreen) { return; }
+
+	if (fullscreen) {
+		POINT Point = { 0 };
+		HMONITOR Monitor = MonitorFromPoint(Point, MONITOR_DEFAULTTONEAREST);
+		MONITORINFO MonitorInfo = { sizeof(MonitorInfo) };
+		if (GetMonitorInfo(Monitor, &MonitorInfo)) {
+			window.old_size = window.size;
+
+			DWORD Style = WS_POPUP | WS_VISIBLE;
+			SetWindowLongPtr(window.hwnd, GWL_STYLE, Style);
+			SetWindowPos(window.hwnd, 0, MonitorInfo.rcMonitor.left, MonitorInfo.rcMonitor.top,
+				MonitorInfo.rcMonitor.right - MonitorInfo.rcMonitor.left,
+				MonitorInfo.rcMonitor.bottom - MonitorInfo.rcMonitor.top, SWP_FRAMECHANGED | SWP_SHOWWINDOW);
+
+			window.new_size = make_v2i(
+				MonitorInfo.rcMonitor.right - MonitorInfo.rcMonitor.left,
+				MonitorInfo.rcMonitor.bottom - MonitorInfo.rcMonitor.top
+			);
+		}
+	} else {
+		DWORD style = WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_VISIBLE;
+
+		if (window.resizable) {
+			style |= WS_THICKFRAME | WS_MAXIMIZEBOX;
+		}
+
+		SetWindowLongPtr(window.hwnd, GWL_STYLE, style);
+
+		SetWindowPos(window.hwnd, 0,
+			0, 0, window.old_size.x, window.old_size.y,
+			SWP_FRAMECHANGED | SWP_SHOWWINDOW);
+
+		set_window_size(window.old_size);
+	}
+	
+	window.fullscreen = fullscreen;
 }
