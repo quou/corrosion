@@ -46,7 +46,7 @@ void cr_update(f64 ts) {
 	if (fps_timer > 1.0) {
 		fps_timer = 0;
 		sprintf(fps_buf, "%g", 1.0 / ts);
-		//sprintf(frame_time_buf, "%.3f", ts * 1000.0);
+		sprintf(frame_time_buf, "%.3f", ts * 1000.0);
 	}
 
 	ui_begin(app.ui);
