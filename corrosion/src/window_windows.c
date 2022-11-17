@@ -283,6 +283,8 @@ void init_window(const struct window_config* config, u32 api) {
 
 	ShowWindow(window.hwnd, SW_SHOWNORMAL);
 
+	set_window_fullscreen(config->fullscreen);
+
 	memset(window.held_keys, 0, sizeof window.pressed_keys);
 	memset(window.held_mouse_btns, 0, sizeof window.held_mouse_btns);
 
