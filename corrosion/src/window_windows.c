@@ -623,3 +623,49 @@ void set_window_fullscreen(bool fullscreen) {
 	
 	window.fullscreen = fullscreen;
 }
+
+bool init_temp_window_vk_surface(struct temp_window_vk_surface* s, VkInstance instance) {
+	memset(s, 0, sizeof *s);
+
+	WNDCLASSA wc = { 0 };
+	wc.hIcon = LoadIcon(null, IDI_APPLICATION);
+	wc.hCursor = LoadCursor(null, IDC_ARROW);
+	wc.style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC;
+	wc.hInstance = GetModuleHandle(null);
+	wc.lpfnWndProc = win32_event_callback;
+	wc.cbClsExtra = 0;
+	wc.cbWndExtra = 0;
+	wc.lpszMenuName = null;
+	wc.hbrBackground = null;
+	wc.lpszClassName = "dummy window class";
+	RegisterClassA(&wc);
+
+	DWORD dw_ex_style = WS_EX_APPWINDOW | WS_EX_WINDOWEDGE;
+	DWORD dw_style = WS_CAPTION | WS_SYSMENU |
+		WS_MINIMIZEBOX | WS_VISIBLE;
+
+	s->hwnd = CreateWindowExA(dw_ex_style, "dummy window class", "Dummy window", dw_style, 0, 0,
+			1, 1, null, null, GetModuleHandle(null), null);
+
+	if (!s->hwnd) { return false; }
+
+	if (vkCreateWin32SurfaceKHR(instance, &(VkWin32SurfaceCreateInfoKHR) {
+			.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR,
+			.hwnd = s->hwnd,
+			.hinstance = GetModuleHandle(null)
+		}, null, &s->surface) != VK_SUCCESS) {
+		return false;
+	}
+
+	return true;
+}
+
+void deinit_temp_window_vk_surface(struct temp_window_vk_surface* s, VkInstance instance) {
+	if (s->surface) {
+		vkDestroySurfaceKHR(instance, s->surface, null);
+	}
+
+	if (s->hwnd) {
+		DestroyWindow(s->hwnd);
+	}
+}
