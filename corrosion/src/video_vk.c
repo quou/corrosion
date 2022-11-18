@@ -317,7 +317,7 @@ static i32 cmp_scores(const void* a, const void* b) {
 /* Iterates devices and gives them a score based on whether they are
  * preferred by get_preferred_gpu_idx, whether they are dedicated
  * or integrated, etc. */
-static VkPhysicalDevice find_suitable_device(VkInstance instance, VkSurfaceKHR surface) {
+static VkPhysicalDevice find_suitable_device(VkInstance instance, VkSurfaceKHR surface, bool print_name) {
 	/* Choose the physical device. */
 	u32 device_count = 0;
 	vkEnumeratePhysicalDevices(instance, &device_count, null);
@@ -388,7 +388,11 @@ static VkPhysicalDevice find_suitable_device(VkInstance instance, VkSurfaceKHR s
 
 	vctx.min_uniform_buffer_offset_alignment = score.props.limits.minUniformBufferOffsetAlignment;
 	vctx.qfs = get_queue_families(score.device, surface);
-	info("Selected device: %s.", score.props.deviceName);
+
+	if (print_name) {
+		info("Selected device: %s.", score.props.deviceName);
+	}
+
 	return score.device;
 }
 
@@ -677,7 +681,7 @@ no_validation:
 		}
 	}
 
-	vctx.pdevice = find_suitable_device(vctx.instance, get_window_vk_surface());
+	vctx.pdevice = find_suitable_device(vctx.instance, get_window_vk_surface(), true);
 	if (vctx.pdevice == VK_NULL_HANDLE) {
 		error("Vulkan-capable hardware exists, but it does not support the necessary features.");
 		abort_with("Failed to find a suitable graphics device.");
@@ -887,7 +891,7 @@ bool is_vulkan_supported() {
 		return false;
 	}
 
-	tmp_device = find_suitable_device(tmp_instance, tmp_surf.surface);
+	tmp_device = find_suitable_device(tmp_instance, tmp_surf.surface, false);
 	if (tmp_device == VK_NULL_HANDLE) {
 		deinit_temp_window_vk_surface(&tmp_surf, tmp_instance);
 		vkDestroyInstance(tmp_instance, null);
