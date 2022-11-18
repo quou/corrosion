@@ -64,21 +64,21 @@ struct swapchain_capabilities {
 	u32 present_mode_count; VkPresentModeKHR* present_modes;
 };
 
-static struct swapchain_capabilities get_swapchain_capabilities(VkPhysicalDevice device) {
+static struct swapchain_capabilities get_swapchain_capabilities(VkPhysicalDevice device, VkSurfaceKHR surface) {
 	struct swapchain_capabilities r = { 0 };
 
-	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, get_window_vk_surface(), &r.capabilities);
+	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &r.capabilities);
 
-	vkGetPhysicalDeviceSurfaceFormatsKHR(device, get_window_vk_surface(), &r.format_count, null);
+	vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &r.format_count, null);
 	if (r.format_count > 0) {
 		r.formats = core_alloc(sizeof(VkSurfaceFormatKHR) * r.format_count);
-		vkGetPhysicalDeviceSurfaceFormatsKHR(device, get_window_vk_surface(), &r.format_count, r.formats);
+		vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &r.format_count, r.formats);
 	}
 
-	vkGetPhysicalDeviceSurfacePresentModesKHR(device, get_window_vk_surface(), &r.present_mode_count, null);
+	vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &r.present_mode_count, null);
 	if (r.present_mode_count > 0) {
 		r.present_modes = core_alloc(sizeof(VkPresentModeKHR) * r.present_mode_count);
-		vkGetPhysicalDeviceSurfacePresentModesKHR(device, get_window_vk_surface(),
+		vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface,
 				&r.present_mode_count, r.present_modes);
 	}
 
@@ -175,7 +175,7 @@ void deinit_swapchain_capabilities(struct swapchain_capabilities* scc) {
 	core_free(scc->present_modes);
 }
 
-static struct queue_families get_queue_families(VkPhysicalDevice device) {
+static struct queue_families get_queue_families(VkPhysicalDevice device, VkSurfaceKHR surface) {
 	struct queue_families r = { -1, -1 };
 
 	u32 family_count = 0;
@@ -191,7 +191,7 @@ static struct queue_families get_queue_families(VkPhysicalDevice device) {
 		}
 
 		VkBool32 supports_presentation = false;
-		vkGetPhysicalDeviceSurfaceSupportKHR(device, i, get_window_vk_surface(), &supports_presentation);
+		vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &supports_presentation);
 		if (supports_presentation) {
 			r.present = (i32)i;
 		}
@@ -221,7 +221,6 @@ static bool device_supports_extensions(VkPhysicalDevice device) {
 		}
 
 		if (!found) {
-			error("Failed to find extension: `%s'", device_extensions[i]);
 			core_free(avail_exts);
 			return false;
 		}
@@ -318,17 +317,17 @@ static i32 cmp_scores(const void* a, const void* b) {
 /* Iterates devices and gives them a score based on whether they are
  * preferred by get_preferred_gpu_idx, whether they are dedicated
  * or integrated, etc. */
-static VkPhysicalDevice find_suitable_device() {
+static VkPhysicalDevice find_suitable_device(VkInstance instance, VkSurfaceKHR surface) {
 	/* Choose the physical device. */
 	u32 device_count = 0;
-	vkEnumeratePhysicalDevices(vctx.instance, &device_count, null);
+	vkEnumeratePhysicalDevices(instance, &device_count, null);
 
 	if (device_count == 0) {
 		abort_with("Couldn't find any Vulkan-capable graphics hardware.");
 	}
 
 	VkPhysicalDevice* devices = core_alloc(sizeof(VkPhysicalDevice) * device_count);
-	vkEnumeratePhysicalDevices(vctx.instance, &device_count, devices);
+	vkEnumeratePhysicalDevices(instance, &device_count, devices);
 
 	i32 preferred = get_preferred_gpu_idx();
 
@@ -339,7 +338,7 @@ static VkPhysicalDevice find_suitable_device() {
 
 		VkPhysicalDevice device = devices[i];
 
-		vctx.qfs = get_queue_families(device);
+		vctx.qfs = get_queue_families(device, surface);
 
 		VkPhysicalDeviceProperties props;
 		VkPhysicalDeviceFeatures features;
@@ -349,7 +348,7 @@ static VkPhysicalDevice find_suitable_device() {
 		bool swapchain_good = false;
 		bool extensions_good = device_supports_extensions(device);
 		if (extensions_good) {
-			struct swapchain_capabilities scc = get_swapchain_capabilities(device);
+			struct swapchain_capabilities scc = get_swapchain_capabilities(device, surface);
 			swapchain_good = scc.format_count > 0 && scc.present_mode_count > 0;
 			deinit_swapchain_capabilities(&scc);
 		}
@@ -388,7 +387,7 @@ static VkPhysicalDevice find_suitable_device() {
 	core_free(devices);
 
 	vctx.min_uniform_buffer_offset_alignment = score.props.limits.minUniformBufferOffsetAlignment;
-	vctx.qfs = get_queue_families(score.device);
+	vctx.qfs = get_queue_families(score.device, surface);
 	info("Selected device: %s.", score.props.deviceName);
 	return score.device;
 }
@@ -678,7 +677,7 @@ no_validation:
 		}
 	}
 
-	vctx.pdevice = find_suitable_device();
+	vctx.pdevice = find_suitable_device(vctx.instance, get_window_vk_surface());
 	if (vctx.pdevice == VK_NULL_HANDLE) {
 		error("Vulkan-capable hardware exists, but it does not support the necessary features.");
 		abort_with("Failed to find a suitable graphics device.");
@@ -862,21 +861,52 @@ void video_vk_deinit() {
 }
 
 bool is_vulkan_supported() {
-	VkInstance tmp_instance = null;
+	VkInstance tmp_instance = VK_NULL_HANDLE;
+	VkPhysicalDevice tmp_device = VK_NULL_HANDLE;
+
+	vector(const char*) extensions = null;
+	window_get_vk_extensions(&extensions);
 
 	if (vkCreateInstance(&(VkInstanceCreateInfo) {
 			.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
 			.pApplicationInfo = &(VkApplicationInfo) {
 				.apiVersion = VK_API_VERSION_1_2,
-				.pApplicationName = "Corrosion Application."
-			}
-		}, null, &vctx.instance) == VK_SUCCESS) {
-		vkDestroyInstance(tmp_instance, null);
-
-		return true;
+				.pApplicationName = "Corrosion Application.",
+			},
+			.enabledExtensionCount = (u32)vector_count(extensions),
+			.ppEnabledExtensionNames = extensions,
+		}, null, &tmp_instance) != VK_SUCCESS) {
+		return false;
 	}
 
-	return false;
+	struct temp_window_vk_surface tmp_surf;
+	if (!init_temp_window_vk_surface(&tmp_surf, tmp_instance)) {
+		deinit_temp_window_vk_surface(&tmp_surf, tmp_instance);
+		vkDestroyInstance(tmp_instance, null);
+		free_vector(extensions);
+		return false;
+	}
+
+	tmp_device = find_suitable_device(tmp_instance, tmp_surf.surface);
+	if (tmp_device == VK_NULL_HANDLE) {
+		deinit_temp_window_vk_surface(&tmp_surf, tmp_instance);
+		vkDestroyInstance(tmp_instance, null);
+		free_vector(extensions);
+		return false;
+	}
+
+	if (!device_supports_extensions(tmp_device)) {
+		deinit_temp_window_vk_surface(&tmp_surf, tmp_instance);
+		vkDestroyInstance(tmp_instance, null);
+		free_vector(extensions);
+		return false;
+	}
+
+	deinit_temp_window_vk_surface(&tmp_surf, tmp_instance);
+	vkDestroyInstance(tmp_instance, null);
+	free_vector(extensions);
+
+	return true;
 }
 
 void video_vk_begin(bool present) {
@@ -995,7 +1025,7 @@ void video_vk_want_recreate() {
 static void init_swapchain(VkSwapchainKHR old_swapchain) {
 	vkDeviceWaitIdle(vctx.device);
 
-	struct swapchain_capabilities scc = get_swapchain_capabilities(vctx.pdevice);
+	struct swapchain_capabilities scc = get_swapchain_capabilities(vctx.pdevice, get_window_vk_surface());
 	VkSurfaceFormatKHR surface_format = choose_swap_surface_format(scc.format_count, scc.formats);
 	VkPresentModeKHR present_mode = choose_swap_present_mode(scc.present_mode_count, scc.present_modes);
 	VkExtent2D extent = choose_swap_extent(&scc.capabilities);

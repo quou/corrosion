@@ -109,6 +109,22 @@ void window_destroy_vk_surface(VkInstance instance);
 void window_get_vk_extensions(vector(const char*)* extensions);
 
 VkSurfaceKHR get_window_vk_surface();
+
+/* Used to get a surface so that a device can be selected in the
+ * is_vulkan_supported function. */
+struct temp_window_vk_surface {
+	VkSurfaceKHR surface;
+
+#if defined(_WIN32)
+	HWND hwnd;
+#elif defined(__linux__) || defined(__FreeBSD__)
+	Window window;
+	Display* display;
+#endif
+};
+
+bool init_temp_window_vk_surface(struct temp_window_vk_surface* s, VkInstance instance);
+void deinit_temp_window_vk_surface(struct temp_window_vk_surface* s, VkInstance instance);
 #endif
 
 #ifndef cr_no_opengl

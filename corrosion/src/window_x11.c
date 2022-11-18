@@ -693,3 +693,48 @@ bool set_clipboard_text(const char* text, usize n) {
 
 	return true;
 }
+
+#ifndef cr_no_vulkan
+bool init_temp_window_vk_surface(struct temp_window_vk_surface* s, VkInstance instance) {
+	memset(s, 0, sizeof *s);
+
+	s->display = XOpenDisplay(null);
+
+	if (!s->display) { return false; }
+	
+	Window root = DefaultRootWindow(s->display);
+
+	XSetWindowAttributes attribs = { 0 };
+
+	s->window = XCreateWindow(s->display, root, 0, 0, 1, 1,
+		0, 0, InputOutput, XDefaultVisual(s->display, 0), CWEventMask, &attribs);
+	
+	if (!s->window) { return false; }
+
+	VkResult r;
+	if ((r = vkCreateXlibSurfaceKHR(instance, &(VkXlibSurfaceCreateInfoKHR){
+			.sType = VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR,
+			.dpy = s->display,
+			.window = s->window
+		}, null, &s->surface)) != VK_SUCCESS) {
+		info("%d", r);
+		return false;
+	}
+
+	return true;
+}
+
+void deinit_temp_window_vk_surface(struct temp_window_vk_surface* s, VkInstance instance) {
+	if (s->surface) {
+		vkDestroySurfaceKHR(instance, s->surface, null);
+	}
+
+	if (s->window) {
+		XDestroyWindow(s->display, s->window);
+	}
+
+	if (s->display) {
+		XCloseDisplay(s->display);
+	}
+}
+#endif
