@@ -10,7 +10,7 @@ endif
 
 cc = gcc
 cxx = g++
-includes = -I../../../corrosion/include/corrosion -I../../../corrosion/src
+includes = -I$(VULKAN_SDK)/include -I../../../corrosion/include/corrosion -I../../../corrosion/src
 target_name = cr
 deps = 
 srcdir = ../../../corrosion/src

@@ -10,11 +10,11 @@ endif
 
 cc = gcc
 cpp = g++
-includes = -I../../../corrosion/include -I../../../corrosion/include/corrosion
+includes = -I$(VULKAN_SDK)/include -I../../../corrosion/include -I../../../corrosion/include/corrosion
 target_name = shadercompiler
 deps =
 srcdir = ../../../shadercompiler/src
-libs = -lshaderc_shared -lspirv-cross-cpp -lspirv-cross-glsl -lspirv-cross-util -lspirv-cross-core
+libs = -L$(VULKAN_SDK)/lib -lshaderc_shared -lspirv-cross-cpp -lspirv-cross-glsl -lspirv-cross-util -lspirv-cross-core
 defines =
 
 ifeq ($(config),debug)
