@@ -576,11 +576,9 @@ static void* vk_allocation_function(void* uptr, usize size, usize alignment, VkS
 
 	size += sizeof(usize);
 
-	u8* r = aligned_core_alloc(size, alignment);
-
-	((usize*)r)[0] = size;
-
-	return r + sizeof(usize);
+	usize* r = aligned_core_alloc(size, alignment);
+	r[0] = size;
+	return r + 1;
 }
 
 static void vk_free_function(void* uptr, void* ptr) {
@@ -588,7 +586,9 @@ static void vk_free_function(void* uptr, void* ptr) {
 		return;
 	}
 
-	aligned_core_free(&(((usize*)ptr)[-1]));
+	usize* a = ptr;
+
+	aligned_core_free(&a[-1]);
 }
 
 static void* vk_reallocation_function(void* uptr, void* original, usize size, usize alignment, VkSystemAllocationScope scope) {

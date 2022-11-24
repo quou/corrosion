@@ -936,6 +936,7 @@ u32 video_best_api(u32 features) {
 #endif
 
 	abort_with("No suitable graphics APIs were found. Try updating your drivers or talking to the developer of the application.");
+	return UINT32_MAX;
 }
 
 void init_video(const struct video_config* config) {

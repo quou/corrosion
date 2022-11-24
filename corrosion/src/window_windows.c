@@ -364,7 +364,7 @@ void init_window(const struct window_config* config, u32 api) {
 	window.open = true;
 }
 
-u32 get_preferred_gpu_idx() {
+i32 get_preferred_gpu_idx() {
 	return -1;
 }
 
@@ -411,13 +411,13 @@ void window_create_gl_context() {
 	i32 pf;
 	if (!(pf = ChoosePixelFormat(window.device_context, &pfd))) {
 		abort_with("Error choosing pixel format.\n");
-		return 0;
+		return;
 	}
 	SetPixelFormat(window.device_context, pf, &pfd);
 
 	if (!(window.render_context = wglCreateContext(window.device_context))) {
 		abort_with("Failed to create OpenGL context.\n");
-		return 0;
+		return;
 	}
 
 	wglMakeCurrent(window.device_context, window.render_context);
@@ -531,7 +531,7 @@ void lock_mouse(bool lock) {
 
 bool get_clipboard_text(char* buf, usize buf_size) {
 	HANDLE obj;
-	LPSTR* buffer;
+	LPSTR buffer;
 
 	OpenClipboard(window.hwnd);
 
