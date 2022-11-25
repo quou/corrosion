@@ -289,15 +289,16 @@ void init_window(const struct window_config* config, u32 api) {
 		dw_style |= WS_THICKFRAME | WS_MAXIMIZEBOX;
 	}
 
+	SetProcessDpiAwareness(PROCESS_PER_MONITOR_DPI_AWARE);
+	window.dpi_scale = (f32)GetDpiForSystem() / 96.0f;
+
 	RECT win_rect = { 0, 0, config->size.x, config->size.y };
 	AdjustWindowRectEx(&win_rect, dw_style, FALSE, dw_ex_style);
-	i32 create_width = win_rect.right - win_rect.left;
-	i32 create_height = win_rect.bottom - win_rect.top;
+	i32 create_width = (i32)((f32)(win_rect.right - win_rect.left) * window.dpi_scale);
+	i32 create_height = (i32)((f32)(win_rect.bottom - win_rect.top) * window.dpi_scale);
 
 	window.size = make_v2i(create_width, create_height);
 	window.new_size = window.size;
-
-	SetProcessDpiAwareness(PROCESS_PER_MONITOR_DPI_AWARE);
 
 	window.hwnd = CreateWindowExA(dw_ex_style, "corrosion", config->title, dw_style, 0, 0,
 			create_width, create_height, null, null, GetModuleHandle(null), null);
@@ -774,6 +775,5 @@ void deinit_temp_window_vk_surface(struct temp_window_vk_surface* s, VkInstance 
 }
 
 f32 get_dpi_scale() {
-	/* TODO: */
-	return 1.0f;
+	return window.dpi_scale;
 }
