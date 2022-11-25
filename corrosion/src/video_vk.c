@@ -604,7 +604,7 @@ static void* vk_reallocation_function(void* uptr, void* original, usize size, us
 	usize original_size = ((usize*)original)[-1];
 	void* new = vk_allocation_function(uptr, size, alignment, scope);
 
-	memcpy(new, original, original_size);
+	memcpy(new, original, cr_min(original_size, size));
 
 	vk_free_function(uptr, original);
 

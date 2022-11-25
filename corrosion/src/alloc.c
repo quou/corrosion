@@ -219,7 +219,7 @@ void* align_address(void* address, usize alignment) {
 }
 
 void* aligned_core_alloc(usize size, usize alignment) {
-	usize actual_size = size + alignment;
+	usize actual_size = size + alignment + sizeof(usize);
 
 	u8* raw = core_alloc(actual_size);
 
