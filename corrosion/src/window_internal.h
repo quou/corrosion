@@ -37,6 +37,8 @@ struct window {
 	v2i size;
 	v2i new_size;
 
+	f32 dpi_scale;
+
 #if defined(_WIN32)
 	HWND hwnd;
 

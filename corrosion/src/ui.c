@@ -427,6 +427,10 @@ static struct ui_style ui_get_style(struct ui* ui, const char* base_class, const
 		cur_class = strtok(null, " ");
 	}
 
+	f32 scale = get_dpi_scale();
+	base.padding.value = v4f_scale(base.padding.value, scale);
+	base.outline_thickness.value *= scale;
+
 	return base;
 }
 
@@ -975,8 +979,8 @@ void ui_begin_container_ex(struct ui* ui, const char* class, v4f rect, bool scro
 
 		const struct ui_style style = ui_get_style(ui, "container", class, ui_style_variant_none);
 		pad_top_bottom = parent->padding.y;
-		padding = style.padding.value;
-		spacing = style.spacing.value;
+		padding = v4f_scale(style.padding.value, get_dpi_scale());
+		spacing = style.spacing.value * get_dpi_scale();
 
 		clip = make_v4f(
 			rect.x * (f32)(parent->rect.z) + parent->left_bound,
@@ -1054,7 +1058,9 @@ void ui_begin_floating_container_ex(struct ui* ui, const char* class, v4f rect, 
 	meta->current_view = vector_end(meta->cmd_views) - 1;
 
 	ui_clip(ui, rect);
-	ui_draw_rect(ui, make_v2f(rect.x, rect.y), make_v2f(rect.z, rect.w), style.background_colour.value, style.radius.value);
+	ui_draw_rect(ui,
+		make_v2f(rect.x, rect.y), make_v2f(rect.z, rect.w),
+		style.background_colour.value, style.radius.value);
 
 	if (parent) {
 		struct ui_container_meta* parent_meta = get_container_meta(ui, parent->id);
@@ -1070,11 +1076,11 @@ void ui_begin_floating_container_ex(struct ui* ui, const char* class, v4f rect, 
 
 	vector_push(ui->container_stack, ((struct ui_container) {
 		.rect = rect,
-		.padding = style.padding.value,
-		.spacing = style.spacing.value,
+		.padding = v4f_scale(style.padding.value, get_dpi_scale()),
+		.spacing = style.spacing.value * get_dpi_scale(),
 		.id = id,
 		.scrollable = scrollable,
-		.left_bound = rect.x + style.padding.value.x + scroll.x,
+		.left_bound = rect.x + style.padding.value.x * get_dpi_scale() + scroll.x,
 		.content_size = make_v2f(0.0f, 0.0f),
 		.old_cursor_pos = ui->cursor_pos,
 		.interactable = meta->interactable,
@@ -1289,8 +1295,9 @@ bool ui_knob_ex(struct ui* ui, const char* class, f32* val, f32 min, f32 max) {
 	const u64 id = elf_hash((const u8*)&val, sizeof val);
 
 	struct ui_style style = ui_get_style(ui, "knob", class, ui_style_variant_none);
+	style.radius.value *= get_dpi_scale();
 
-	const f32 handle_radius = 5.0f;
+	const f32 handle_radius = 5.0f * get_dpi_scale();
 
 	const v2f dimensions = make_v2f(style.radius.value * 2.0f, style.radius.value * 2.0f);
 	const v2f position = get_ui_el_position(ui, &style, dimensions);
@@ -1330,6 +1337,7 @@ bool ui_knob_ex(struct ui* ui, const char* class, f32* val, f32 min, f32 max) {
 
 	if (ui->dragging == id) {
 		style = ui_get_style(ui, "knob", class, ui_style_variant_active);
+		style.radius.value *= get_dpi_scale();
 
 		knob_cmd->radius   = style.radius.value;
 		knob_cmd->position = get_ui_el_position(ui, &style, dimensions);
@@ -1365,6 +1373,8 @@ bool ui_knob_ex(struct ui* ui, const char* class, f32* val, f32 min, f32 max) {
 
 		changed = true;
 	} else if (ui_get_style_variant(ui, &style, "knob", class, hovered, false)) {
+		style.radius.value *= get_dpi_scale();
+
 		knob_cmd->radius   = style.radius.value;
 		knob_cmd->position = get_ui_el_position(ui, &style, dimensions);
 		knob_cmd->colour   = style.background_colour.value;
@@ -1684,7 +1694,7 @@ bool ui_input_ex2(struct ui* ui, const char* class, char* buf, usize buf_size, u
 
 		scroll = cr_min(dimensions.x - cursor_x_off - style.padding.value.x - get_font_height(ui->font), 0.0f);
 
-		ui_draw_rect(ui, v2f_add(text_pos, make_v2f(cursor_x_off + scroll, 0.0f)), make_v2f(1.0f, get_font_height(ui->font)),
+		ui_draw_rect(ui, v2f_add(text_pos, make_v2f(cursor_x_off + scroll, 0.0f)), make_v2f(1.0f * get_dpi_scale(), get_font_height(ui->font)),
 			style.text_colour.value, 0.0f);
 		cursor_cmd = ui_last_cmd(ui);
 
@@ -1968,19 +1978,21 @@ bool ui_colour_picker_ex(struct ui* ui, const char* class, v4f* colour, u64 id) 
 
 	struct ui_style style = ui_get_style(ui, "picker", class, ui_style_variant_none);
 
-	const v2f box_dimensions = make_v2f(
-		lerp(style.min_size.value.x, style.max_size.value.x, 0.5f),
-		lerp(style.min_size.value.y, style.max_size.value.y, 0.5f));
-	
-	const v2f result_dimensions = make_v2f(25.0f, 25.0f);
+	f32 scale = get_dpi_scale();
 
-	const v2f slider_dimensions = make_v2f(15.0f, box_dimensions.y);
+	const v2f box_dimensions = make_v2f(
+		lerp(style.min_size.value.x, style.max_size.value.x, 0.5f) * scale,
+		lerp(style.min_size.value.y, style.max_size.value.y, 0.5f) * scale);
+		
+	const v2f result_dimensions = make_v2f(25.0f * scale, 25.0f * scale);
+
+	const v2f slider_dimensions = make_v2f(15.0f * scale, box_dimensions.y);
 
 	const v2f dimensions = make_v2f(box_dimensions.x + slider_dimensions.x + result_dimensions.x + style.padding.value.x * 2.0f, box_dimensions.y);
 	const v2f position = ui->cursor_pos;
 	const v2f slider_pos   = make_v2f(position.x + box_dimensions.x + style.padding.value.x, position.y);
 	const v2f a_slider_pos = make_v2f(slider_pos.x + slider_dimensions.x + style.padding.value.x, position.y);
-	const v2f result_pos = make_v2f(a_slider_pos.x + slider_dimensions.x + style.padding.value.x, position.y);
+	const v2f result_pos   = make_v2f(a_slider_pos.x + slider_dimensions.x + style.padding.value.x, position.y);
 
 	v4f hsva = rgba_to_hsva(*colour);
 
@@ -2025,7 +2037,7 @@ bool ui_colour_picker_ex(struct ui* ui, const char* class, v4f* colour, u64 id) 
 	const f32 hue_handle_y_pos = hsva.h * slider_dimensions.y;
 	ui_draw_rect(ui,
 		make_v2f(slider_pos.x, slider_pos.y + hue_handle_y_pos),
-		make_v2f(slider_dimensions.x, 1.0f), make_rgba(0x000000, 255), 0.0f);
+		make_v2f(slider_dimensions.x, 1.0f * scale), make_rgba(0x000000, 255), 0.0f);
 	
 	/* Alpha slider. */
 	ui_draw_gradient(ui, a_slider_pos, slider_dimensions,
@@ -2053,7 +2065,7 @@ bool ui_colour_picker_ex(struct ui* ui, const char* class, v4f* colour, u64 id) 
 	const f32 a_handle_y_pos = (1.0f - hsva.a) * slider_dimensions.y;
 	ui_draw_rect(ui,
 		make_v2f(a_slider_pos.x, a_slider_pos.y + a_handle_y_pos),
-		make_v2f(slider_dimensions.x, 1.0f), make_rgba(0x000000, 255), 0.0f);
+		make_v2f(slider_dimensions.x, 1.0f * scale), make_rgba(0x000000, 255), 0.0f);
 
 	/* Saturation and Value control. The second rectangle dictates the brightness,
 	 * the first dictates the hue. This is because the rasterizer's interpolation
@@ -2080,15 +2092,15 @@ bool ui_colour_picker_ex(struct ui* ui, const char* class, v4f* colour, u64 id) 
 
 	if (ui->active == id + 1) {
 		v2i mouse_pos = get_mouse_pos();
-		hsva.s =        saturate(((f32)mouse_pos.x - position.x - 2.5f) / (box_dimensions.x));
-		hsva.v = 1.0f - saturate(((f32)mouse_pos.y - position.y - 2.5f) / (box_dimensions.y));
+		hsva.s =        saturate(((f32)mouse_pos.x - position.x - 2.5f * scale) / (box_dimensions.x));
+		hsva.v = 1.0f - saturate(((f32)mouse_pos.y - position.y - 2.5f * scale) / (box_dimensions.y));
 	}
 
 	v2f handle_pos = make_v2f(hsva.s * box_dimensions.x, (1.0f - hsva.v) * box_dimensions.y);
 
 	v2f handle_off = v2f_sub(position, make_v2f(2.5f, 2.5f));
-	ui_draw_circle(ui, v2f_add(handle_off, handle_pos), 5.0f, make_rgba(0x000000, 255));
-	ui_draw_circle(ui, v2f_add(handle_off, v2f_add(handle_pos, make_v2f(1.0f, 1.0f))), 4.0f, style.text_colour.value);
+	ui_draw_circle(ui, v2f_add(handle_off, handle_pos), 5.0f * scale, make_rgba(0x000000, 255));
+	ui_draw_circle(ui, v2f_add(handle_off, v2f_add(handle_pos, make_v2f(1.0f * scale, 1.0f * scale))), 4.0f * scale, style.text_colour.value);
 	
 	v4f rgb_col = hsva_to_rgba(hsva);
 	bool changed = false;

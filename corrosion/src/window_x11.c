@@ -6,6 +6,7 @@
 #include <X11/X.h>
 #include <X11/Xlib.h>
 #include <X11/extensions/XInput2.h>
+#include <X11/Xresource.h>
 #include <GL/glx.h>
 
 #include "core.h"
@@ -28,6 +29,38 @@ Atom wm_delete_window_id, wm_protocols_id;
 Atom clipboard_at_id, targets_at_id, text_at_id, utf8_at_id;
 Atom incr_at_id, xsel_at_id;
 Atom XA_ATOM = 4, XA_STRING = 31;
+
+static void init_window_dpi() {
+	/* Grab the DPI scale. */
+	XrmInitialize();
+
+	const char* rstr = XResourceManagerString(display);
+	char* type = null;
+
+	XrmDatabase db = XrmGetStringDatabase(rstr);
+
+	f32 dpi = 96.0f;
+
+	if (rstr) {
+		XrmValue value;
+		if (XrmGetResource(db, "Xft.dpi", "String", &type, &value) == True) {
+			if (value.addr) {
+				dpi = (f32)atof(value.addr);
+			}
+
+			XrmDestroyDatabase(db);
+		}
+	}
+
+	window.dpi_scale = dpi / 96.0f;
+}
+
+static v2i get_scaled_window_size(v2i size) {
+	return make_v2i(
+		(i32)((f32)size.x * window.dpi_scale),
+		(i32)((f32)size.y * window.dpi_scale)
+	);
+}
 
 static void update_window_size(v2i size) {
 	if (size.x != window.size.x || size.y != window.size.y) {
@@ -53,7 +86,6 @@ static void update_window_size(v2i size) {
 	dispatch_event(&resize_event);
 }
 
-
 void init_window(const struct window_config* config, u32 api) {
 	memset(&window, 0, sizeof window);
 
@@ -62,6 +94,8 @@ void init_window(const struct window_config* config, u32 api) {
 	display = XOpenDisplay(null);
 	wm_protocols_id = XInternAtom(display, "WM_PROTOCOLS", false);
 	wm_delete_window_id = XInternAtom(display, "WM_DELETE_WINDOW", false);
+
+	init_window_dpi();
 
 	clipboard_at_id = XInternAtom(display, "CLIPBOARD", false);
 	targets_at_id = XInternAtom(display, "TARGETS", false);
@@ -80,6 +114,8 @@ void init_window(const struct window_config* config, u32 api) {
 	window.resizable = config->resizable;
 	window.fullscreen = config->fullscreen;
 
+	v2i scaled_size = get_scaled_window_size(window.size);
+
 	Window root = DefaultRootWindow(display);
 
 	XSetWindowAttributes attribs = {
@@ -93,7 +129,7 @@ void init_window(const struct window_config* config, u32 api) {
 			StructureNotifyMask
 	};
 
-	window.window = XCreateWindow(display, root, 0, 0, config->size.x, config->size.y,
+	window.window = XCreateWindow(display, root, 0, 0, scaled_size.x, scaled_size.y,
 		0, 0, InputOutput, XDefaultVisual(display, 0), CWEventMask, &attribs);
 	XSetWMProtocols(display, window.window, &wm_delete_window_id, 1);
 
@@ -227,8 +263,6 @@ void set_window_fullscreen(bool yes) {
 		XFlush(display);
 		XWindowAttributes gwa;
 		XGetWindowAttributes(display, window.window, &gwa);
-		window.size.x = gwa.width;
-		window.size.y = gwa.height;
 		update_window_size(make_v2i(gwa.width, gwa.height));
 	}
 }
@@ -738,3 +772,7 @@ void deinit_temp_window_vk_surface(struct temp_window_vk_surface* s, VkInstance 
 	}
 }
 #endif
+
+f32 get_dpi_scale() {
+	return window.dpi_scale;
+}

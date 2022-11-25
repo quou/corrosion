@@ -157,6 +157,9 @@ void init_window(const struct window_config* config, u32 api) {
 	window.size.x = (i32)x;
 	window.size.y = (i32)y;
 
+	/* TODO */
+	window.dpi_scale = 1.0f;
+
 	window.open = true;
 	window.resizable = false;
 	window.api = api;
@@ -336,4 +339,8 @@ void set_window_title(const char* title) {
 
 void set_window_fullscreen(bool fullscreen) {
 	abort_with("Not implemented.");
+}
+
+f32 get_dpi_scale() {
+	return window.dpi_scale;
 }

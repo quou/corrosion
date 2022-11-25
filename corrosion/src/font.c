@@ -96,7 +96,7 @@ usize font_struct_size() {
 struct font* new_font(const u8* raw, usize raw_size, f32 size) {
 	struct font* font = core_calloc(1, sizeof(struct font));
 
-	init_font(font, raw, raw_size, size);
+	init_font(font, raw, raw_size, size * get_dpi_scale());
 
 	return font;
 }

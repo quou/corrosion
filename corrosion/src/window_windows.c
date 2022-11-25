@@ -772,3 +772,8 @@ void deinit_temp_window_vk_surface(struct temp_window_vk_surface* s, VkInstance 
 		DestroyWindow(s->hwnd);
 	}
 }
+
+f32 get_dpi_scale() {
+	/* TODO: */
+	return 1.0f;
+}
