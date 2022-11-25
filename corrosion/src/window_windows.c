@@ -17,10 +17,31 @@
 #include "window_internal.h"
 
 #ifndef cr_no_opengl
-typedef void (*swap_interval_func)(i32 interval);
+typedef BOOL (WINAPI* swap_interval_func)(INT);
+typedef BOOL (WINAPI* choose_pixel_format_func)(HDC, const int*, const FLOAT*, UINT, int*, UINT*);
+typedef HGLRC (WINAPI* create_context_func)(HDC, HGLRC, const int*);
 
 swap_interval_func wgl_swap_interval;
+choose_pixel_format_func wgl_choose_pixel_format;
+create_context_func wgl_create_context;
+
+#define WGL_DRAW_TO_WINDOW_ARB            0x2001
+#define WGL_SUPPORT_OPENGL_ARB            0x2010
+#define WGL_DOUBLE_BUFFER_ARB             0x2011
+#define WGL_PIXEL_TYPE_ARB                0x2013
+#define WGL_COLOR_BITS_ARB                0x2014
+#define WGL_DEPTH_BITS_ARB                0x2022
+#define WGL_STENCIL_BITS_ARB              0x2023
+#define WGL_TYPE_RGBA_ARB                 0x202B
+#define WGL_CONTEXT_MAJOR_VERSION_ARB     0x2091
+#define WGL_CONTEXT_MINOR_VERSION_ARB     0x2092
+#define WGL_CONTEXT_PROFILE_MASK_ARB      0x9126
+#define WGL_CONTEXT_CORE_PROFILE_BIT_ARB  0x00000001
+#define WGL_CONTEXT_FLAGS_ARB             0x2094
+#define WGL_CONTEXT_DEBUG_BIT_ARB         0x00000001
+
 #endif
+
 
 static void request_api_recreate() {
 #ifndef cr_no_vulkan
@@ -394,46 +415,128 @@ VkSurfaceKHR get_window_vk_surface() {
 #endif
 
 void window_create_gl_context() {
-	/* TODO: Create a modern context instead of a legacy one. */
+	/* Create a dummy window and context in order to load the WGL extensions. */
+	HWND dummy_win = CreateWindowExW(
+		0, L"STATIC", L"DummyWindow", WS_OVERLAPPED,
+		CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT,
+		NULL, NULL, NULL, NULL);
+	HDC dummy_dc = GetDC(dummy_win);
+
+
+	PIXELFORMATDESCRIPTOR dummy_pfd = {
+		.nSize = sizeof(dummy_pfd),
+		.nVersion = 1,
+		.dwFlags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER,
+		.iPixelType = PFD_TYPE_RGBA,
+		.cColorBits = 24,
+	};
+
+	i32 format = ChoosePixelFormat(dummy_dc, &dummy_pfd);
+	if (!format) {
+		abort_with("Failed to choose pixel format.");
+	}
+
+	i32 r = DescribePixelFormat(dummy_dc, format, sizeof(dummy_pfd), &dummy_pfd);
+	if (!r) {
+		abort_with("Failed to describe OpenGL pixel format.");
+	}
+
+	if (!SetPixelFormat(dummy_dc, format, &dummy_pfd)) {
+		abort_with("Failed to set the OpenGL pixel format.");
+	}
+
+	HGLRC dummy_rc = wglCreateContext(dummy_dc);
+	if (!wglMakeCurrent(dummy_dc, dummy_rc)) {
+		abort_with("Failed to make the context current.");
+	}
+
+	wgl_choose_pixel_format = wglGetProcAddress("wglChoosePixelFormatARB");
+	wgl_create_context = wglGetProcAddress("wglCreateContextAttribsARB");
+	wgl_swap_interval = wglGetProcAddress("wglSwapIntervalEXT");
+
+	if (!wgl_choose_pixel_format || !wgl_create_context || !wgl_swap_interval) {
+		abort_with("This computer is too old to run modern OpenGL.");
+	}
+
+	wglMakeCurrent(dummy_dc, null);
+	wglDeleteContext(dummy_rc);
+	ReleaseDC(dummy_win, dummy_dc);
+	DestroyWindow(dummy_win);
 
 	window.device_context = GetDC(window.hwnd);
 
-	PIXELFORMATDESCRIPTOR pfd = { 0 };
-	pfd.nVersion = 1;
-	pfd.nSize = sizeof(PIXELFORMATDESCRIPTOR);
-	pfd.dwFlags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER;
-	pfd.iPixelType = PFD_TYPE_RGBA;
-	pfd.cColorBits = 32;
-	pfd.cDepthBits = 24;
-	pfd.cStencilBits = 8;
-	pfd.iLayerType = PFD_MAIN_PLANE;
+	/* Create a modern context. */
+	int pf_attribs[] =
+	{
+		WGL_DRAW_TO_WINDOW_ARB, 1,
+		WGL_SUPPORT_OPENGL_ARB, 1,
+		WGL_DOUBLE_BUFFER_ARB,  1,
+		WGL_PIXEL_TYPE_ARB,     WGL_TYPE_RGBA_ARB,
+		WGL_COLOR_BITS_ARB,     24,
+		WGL_DEPTH_BITS_ARB,     24,
+		WGL_STENCIL_BITS_ARB,   8,
+		0,
+	};
 
-	i32 pf;
-	if (!(pf = ChoosePixelFormat(window.device_context, &pfd))) {
-		abort_with("Error choosing pixel format.\n");
-		return;
-	}
-	SetPixelFormat(window.device_context, pf, &pfd);
-
-	if (!(window.render_context = wglCreateContext(window.device_context))) {
-		abort_with("Failed to create OpenGL context.\n");
-		return;
+	u32 format_count;
+	if (!wgl_choose_pixel_format(window.device_context, pf_attribs, null, 1, &format, &format_count) || format_count == 0) {
+		abort_with("Unsupported pixel format.");
 	}
 
-	wglMakeCurrent(window.device_context, window.render_context);
+	PIXELFORMATDESCRIPTOR pfd = { .nSize = sizeof(pfd) };
+	r = DescribePixelFormat(window.device_context, format, sizeof(pfd), &pfd);
+	if (!r) {
+		abort_with("Failed to describe pixel format.");
+	}
 
-	wgl_swap_interval = (swap_interval_func)wglGetProcAddress("wglSwapIntervalEXT");
-	if (!wgl_swap_interval) {
-		error("Failed to find the wglSwapIntervalEXT. The state of VSync thus cannot be changed.");
+	if (!SetPixelFormat(window.device_context, format, &pfd)) {
+		abort_with("Failed to set the OpenGL pixel format.");
+	}
+
+	int context_attribs[] =
+	{
+		WGL_CONTEXT_MAJOR_VERSION_ARB, 3,
+		WGL_CONTEXT_MINOR_VERSION_ARB, 3,
+		WGL_CONTEXT_PROFILE_MASK_ARB,  WGL_CONTEXT_CORE_PROFILE_BIT_ARB,
+
+#ifdef debug
+		WGL_CONTEXT_FLAGS_ARB, WGL_CONTEXT_DEBUG_BIT_ARB,
+#endif
+		0
+	};
+
+	window.render_context = wgl_create_context(window.device_context, null, context_attribs);
+	if (!window.render_context) {
+		abort_with("Failed to create an OpenGL context.");
+	}
+
+	r = wglMakeCurrent(window.device_context, window.render_context);
+	if (!r) {
+		abort_with("Failed to make the OpenGL context current.");
+	}
+
+	/* Test the context. */
+	void* tf0 = window_get_gl_proc("glGetString");
+	void* tf1 = window_get_gl_proc("glVertexAttribDivisor");
+	if (!tf0 || !tf1) {
+		abort_with("Non-functional OpenGL context.");
 	}
 }
 
 void window_destroy_gl_context() {
 	wglDeleteContext(window.render_context);
+	ReleaseDC(window.hwnd, window.device_context);
 }
 
 void* window_get_gl_proc(const char* name) {
-	return wglGetProcAddress(name);
+	void* p = (void*)wglGetProcAddress(name);
+	if (p == 0 || (p == (void*)0x1) || (p == (void*)0x2) || (p == (void*)0x3) ||
+		(p == (void*)-1)) {
+		HMODULE module = LoadLibraryA("opengl32.dll");
+		p = (void*)GetProcAddress(module, name);
+	}
+
+	return p;
 }
 
 void window_gl_swap() {
