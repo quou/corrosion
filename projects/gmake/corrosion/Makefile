@@ -68,8 +68,8 @@ ifeq ($(config),release)
   target_dir = bin/release
   target = $(target_dir)/lib$(target_name).a
   defines += -Dndebug
-  cflags += -MMD -MP -m64 -O2 $(includes) $(defines)
-  cppflags += -MMD -MP -m64 -O2 $(includes) $(defines)
+  cflags += -MMD -MP -m64 -O3 -s $(includes) $(defines)
+  cppflags += -MMD -MP -m64 -O3 -s $(includes) $(defines)
   objdir = obj/release
 endif
 

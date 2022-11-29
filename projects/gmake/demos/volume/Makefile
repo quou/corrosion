@@ -35,7 +35,7 @@ ifeq ($(config),release)
   libs += ../../corrosion/bin/release/libcr.a
   deps += ../../corrosion/bin/release/libcr.a
   lflags = -L/usr/lib64 -m64 -s
-  cflags = -MMD -MP -m64 -O2 $(includes) $(defines)
+  cflags = -MMD -MP -m64 -O3 $(includes) $(defines)
   objdir = obj/release
 endif
 
