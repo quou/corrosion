@@ -62,6 +62,8 @@ static void alloc_remove(struct alloc_info* node) {
 }
 
 void* debug_core_alloc(usize size, struct alloc_code_info cinfo) {
+	if (size == 0) { return null; }
+
 	u8* ptr = malloc(sizeof(struct alloc_info) + size);
 
 	if (!ptr) {
@@ -81,29 +83,21 @@ void* debug_core_alloc(usize size, struct alloc_code_info cinfo) {
 }
 
 void* debug_core_calloc(usize count, usize size, struct alloc_code_info cinfo) {
-	usize alloc_size = count * size;
+	if (count * size == 0) { return null; }
 
-	u8* ptr = malloc(sizeof(struct alloc_info) + alloc_size);
+	void* r = debug_core_alloc(count * size, cinfo);
 
-	if (!ptr) {
-		abort_with("Out of memory.");
-	}
-
-	memset(ptr, 0, sizeof(struct alloc_info) + alloc_size);
-
-	struct alloc_info* info = (void*)ptr;
-	info->file = cinfo.file;
-	info->line = cinfo.line;
-	info->size = alloc_size;
-
-	alloc_add(info);
-
-	void* r = ptr + sizeof *info;
+	memset(r, 0, count * size);
 
 	return r;
 }
 
 void* debug_core_realloc(void* p, usize size, struct alloc_code_info cinfo) {
+	if (size == 0) {
+		debug_core_free(p, cinfo);
+		return null;
+	}
+
 	u8* ptr = p;
 
 	if (ptr) {
@@ -171,6 +165,8 @@ void release_alloc_deinit() {}
 void release_leak_check() {}
 
 void* release_core_alloc(usize size) {
+	if (size == 0) { return null; }
+
 	void* ptr = malloc(size);
 
 	if (!ptr) {
@@ -181,6 +177,8 @@ void* release_core_alloc(usize size) {
 }
 
 void* release_core_calloc(usize count, usize size) {
+	if (count * size == 0) { return null; }
+
 	void* ptr = calloc(count, size);
 
 	if (!ptr) {
@@ -191,6 +189,11 @@ void* release_core_calloc(usize count, usize size) {
 }
 
 void* release_core_realloc(void* p, usize size) {
+	if (size == 0) {
+		free(p);
+		return null;
+	}
+
 	void* ptr = realloc(p, size);
 
 	if (!ptr && size != 0) {
