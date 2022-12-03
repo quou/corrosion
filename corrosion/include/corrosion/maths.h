@@ -361,6 +361,31 @@ force_inline quat quat_mul(quat a, quat b) {
 	});
 }
 
+/* Multiply without normalising. */
+force_inline quat quat_mul_dn(quat a, quat b) {
+	return (quat) {
+		 a.x * b.w +
+		 a.y * b.z -
+		 a.z * b.y +
+		 a.w * b.x,
+
+		-a.x * b.z +
+		 a.y * b.w +
+		 a.z * b.x +
+		 a.w * b.y,
+
+		 a.x * b.y -
+		 a.y * b.x +
+		 a.z * b.w +
+		 a.w * b.z,
+
+		-a.x * b.x -
+		 a.y * b.y -
+		 a.z * b.z +
+		 a.w * b.w
+	};
+}
+
 force_inline quat quat_rotate(f32 angle, v3f axis) {
 	quat q;
 
