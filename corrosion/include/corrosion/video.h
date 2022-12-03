@@ -33,7 +33,7 @@ enum {
 };
 
 enum {
-	framebuffer_attachment_flags_none        = 1 << 0,
+	framebuffer_attachment_flags_none  = 1 << 0,
 	framebuffer_attachment_flags_dont_clear = 1 << 1,
 };
 
@@ -291,14 +291,14 @@ struct video {
 	void (*free_storage)(struct storage* storage);
 
 	/* Vertex buffer. */
-	struct vertex_buffer* (*new_vertex_buffer)(void* verts, usize size, u32 flags);
+	struct vertex_buffer* (*new_vertex_buffer)(const void* verts, usize size, u32 flags);
 	void (*free_vertex_buffer)(struct vertex_buffer* vb);
 	void (*bind_vertex_buffer)(const struct vertex_buffer* vb, u32 point);
 	void (*update_vertex_buffer)(struct vertex_buffer* vb, const void* data, usize size, usize offset);
 	void (*copy_vertex_buffer)(struct vertex_buffer* dst, usize dst_offset, const struct vertex_buffer* src, usize src_offset, usize size);
 
 	/* Index buffer. */
-	struct index_buffer* (*new_index_buffer)(void* elements, usize count, u32 flags);
+	struct index_buffer* (*new_index_buffer)(const void* elements, usize count, u32 flags);
 	void (*free_index_buffer)(struct index_buffer* ib);
 	void (*bind_index_buffer)(const struct index_buffer* ib);
 

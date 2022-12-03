@@ -46,13 +46,13 @@ void video_vk_invoke_compute(v3u group_count);
 
 void video_vk_register_resources();
 
-struct vertex_buffer* video_vk_new_vertex_buffer(void* verts, usize size, u32 flags);
+struct vertex_buffer* video_vk_new_vertex_buffer(const void* verts, usize size, u32 flags);
 void video_vk_free_vertex_buffer(struct vertex_buffer* vb);
 void video_vk_bind_vertex_buffer(const struct vertex_buffer* vb, u32 point);
 void video_vk_update_vertex_buffer(struct vertex_buffer* vb, const void* data, usize size, usize offset);
 void video_vk_copy_vertex_buffer(struct vertex_buffer* dst, usize dst_offset, const struct vertex_buffer* src, usize src_offset, usize size);
 
-struct index_buffer* video_vk_new_index_buffer(void* elements, usize count, u32 flags);
+struct index_buffer* video_vk_new_index_buffer(const void* elements, usize count, u32 flags);
 void video_vk_free_index_buffer(struct index_buffer* ib);
 void video_vk_bind_index_buffer(const struct index_buffer* );
 

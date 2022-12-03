@@ -46,13 +46,13 @@ void video_gl_invoke_compute(v3u count);
 
 void video_gl_register_resources();
 
-struct vertex_buffer* video_gl_new_vertex_buffer(void* verts, usize size, u32 flags);
+struct vertex_buffer* video_gl_new_vertex_buffer(const void* verts, usize size, u32 flags);
 void video_gl_free_vertex_buffer(struct vertex_buffer* vb);
 void video_gl_bind_vertex_buffer(const struct vertex_buffer* vb, u32 point);
 void video_gl_update_vertex_buffer(struct vertex_buffer* vb, const void* data, usize size, usize offset);
 void video_gl_copy_vertex_buffer(struct vertex_buffer* dst, usize dst_offset, const struct vertex_buffer* src, usize src_offset, usize size);
 
-struct index_buffer* video_gl_new_index_buffer(void* elements, usize count, u32 flags);
+struct index_buffer* video_gl_new_index_buffer(const void* elements, usize count, u32 flags);
 void video_gl_free_index_buffer(struct index_buffer* ib);
 void video_gl_bind_index_buffer(const struct index_buffer* );
 

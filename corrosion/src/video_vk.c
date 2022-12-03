@@ -2702,7 +2702,7 @@ void video_vk_free_storage(struct storage* storage_) {
 	core_free(storage);
 }
 
-struct vertex_buffer* video_vk_new_vertex_buffer(void* verts, usize size, u32 flags) {
+struct vertex_buffer* video_vk_new_vertex_buffer(const void* verts, usize size, u32 flags) {
 	struct video_vk_vertex_buffer* vb = core_calloc(1, sizeof(struct video_vk_vertex_buffer));
 
 	vb->flags = flags;
@@ -2859,7 +2859,7 @@ void video_vk_copy_vertex_buffer(struct vertex_buffer* dst_, usize dst_offset, c
 	end_temp_command_buffer(cb, vctx.command_pool, vctx.graphics_compute_queue);
 }
 
-struct index_buffer* video_vk_new_index_buffer(void* elements, usize count, u32 flags) {
+struct index_buffer* video_vk_new_index_buffer(const void* elements, usize count, u32 flags) {
 	struct video_vk_index_buffer* ib = core_calloc(1, sizeof(struct video_vk_index_buffer));
 
 	usize el_size = sizeof(u16);

@@ -766,7 +766,7 @@ void video_gl_storage_bind_as(const struct storage* storage, u32 as, u32 point) 
 		"Query the available backend features with video.query_features.", video.get_api_name());
 }
 
-struct vertex_buffer* video_gl_new_vertex_buffer(void* verts, usize size, u32 flags) {
+struct vertex_buffer* video_gl_new_vertex_buffer(const void* verts, usize size, u32 flags) {
 	struct video_gl_vertex_buffer* vb = core_calloc(1, sizeof *vb);
 
 	vb->flags = flags;
@@ -816,7 +816,7 @@ void video_gl_copy_vertex_buffer(struct vertex_buffer* dst_, usize dst_offset, c
 	check_gl(glBindBuffer(GL_COPY_WRITE_BUFFER, 0));
 }
 
-struct index_buffer* video_gl_new_index_buffer(void* elements, usize count, u32 flags) {
+struct index_buffer* video_gl_new_index_buffer(const void* elements, usize count, u32 flags) {
 	struct video_gl_index_buffer* ib = core_calloc(1, sizeof *ib);
 
 	ib->flags = flags;
