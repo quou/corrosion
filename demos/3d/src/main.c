@@ -58,9 +58,9 @@ void cr_init() {
 	app.renderer = new_renderer(video.get_default_fb());
 
 	app.world = new_world(app.renderer);
-	app.world->draw_debug = false;
+	app.world->draw_debug = true;
 
-	for (usize i = 0; i < 30000; i++) {
+	for (usize i = 0; i < 100; i++) {
 		struct entity* obj = new_entity(app.world, eb_mesh | eb_spin);
 		obj->transform = m4f_translation(make_v3f(rand_flt() * 100.0f, rand_flt() * 100.0f, rand_flt() * 100.0f));
 		obj->transform = m4f_mul(obj->transform, m4f_rotation(euler(make_v3f(0.0f, rand_flt() * 360.0f, 0.0f))));
@@ -88,9 +88,9 @@ void cr_init() {
 		obj->material.diffuse = make_v3f(rand_flt() * 2.0f, rand_flt() * 2.0f, rand_flt() * 2.0f);
 	}
 
-	for (usize i = 0; i < 200; i++) {
+	for (usize i = 0; i < 10; i++) {
 		struct entity* light = new_entity(app.world, eb_light);
-		light->light.range = 1.0f;
+		light->light.range = 30.0f;
 		light->light.diffuse = make_rgb(0xffffff);
 		light->light.specular = make_rgb(0xffffff);
 		light->light.intensity = 10.0f;

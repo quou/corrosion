@@ -169,6 +169,7 @@ struct video_vk_texture {
 
 struct video_vk_framebuffer_attachment {
 	u32 type;
+	bool clear;
 
 	v4f clear_colour;
 

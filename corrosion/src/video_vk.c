@@ -1196,6 +1196,12 @@ static void init_vk_framebuffer(struct video_vk_framebuffer* fb,
 			}
 
 			fb->colours[idx].clear_colour = attachment_desc->clear_colour;
+			
+			if (attachment_desc->flags & framebuffer_attachment_flags_dont_clear) {
+				fb->colours[idx].clear = false;
+			} else {
+				fb->colours[idx].clear = true;
+			}
 
 			table_set(fb->attachment_map, i, &fb->colours[idx]);
 		} else if (attachment_desc->type == framebuffer_attachment_depth) {
@@ -1451,7 +1457,9 @@ void video_vk_begin_framebuffer(struct framebuffer* framebuffer) {
 		*info = (VkRenderingAttachmentInfoKHR) {
 			.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR,
 			.imageLayout = VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL_KHR,
-			.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+			.loadOp = fb->colours[i].clear ?
+				VK_ATTACHMENT_LOAD_OP_CLEAR :
+				VK_ATTACHMENT_LOAD_OP_DONT_CARE,
 			.storeOp = VK_ATTACHMENT_STORE_OP_STORE,
 			.clearValue.color = { cc.r, cc.g, cc.b, cc.a }
 		};

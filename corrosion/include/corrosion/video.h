@@ -32,10 +32,16 @@ enum {
 	framebuffer_flags_attachments_are_storage = 1 << 3
 };
 
+enum {
+	framebuffer_attachment_flags_none        = 1 << 0,
+	framebuffer_attachment_flags_dont_clear = 1 << 1,
+};
+
 struct framebuffer_attachment_desc {	
 	const char* name;
 	u32 type;
 	u32 format;
+	u32 flags;
 	v4f clear_colour;
 };
 
