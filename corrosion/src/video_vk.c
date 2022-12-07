@@ -923,12 +923,12 @@ frame_begin:
 	vkWaitForFences(vctx.device, 1, &vctx.in_flight_fences[vctx.current_frame], VK_TRUE, UINT64_MAX);
 
 	VkResult r = VK_SUCCESS;
-	if (!vctx.want_recreate && present) {
+	if (present) {
 		r = vkAcquireNextImageKHR(vctx.device, vctx.swapchain, UINT64_MAX, vctx.image_avail_semaphores[vctx.current_frame],
 			VK_NULL_HANDLE, &vctx.image_id);
 	}
 	
-	if (vctx.want_recreate || r == VK_ERROR_OUT_OF_DATE_KHR || r == VK_SUBOPTIMAL_KHR) {
+	if (r == VK_ERROR_OUT_OF_DATE_KHR) {
 		vctx.want_recreate = false;
 		recreate();
 		goto frame_begin;
@@ -976,6 +976,7 @@ void video_vk_end(bool present) {
 	}
 
 	/* Submit the command buffer. */
+	VkResult r;
 	if (vkQueueSubmit(vctx.graphics_compute_queue, 1, &(VkSubmitInfo) {
 			.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
 			.waitSemaphoreCount = wait_count,
@@ -998,7 +999,7 @@ void video_vk_end(bool present) {
 	}
 
 	if (present) {
-		vkQueuePresentKHR(vctx.present_queue, &(VkPresentInfoKHR) {
+		VkResult r = vkQueuePresentKHR(vctx.present_queue, &(VkPresentInfoKHR) {
 			.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
 			.waitSemaphoreCount = 1,
 			.pWaitSemaphores = (VkSemaphore[]) {
@@ -1010,6 +1011,11 @@ void video_vk_end(bool present) {
 			},
 			.pImageIndices = &vctx.image_id,
 		});
+
+		if (r == VK_ERROR_OUT_OF_DATE_KHR || r == VK_SUBOPTIMAL_KHR || vctx.want_recreate) {
+			vctx.want_recreate = false;
+			recreate();
+		}
 	} else {
 		//vkDeviceWaitIdle(vctx.device);
 	}
@@ -1270,7 +1276,7 @@ static void init_vk_framebuffer(struct video_vk_framebuffer* fb,
 		}
 
 		new_depth_resources(&fb->depth.texture->image, &fb->depth.texture->view,
-			&fb->depth.texture->memory, fb->size, true, fb->flags & framebuffer_flags_attachments_are_storage);
+			&fb->depth.texture->memory, fb->size, true, false);
 	}
 }
 
