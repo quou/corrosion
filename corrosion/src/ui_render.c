@@ -135,9 +135,9 @@ struct ui_renderer* new_ui_renderer(const struct framebuffer* framebuffer) {
 		vertex_buffer_flags_dynamic | vertex_buffer_flags_transferable);
 
 	usize index_count = renderer->max * ui_renderer_indices_per_quad;
-	u16* indices = core_alloc(index_count * sizeof(u16));
+	u32* indices = core_alloc(index_count * sizeof(u32));
 
-	u16 offset = 0;
+	u32 offset = 0;
 	for (usize i = 0; i < index_count; i += ui_renderer_indices_per_quad) {
 		indices[i + 0] = offset + 3;
 		indices[i + 1] = offset + 2;
@@ -149,7 +149,7 @@ struct ui_renderer* new_ui_renderer(const struct framebuffer* framebuffer) {
 		offset += 4;
 	}
 
-	renderer->ib = video.new_index_buffer(indices, index_count, index_buffer_flags_u16);
+	renderer->ib = video.new_index_buffer(indices, index_count, index_buffer_flags_u32);
 	core_free(indices);
 
 	create_pipeline(renderer);
@@ -184,9 +184,9 @@ static void resize_vb(struct ui_renderer* renderer) {
 		video.free_vertex_buffer(old_vb);
 
 		usize index_count = renderer->max * ui_renderer_indices_per_quad;
-		u16* indices = core_alloc(index_count * sizeof(u16));
+		u32* indices = core_alloc(index_count * sizeof(u32));
 
-		u16 offset = 0;
+		u32 offset = 0;
 		for (usize i = 0; i < index_count; i += ui_renderer_indices_per_quad) {
 			indices[i + 0] = offset + 3;
 			indices[i + 1] = offset + 2;
@@ -199,7 +199,7 @@ static void resize_vb(struct ui_renderer* renderer) {
 		}
 
 		video.free_index_buffer(renderer->ib);
-		renderer->ib = video.new_index_buffer(indices, index_count, index_buffer_flags_u16);
+		renderer->ib = video.new_index_buffer(indices, index_count, index_buffer_flags_u32);
 		core_free(indices);
 	}
 }

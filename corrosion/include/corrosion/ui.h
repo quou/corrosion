@@ -48,10 +48,14 @@ void ui_end_container(struct ui* ui);
 
 void ui_columns(struct ui* ui, usize count, f32* columns);
 
-bool ui_label_ex(struct ui* ui, const char* klass, const char* text);
+bool ui_text_ex(struct ui* ui, const char* klass, const char* text, bool wrapped);
+#define ui_text(ui_, t_, w_) ui_text_ex(ui_, "", t_, w_)
+
+#define ui_label_ex(ui, c_, t_) ui_text_ex(ui, c_, t_, false)
 #define ui_label(ui_, t_) ui_label_ex(ui_, "", t_)
 #define ui_button(ui_, t_) ui_label_ex(ui_, "button", t_)
 #define ui_button_ex(ui_, c_, t_) ui_label_ex(ui_, "button " c_, t_)
+
 
 void ui_linebreak(struct ui* ui);
 

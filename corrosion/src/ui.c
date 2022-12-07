@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <ctype.h>
 
 #include "bir.h"
 #include "core.h"
@@ -1236,10 +1237,74 @@ void ui_columns(struct ui* ui, usize count, f32* columns) {
 	ui->current_item_height = 0.0f;
 }
 
-bool ui_label_ex(struct ui* ui, const char* class, const char* text) {
+static char* word_wrap(struct font* font, char* buffer, const char* string, i32 width) {
+	i32 i = 0;
+
+	u32 string_len = (u32)strlen(string);
+	i32 line_start = 0;
+
+	while (i < string_len) {
+		for (i32 c = 1; c < width - 8; c += get_char_dimensions(font, string + i).x) {
+			if (i >= string_len) {
+				buffer[i] = '\0';
+				return buffer;
+			}
+
+			buffer[i] = string[i];
+
+			if (string[i] == '\n') {
+				line_start = i;
+				c = 1;
+			}
+
+			i++;
+		}
+
+		if (isspace(string[i])) {
+			buffer[i++] = '\n';
+			line_start = i;
+		} else {
+			for (i32 c = i; c > 0; c--) {
+				if (isspace(string[c])) {
+					buffer[c] = '\n';
+					i = c + 1;
+					line_start = i;
+					break;
+				}
+
+				if (c <= line_start) {
+					buffer[i++] = '\n';
+					break;
+				}
+			}
+		}
+	}
+
+	buffer[i] = '\0';
+
+	return buffer;
+}
+
+bool ui_text_ex(struct ui* ui, const char* class, const char* text, bool wrapped) {
 	const struct ui_container* container = vector_end(ui->container_stack) - 1;
 
 	struct ui_style style = ui_get_style(ui, "label", class, ui_style_variant_none);
+
+	/* TODO: Do this more cleanly. That is, take into account Unicode and don't
+	 * malloc every frame. I did this quickly on a short time budget. */
+	if (wrapped) {
+		const v2f wrap_dim = v2f_add(make_v2f(ui->columns[ui->column] *
+				container->rect.z - (style.padding.value.x * 2.0f + style.padding.value.z) -
+				(container->padding.x + container->padding.z), get_font_height(ui->font)),
+			make_v2f(0.0f, style.padding.value.y + style.padding.value.w));
+
+		char* t = core_alloc(strlen(text) + 256);
+		strcpy(t, text);
+
+		word_wrap(ui->font, t, text, (i32)wrap_dim.x);
+
+		text = t;
+	}
 
 	const v2f text_dimensions = get_text_dimensions(ui->font, text);
 	const v2f dimensions = make_v2f(text_dimensions.x + style.padding.value.x + style.padding.value.z,
@@ -1276,6 +1341,10 @@ bool ui_label_ex(struct ui* ui, const char* class, const char* text) {
 	ui_advance(ui,
 		make_v2f(dimensions.x + style.outline_thickness.value * 2.0f,
 		dimensions.y + container->spacing + style.outline_thickness.value * 2.0f));
+	
+	if (wrapped) {
+		core_free((void*)text);
+	}
 
 	if (hovered && mouse_btn_just_released(mouse_btn_left)) { return true; }
 	return false;

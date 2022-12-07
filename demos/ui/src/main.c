@@ -55,6 +55,29 @@ void cr_update(f64 ts) {
 
 	ui_begin_container(app.ui, make_v4f(0.0f, 0.0f, 1.0f, 1.0f), true);
 
+	ui_text(app.ui,
+		"some wrapped text "
+		"some wrapped text "
+		"some wrapped text "
+		"some wrapped text "
+		"some wrapped text "
+		"some wrapped text "
+		"some wrapped text "
+		"some wrapped text "
+		"some wrapped text "
+		"some wrapped text "
+		"some wrapped text "
+		"some wrapped text "
+		"some wrapped text "
+		"some wrapped text "
+		"some wrapped text "
+		"some wrapped text "
+		"some wrapped text "
+		"some wrapped text "
+		"some wrapped text "
+		"some wrapped text "
+		"some wrapped text ", true);
+
 	ui_columns(app.ui, 2, (f32[]) { 0.2f, 0.7f });
 	ui_label(app.ui, "API:");
 	ui_label(app.ui, video.get_api_name());
