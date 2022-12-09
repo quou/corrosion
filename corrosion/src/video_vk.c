@@ -164,6 +164,20 @@ static VkFormat find_supported_format(VkFormat* candidates, usize candidate_coun
 	return candidates[0];
 }
 
+static u32 find_memory_type_index(u32 type, VkMemoryPropertyFlags flags) {
+	VkPhysicalDeviceMemoryProperties mem_props;
+	vkGetPhysicalDeviceMemoryProperties(vctx.pdevice, &mem_props);
+
+	for (u32 i = 0; i < mem_props.memoryTypeCount; i++) {
+		if ((type & (1 << i)) && (mem_props.memoryTypes[i].propertyFlags & flags) == flags) {
+			return i;
+		}
+	}
+
+	abort_with("Invalid memory type.");
+	return -1;
+}
+
 static VkFormat find_depth_format() {
 	return find_supported_format((VkFormat[]) {
 		VK_FORMAT_D32_SFLOAT
@@ -519,9 +533,9 @@ static VkImageView new_image_view(VkImage image, VkFormat format, VkImageAspectF
 }
 
 static void new_image(v2i size, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags props,
-	VkImage* image, VmaAllocation* image_memory, VkImageLayout layout, bool is_depth) {
+	VkImage* image, struct video_vk_allocation* image_memory, VkImageLayout layout, bool is_depth) {
 
-	if (vmaCreateImage(vctx.allocator, &(VkImageCreateInfo) {
+	if (vkCreateImage(vctx.device, &(VkImageCreateInfo) {
 			.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
 			.imageType = VK_IMAGE_TYPE_2D,
 			.extent = {
@@ -537,19 +551,23 @@ static void new_image(v2i size, VkFormat format, VkImageTiling tiling, VkImageUs
 			.usage = usage,
 			.samples = VK_SAMPLE_COUNT_1_BIT,
 			.sharingMode = VK_SHARING_MODE_EXCLUSIVE
-		}, &(VmaAllocationCreateInfo) {
-			.usage = VMA_MEMORY_USAGE_AUTO,
-			.requiredFlags = props
-		}, image, image_memory, null) != VK_SUCCESS) {
+		}, &vctx.ac, image) != VK_SUCCESS) {
 		abort_with("Failed to create image.");
 	}
+
+	VkMemoryRequirements mem_req;
+	vkGetImageMemoryRequirements(vctx.device, *image, &mem_req);
+
+	u32 mem_type = find_memory_type_index(mem_req.memoryTypeBits, props);
+	*image_memory = video_vk_allocate(mem_req.size, mem_type);
+	vkBindImageMemory(vctx.device, *image, image_memory->memory, image_memory->start);
 
 	if (layout != VK_IMAGE_LAYOUT_UNDEFINED) {
 		change_image_layout(*image, format, VK_IMAGE_LAYOUT_UNDEFINED, layout, is_depth);
 	}
 }
 
-static void new_depth_resources(VkImage* image, VkImageView* view, VmaAllocation* memory, v2i size, bool can_sample, bool can_storage) {
+static void new_depth_resources(VkImage* image, VkImageView* view, struct video_vk_allocation* memory, v2i size, bool can_sample, bool can_storage) {
 	VkFormat depth_format = find_depth_format();
 
 	i32 usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
@@ -567,6 +585,39 @@ static void new_depth_resources(VkImage* image, VkImageView* view, VmaAllocation
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, image, memory, layout, true);
 
 	*view = new_image_view(*image, depth_format, VK_IMAGE_ASPECT_DEPTH_BIT);
+}
+
+struct video_vk_allocation video_vk_allocate(VkDeviceSize size, u32 type) {
+	struct video_vk_allocation alloc = { 0 };
+
+	vctx.alloc_type_sizes[type] += size;
+	vctx.allocation_count++;
+
+	VkMemoryAllocateInfo alloc_info = {
+		.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+		.allocationSize = size,
+		.memoryTypeIndex = type
+	};
+
+	VkResult r = vkAllocateMemory(vctx.device, &alloc_info, &vctx.ac, &alloc.memory);
+
+	alloc.size = size;
+	alloc.type = type;
+	alloc.start = 0;
+
+	if (r == VK_ERROR_OUT_OF_DEVICE_MEMORY) {
+		abort_with("Out of GPU memory.");
+	} else if (r != VK_SUCCESS) {
+		abort_with("Failed to allocate GPU memory.");
+	}
+
+	return alloc;
+}
+
+void video_vk_free(struct video_vk_allocation* alloc) {
+	vctx.alloc_type_sizes[alloc->type] -= alloc->size;
+	vctx.allocation_count--;
+	vkFreeMemory(vctx.device, alloc->memory, &vctx.ac);
 }
 
 static void* vk_allocation_function(void* uptr, usize size, usize alignment, VkSystemAllocationScope scope) {
@@ -734,6 +785,11 @@ no_validation:
 	vctx.vkCmdBeginRenderingKHR = (PFN_vkCmdBeginRenderingKHR)vkGetDeviceProcAddr(vctx.device, "vkCmdBeginRenderingKHR");
 	vctx.vkCmdEndRenderingKHR = (PFN_vkCmdEndRenderingKHR)vkGetDeviceProcAddr(vctx.device, "vkCmdEndRenderingKHR");
 
+	/* Set up custom allocator. */
+	VkPhysicalDeviceMemoryProperties mem_props;
+	vkGetPhysicalDeviceMemoryProperties(vctx.pdevice, &mem_props);
+	vctx.alloc_type_sizes = core_alloc(sizeof *vctx.alloc_type_sizes * mem_props.memoryTypeCount);
+
 	/* Create the allocator. */
 	vmaCreateAllocator(&(VmaAllocatorCreateInfo) {
 		.vulkanApiVersion = VK_API_VERSION_1_2,
@@ -855,6 +911,7 @@ void video_vk_deinit() {
 
 	window_destroy_vk_surface(vctx.instance);
 
+	core_free(vctx.alloc_type_sizes);
 	vmaDestroyAllocator(vctx.allocator);
 
 	vkDestroyDevice(vctx.device, &vctx.ac);
@@ -1286,7 +1343,8 @@ static void deinit_vk_framebuffer(struct video_vk_framebuffer* fb) {
 	if (fb->is_headless) {
 		for (usize i = 0; i < fb->colour_count; i++) {
 			vkDestroyImageView(vctx.device, fb->colours[i].texture->view, &vctx.ac);
-			vmaDestroyImage(vctx.allocator, fb->colours[i].texture->image, fb->colours[i].texture->memory);
+			vkDestroyImage(vctx.device, fb->colours[i].texture->image, &vctx.ac);
+			video_vk_free(&fb->colours[i].texture->memory);
 		}
 
 		vkDestroySampler(vctx.device, fb->sampler, &vctx.ac);
@@ -1294,7 +1352,8 @@ static void deinit_vk_framebuffer(struct video_vk_framebuffer* fb) {
 
 	if (fb->use_depth) {
 		vkDestroyImageView(vctx.device, fb->depth.texture->view, &vctx.ac);
-		vmaDestroyImage(vctx.allocator, fb->depth.texture->image, fb->depth.texture->memory);
+		vkDestroyImage(vctx.device, fb->depth.texture->image, &vctx.ac);
+		video_vk_free(&fb->depth.texture->memory);
 	}
 
 	core_free(fb->colour_infos);
@@ -3117,7 +3176,7 @@ static void init_texture_3d(struct video_vk_texture* texture, v3i size, u32 flag
 		usage |= VK_IMAGE_USAGE_STORAGE_BIT;
 	}
 
-	if (vmaCreateImage(vctx.allocator, &(VkImageCreateInfo) {
+	if (vkCreateImage(vctx.device, &(VkImageCreateInfo) {
 		.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
 		.imageType = VK_IMAGE_TYPE_3D,
 		.extent = {
@@ -3133,12 +3192,16 @@ static void init_texture_3d(struct video_vk_texture* texture, v3i size, u32 flag
 		.usage = usage,
 		.samples = VK_SAMPLE_COUNT_1_BIT,
 		.sharingMode = VK_SHARING_MODE_EXCLUSIVE
-	}, & (VmaAllocationCreateInfo) {
-		.usage = VMA_MEMORY_USAGE_AUTO,
-		.requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
-	}, &texture->image, &texture->memory, null) != VK_SUCCESS) {
+	}, &vctx.ac, &texture->image) != VK_SUCCESS) {
 		abort_with("Failed to create image.");
 	}
+
+	VkMemoryRequirements mem_req;
+	vkGetImageMemoryRequirements(vctx.device, texture->image, &mem_req);
+
+	u32 mem_type = find_memory_type_index(mem_req.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+	texture->memory = video_vk_allocate(mem_req.size, mem_type);
+	vkBindImageMemory(vctx.device, texture->image, texture->memory.memory, texture->memory.start);
 
 	if (vkCreateImageView(vctx.device, &(VkImageViewCreateInfo) {
 			.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
@@ -3186,7 +3249,8 @@ static void deinit_texture(struct video_vk_texture* texture) {
 
 	vkDestroySampler(vctx.device, texture->sampler, &vctx.ac);
 	vkDestroyImageView(vctx.device, texture->view, &vctx.ac);
-	vmaDestroyImage(vctx.allocator, texture->image, texture->memory);
+	vkDestroyImage(vctx.device, texture->image, &vctx.ac);
+	video_vk_free(&texture->memory);
 }
 
 struct texture* video_vk_new_texture(const struct image* image, u32 flags, u32 format) {

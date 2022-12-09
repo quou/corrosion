@@ -92,6 +92,16 @@ struct free_queue_item {
 	} as;
 };
 
+struct video_vk_allocation {
+	VkDeviceMemory memory;
+	VkDeviceSize start;
+	VkDeviceSize size;
+	u32 type;
+};
+
+struct video_vk_allocation video_vk_allocate(VkDeviceSize size, u32 type);
+void video_vk_free(struct video_vk_allocation* alloc);
+
 struct vk_video_context {
 	VkInstance instance;
 
@@ -122,6 +132,9 @@ struct vk_video_context {
 	VkFence in_flight_fences[max_frames_in_flight];
 
 	VkAllocationCallbacks ac;
+
+	usize allocation_count;
+	VkDeviceSize* alloc_type_sizes;
 
 	bool in_frame;
 	vector(struct free_queue_item) free_queue;
@@ -164,7 +177,7 @@ struct video_vk_texture {
 	VkImageView view;
 	VkSampler sampler;
 
-	VmaAllocation memory;
+	struct video_vk_allocation memory;
 };
 
 struct video_vk_framebuffer_attachment {
