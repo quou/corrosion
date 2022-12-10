@@ -2,10 +2,6 @@
 
 #ifndef cr_no_vulkan
 #include <vulkan/vulkan.h>
-
-#define VMA_VULKAN_VERSION 1002000
-
-#include "vk_mem_alloc.h"
 #endif
 
 #include "common.h"
@@ -108,8 +104,6 @@ struct vk_video_context {
 
 	VkQueue graphics_compute_queue;
 	VkQueue present_queue;
-
-	VmaAllocator allocator;
 
 	VkFormat   swapchain_format;
 	VkExtent2D swapchain_extent;

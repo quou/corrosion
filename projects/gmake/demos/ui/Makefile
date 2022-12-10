@@ -9,7 +9,6 @@ endif
 .PHONY: all run clean
 
 cc = gcc
-cpp = g++
 includes = -I../../../../corrosion/include
 target_name = ui
 deps =
@@ -73,7 +72,7 @@ $(objects): $(objdir)%.o : $(srcdir)%.c
 
 $(target): $(objects) $(deps) | $(target_dir)
 	@echo Linking $(target)
-	$(silent) $(cpp) -o "$@" $(objects) $(lflags) $(libs)
+	$(silent) $(cc) -o "$@" $(objects) $(lflags) $(libs)
 
 $(shader_targets): $(shader_targetdir)%.csh : $(srcdir)%.glsl | $(shader_targetdir)
 	@echo $(notdir $<)

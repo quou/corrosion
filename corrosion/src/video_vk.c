@@ -767,22 +767,10 @@ no_validation:
 	vctx.vkCmdBeginRenderingKHR = (PFN_vkCmdBeginRenderingKHR)vkGetDeviceProcAddr(vctx.device, "vkCmdBeginRenderingKHR");
 	vctx.vkCmdEndRenderingKHR = (PFN_vkCmdEndRenderingKHR)vkGetDeviceProcAddr(vctx.device, "vkCmdEndRenderingKHR");
 
-	/* Set up custom allocator. */
+	/* Set up the allocator. */
 	VkPhysicalDeviceMemoryProperties mem_props;
 	vkGetPhysicalDeviceMemoryProperties(vctx.pdevice, &mem_props);
 	vctx.alloc_type_sizes = core_alloc(sizeof *vctx.alloc_type_sizes * mem_props.memoryTypeCount);
-
-	/* Create the allocator. */
-	vmaCreateAllocator(&(VmaAllocatorCreateInfo) {
-		.vulkanApiVersion = VK_API_VERSION_1_2,
-		.physicalDevice = vctx.pdevice,
-		.device = vctx.device,
-		.instance = vctx.instance,
-		.pVulkanFunctions = &(VmaVulkanFunctions) {
-			.vkGetInstanceProcAddr = &vkGetInstanceProcAddr,
-			.vkGetDeviceProcAddr = &vkGetDeviceProcAddr
-		}
-	}, &vctx.allocator);
 
 	init_swapchain(VK_NULL_HANDLE);
 
@@ -890,7 +878,6 @@ void video_vk_deinit() {
 	window_destroy_vk_surface(vctx.instance);
 
 	core_free(vctx.alloc_type_sizes);
-	vmaDestroyAllocator(vctx.allocator);
 
 	vkDestroyDevice(vctx.device, &vctx.ac);
 
@@ -1664,11 +1651,7 @@ static void attributes_to_vk_attributes(const struct pipeline_attribute_bindings
 }
 
 static void new_buffer(usize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags props,
-	VmaAllocationCreateFlags flags, VkBuffer* buffer, struct video_vk_allocation* memory) {
-
-	if (flags & VMA_ALLOCATION_CREATE_MAPPED_BIT) {
-		flags |= VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
-	}
+	VkBuffer* buffer, struct video_vk_allocation* memory) {
 
 	if (vkCreateBuffer(vctx.device, &(VkBufferCreateInfo) {
 			.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
@@ -1897,7 +1880,6 @@ static VkDescriptorSetLayout* init_pipeline_descriptors(struct video_vk_pipeline
 						new_buffer(pad_ub_size(desc->resource.uniform.size),
 							VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
 							VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT,
-							VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,
 							pipeline->uniforms[uniform_idx].buffers + j,
 							pipeline->uniforms[uniform_idx].memories + j);
 
@@ -2474,7 +2456,6 @@ struct storage* video_vk_new_storage(u32 flags, usize size, void* initial_data) 
 		VK_BUFFER_USAGE_TRANSFER_SRC_BIT |
 		VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 	VkMemoryPropertyFlags props = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-	VmaAllocationCreateFlags a_flags = 0;
 
 	if (flags & storage_flags_vertex_buffer) {
 		usage |= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
@@ -2491,9 +2472,8 @@ struct storage* video_vk_new_storage(u32 flags, usize size, void* initial_data) 
 
 	if (flags & storage_flags_cpu_readable || flags & storage_flags_cpu_writable) {
 		props = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-		a_flags |= VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;
 
-		new_buffer(size, usage, props, a_flags, &storage->buffer, &storage->memory);
+		new_buffer(size, usage, props, &storage->buffer, &storage->memory);
 
 		storage->mapping = video_vk_map(&storage->memory);
 
@@ -2503,7 +2483,7 @@ struct storage* video_vk_new_storage(u32 flags, usize size, void* initial_data) 
 			memset(storage->mapping, 0, size);
 		}
 	} else {
-		new_buffer(size, usage, props, a_flags, &storage->buffer, &storage->memory);
+		new_buffer(size, usage, props, &storage->buffer, &storage->memory);
 
 		if (initial_data) {
 			VkBuffer stage;
@@ -2511,7 +2491,6 @@ struct storage* video_vk_new_storage(u32 flags, usize size, void* initial_data) 
 
 			new_buffer(size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 				VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-				VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,
 				&stage, &stage_memory);
 
 			void* data = video_vk_map(&stage_memory);
@@ -2750,7 +2729,7 @@ struct vertex_buffer* video_vk_new_vertex_buffer(const void* verts, usize size, 
 	if (flags & vertex_buffer_flags_dynamic) {
 		new_buffer(size, usage | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
 			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-			VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT, &vb->buffer, &vb->memory);
+			&vb->buffer, &vb->memory);
 
 		vb->data = video_vk_map(&vb->memory);
 
@@ -2763,7 +2742,6 @@ struct vertex_buffer* video_vk_new_vertex_buffer(const void* verts, usize size, 
 
 		new_buffer(size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-			VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,
 			&stage, &stage_memory);
 		
 		void* data = video_vk_map(&stage_memory);
@@ -2771,7 +2749,7 @@ struct vertex_buffer* video_vk_new_vertex_buffer(const void* verts, usize size, 
 		video_vk_unmap(&stage_memory);
 
 		new_buffer(size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-			0, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &vb->buffer, &vb->memory);
+			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &vb->buffer, &vb->memory);
 		copy_buffer(vb->buffer, stage, size, vctx.command_pool, vctx.graphics_compute_queue);
 
 		vkDestroyBuffer(vctx.device, stage, &vctx.ac);
@@ -2911,7 +2889,6 @@ struct index_buffer* video_vk_new_index_buffer(const void* elements, usize count
 
 	new_buffer(size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-		VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,
 		&stage, &stage_memory);
 	
 	void* data = video_vk_map(&stage_memory);
@@ -2919,7 +2896,7 @@ struct index_buffer* video_vk_new_index_buffer(const void* elements, usize count
 	video_vk_unmap(&stage_memory);
 
 	new_buffer(size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-		0, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &ib->buffer, &ib->memory);
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &ib->buffer, &ib->memory);
 	copy_buffer(ib->buffer, stage, size, vctx.command_pool, vctx.graphics_compute_queue);
 
 	vkDestroyBuffer(vctx.device, stage, &vctx.ac);
@@ -3073,7 +3050,6 @@ static void init_texture(struct video_vk_texture* texture, const struct image* i
 
 	new_buffer(image_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-		VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,
 		&stage, &stage_memory);
 
 	void* data = video_vk_map(&stage_memory);

@@ -9,7 +9,6 @@ endif
 .PHONY: all clean emscripten
 
 cc = gcc
-cxx = g++
 includes = -I$(VULKAN_SDK)/include -I../../../corrosion/include/corrosion -I../../../corrosion/src
 target_name = cr
 deps = 
@@ -52,15 +51,11 @@ sources =                            \
           $(srcdir)/window_common.c  \
           $(srcdir)/window_x11.c     \
 
-sourcespp = \
-	$(srcdir)/vma.cpp       \
-
 ifeq ($(config),debug)
   target_dir = bin/debug
   target = $(target_dir)/lib$(target_name).a
   defines += -Ddebug
   cflags += -MMD -MP -m64 -g $(includes) $(defines)
-  cppflags += -MMD -MP -m64 -g $(includes) $(defines)
   objdir = obj/debug
 endif
 
@@ -69,7 +64,6 @@ ifeq ($(config),release)
   target = $(target_dir)/lib$(target_name).a
   defines += -Dndebug
   cflags += -MMD -MP -m64 -O3 -s $(includes) $(defines)
-  cppflags += -MMD -MP -m64 -O3 -s $(includes) $(defines)
   objdir = obj/release
 endif
 
@@ -83,18 +77,12 @@ shaders =                       \
           $(srcdir)/error.glsl \
 
 objects   = $(sources:$(srcdir)%.c=$(objdir)%.o)
-objectspp = $(sourcespp:$(srcdir)%.cpp=$(objdir)%.o)
 
 $(objects):   | $(objdir) $(bir_target)
-$(objectspp): | $(objdir)
 
 $(objects): $(objdir)%.o : $(srcdir)%.c
 	@echo $(notdir $<)
 	$(silent) $(cc) $(cflags) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
-
-$(objectspp): $(objdir)%.o : $(srcdir)%.cpp
-	@echo $(notdir $<)
-	$(silent) $(cxx) $(cppflags) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
 
 $(shader_targets): $(shader_targetdir)%.csh : $(srcdir)%.glsl | $(shader_targetdir) $(deps)
 	@echo $(notdir $<)
@@ -103,9 +91,9 @@ $(shader_targets): $(shader_targetdir)%.csh : $(srcdir)%.glsl | $(shader_targetd
 $(shader_targetdir):
 	$(silent) mkdir -p $(shader_targetdir)
 
-$(target): $(deps) $(objects) $(objectspp) | $(target_dir)
+$(target): $(deps) $(objects) | $(target_dir)
 	@echo Linking $(target)
-	$(silent) ar -rcs "$@" $(objects) $(objectspp)
+	$(silent) ar -rcs "$@" $(objects)
 
 $(bir_builder): | $(target_dir)
 $(bir_builder): $(srcdir)/buildbir.c
