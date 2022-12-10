@@ -665,6 +665,10 @@ void video_gl_update_pipeline_uniform(struct pipeline* pipeline_, const char* se
 	check_gl(glBufferSubData(GL_UNIFORM_BUFFER, 0, desc->ub_size, data));
 }
 
+void video_gl_init_pipeline_uniform(struct pipeline* pipeline, const char* set, const char* descriptor, const void* data) {
+	video_gl_update_pipeline_uniform(pipeline, set, descriptor, data);
+}
+
 void video_gl_bind_pipeline_descriptor_set(struct pipeline* pipeline_, const char* set, usize target) {
 	struct video_gl_pipeline* pipeline = (struct video_gl_pipeline*)pipeline_;
 

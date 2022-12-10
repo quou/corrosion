@@ -33,6 +33,7 @@ void video_gl_begin_pipeline(const struct pipeline* pipeline);
 void video_gl_end_pipeline(const struct pipeline* pipeline);
 void video_gl_recreate_pipeline(struct pipeline* pipeline);
 void video_gl_update_pipeline_uniform(struct pipeline* pipeline, const char* set, const char* descriptor, const void* data);
+void video_gl_init_pipeline_uniform(struct pipeline* pipeline, const char* set, const char* descriptor, const void* data);
 void video_gl_bind_pipeline_descriptor_set(struct pipeline* pipeline, const char* set, usize target);
 
 struct storage* video_gl_new_storage(u32 flags, usize size, void* initial_data);

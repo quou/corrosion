@@ -63,12 +63,6 @@ struct queue_families {
 	i32 present;
 };
 
-struct update_queue {
-	usize capacity;
-	usize count;
-	u8* bytes;
-};
-
 enum {
 	video_vk_object_texture = 0,
 	video_vk_object_pipeline,
@@ -101,6 +95,8 @@ struct video_vk_allocation {
 
 struct video_vk_allocation video_vk_allocate(VkDeviceSize size, u32 type);
 void video_vk_free(struct video_vk_allocation* alloc);
+void* video_vk_map(struct video_vk_allocation* alloc);
+void video_vk_unmap(struct video_vk_allocation* alloc);
 
 struct vk_video_context {
 	VkInstance instance;
@@ -151,8 +147,6 @@ struct vk_video_context {
 	u32 image_id;
 
 	usize min_uniform_buffer_offset_alignment;
-
-	struct update_queue update_queues[max_frames_in_flight];
 
 	list(struct video_vk_framebuffer) framebuffers;
 	list(struct video_vk_pipeline) pipelines;
@@ -232,7 +226,7 @@ struct video_vk_framebuffer {
 
 struct video_vk_storage {
 	VkBuffer buffer;
-	VmaAllocation memory;
+	struct video_vk_allocation memory;
 
 	VkIndexType index_type;
 
@@ -246,7 +240,7 @@ struct video_vk_storage {
 
 struct video_vk_impl_uniform_buffer {
 	VkBuffer buffers[max_frames_in_flight];
-	VmaAllocation memories[max_frames_in_flight];
+	struct video_vk_allocation memories[max_frames_in_flight];
 
 	usize size;
 	void* datas[max_frames_in_flight];
@@ -297,7 +291,7 @@ struct video_vk_vertex_buffer {
 	void* data;
 
 	VkBuffer buffer;
-	VmaAllocation memory;
+	struct video_vk_allocation memory;
 };
 
 struct video_vk_index_buffer {
@@ -306,7 +300,7 @@ struct video_vk_index_buffer {
 	VkIndexType index_type;
 
 	VkBuffer buffer;
-	VmaAllocation memory;
+	struct video_vk_allocation memory;
 };
 
 struct vk_video_context* get_vk_video_context();
@@ -318,24 +312,6 @@ struct video_vk_shader {
 
 	bool is_compute;
 };
-
-enum {
-	update_cmd_memcpy
-};
-
-struct update_cmd {
-	u32 type;
-	usize size;
-};
-
-struct update_cmd_memcpy {
-	struct update_cmd cmd;
-	usize size;
-	void* target;
-	/* Bytes to call memcpy on are located immediately after this struct in the buffer. */
-};
-
-static void add_memcpy_cmd(struct update_queue* buf, void* target, const void* data, usize size);
 
 #endif /* cr_no_vulkan */
 

@@ -735,6 +735,35 @@ static void validated_update_pipeline_uniform(struct pipeline* pipeline, const c
 	abort();
 }
 
+static void validated_init_pipeline_uniform(struct pipeline* pipeline, const char* set, const char* descriptor, const void* data) {
+	bool ok = true;
+
+	check_is_init("init_pipeline_uniform");
+	check_pipeline_valid("init_pipeline_uniform");
+
+	if (!set) {
+		error("video.init_pipeline_uniform: Descriptor set must be named.");
+		ok = false;
+	}
+
+	if (!descriptor) {
+		error("video.init_pipeline_uniform: Descriptor must be named.");
+		ok = false;
+	}
+
+	if (!data) {
+		error("video.init_pipeline_uniform: data must be a valid pointer.");
+		ok = false;
+	}
+
+	if (ok) {
+		get_api_proc(init_pipeline_uniform)(pipeline, set, descriptor, data);
+		return;
+	}
+	
+	abort();
+}
+
 static void validated_invoke_compute(v3u group_count) {
 	bool ok = true;
 
@@ -871,6 +900,7 @@ static void find_procs(u32 api, bool enable_validation) {
 	video.recreate_pipeline            = get_v_proc(recreate_pipeline);
 	video.bind_pipeline_descriptor_set = get_v_proc(bind_pipeline_descriptor_set);
 	video.update_pipeline_uniform      = get_v_proc(update_pipeline_uniform);
+	video.init_pipeline_uniform        = get_v_proc(init_pipeline_uniform);
 
 	video.new_storage           = get_api_proc(new_storage);
 	video.update_storage        = get_api_proc(update_storage);

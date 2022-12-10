@@ -15,37 +15,9 @@
  *
  * Uses the VK_KHR_dynamic_rendering extension. Attachment sync is sub-optimal, that is,
  * it's pretty much forced to be synchronous, much like an OpenGL framebuffer.
- *
- * A buffer of "commands" (Not to be confused with a Vulkan command buffer :D), is used
- * to ensure updates to uniform, index and vertex buffers only get applied to the correct
- * frames, and not to each frame in flight at once, which ~~may~~ will cause visual bugs. */
+ */
 
 #ifndef cr_no_vulkan
-static void add_memcpy_cmd(struct update_queue* buf, void* target, const void* data, usize size) {
-	usize cmd_size = sizeof(struct update_cmd_memcpy) + size;
-
-	usize new_size = cmd_size + buf->count;
-
-	if (new_size > buf->capacity) {
-		if (buf->capacity == 0) { buf->capacity = 8; }
-
-		while (buf->capacity < new_size) {
-			buf->capacity *= 2;
-		}
-
-		buf->bytes = core_realloc(buf->bytes, buf->capacity);
-	}
-
-	struct update_cmd_memcpy* cmd = (void*)(buf->bytes + buf->count);
-	cmd->cmd.type = update_cmd_memcpy;
-	cmd->cmd.size = cmd_size;
-	cmd->target = target;
-	cmd->size = size;
-
-	memcpy(cmd + 1, data, size);
-
-	buf->count += cmd_size;
-}
 
 static const char* device_extensions[] = {
 	VK_KHR_SWAPCHAIN_EXTENSION_NAME,
@@ -620,6 +592,16 @@ void video_vk_free(struct video_vk_allocation* alloc) {
 	vkFreeMemory(vctx.device, alloc->memory, &vctx.ac);
 }
 
+void* video_vk_map(struct video_vk_allocation* alloc) {
+	void* ptr;
+	VkResult r = vkMapMemory(vctx.device, alloc->memory, alloc->start, alloc->size, 0, &ptr);
+	return ptr;
+}
+
+void video_vk_unmap(struct video_vk_allocation* alloc) {
+	vkUnmapMemory(vctx.device, alloc->memory);
+}
+
 static void* vk_allocation_function(void* uptr, usize size, usize alignment, VkSystemAllocationScope scope) {
 	if (size == 0) {
 		return null;
@@ -899,10 +881,6 @@ void video_vk_deinit() {
 		vkDestroySemaphore(vctx.device, vctx.image_avail_semaphores[i], &vctx.ac);
 		vkDestroySemaphore(vctx.device, vctx.render_finish_semaphores[i], &vctx.ac);
 		vkDestroyFence(vctx.device, vctx.in_flight_fences[i], &vctx.ac);
-		
-		if (vctx.update_queues[i].capacity > 0) {
-			core_free(vctx.update_queues[i].bytes);
-		}
 	}
 
 	vkDestroyCommandPool(vctx.device, vctx.command_pool, &vctx.ac);
@@ -1008,24 +986,6 @@ void video_vk_end(bool present) {
 	if (vkEndCommandBuffer(vctx.command_buffers[vctx.current_frame]) != VK_SUCCESS) {
 		abort_with("Failed to end the command buffer.");
 	}
-
-	/* Update everything in the update queue and flush it. */
-	struct update_queue* update_queue = vctx.update_queues + vctx.current_frame;
-	struct update_cmd* cmd = (struct update_cmd*)(update_queue->bytes);
-	struct update_cmd* end = (struct update_cmd*)(update_queue->bytes + update_queue->count);
-
-	while (cmd != end) {
-		switch (cmd->type) {
-			case update_cmd_memcpy: {
-				struct update_cmd_memcpy* ucmd = (struct update_cmd_memcpy*)cmd;
-				memcpy(ucmd->target, ucmd + 1, ucmd->size);
-			} break;
-		}
-
-		cmd = (struct update_cmd*)(((u8*)cmd) + cmd->size);
-	}
-
-	update_queue->count = 0;
 
 	u32 wait_count = 0;
 	if (present) {
@@ -1704,25 +1664,27 @@ static void attributes_to_vk_attributes(const struct pipeline_attribute_bindings
 }
 
 static void new_buffer(usize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags props,
-	VmaAllocationCreateFlags flags, VkBuffer* buffer, VmaAllocation* memory) {
+	VmaAllocationCreateFlags flags, VkBuffer* buffer, struct video_vk_allocation* memory) {
 
 	if (flags & VMA_ALLOCATION_CREATE_MAPPED_BIT) {
 		flags |= VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
 	}
 
-	if (vmaCreateBuffer(vctx.allocator, &(VkBufferCreateInfo) {
+	if (vkCreateBuffer(vctx.device, &(VkBufferCreateInfo) {
 			.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
 			.size = (VkDeviceSize)size,
 			.usage = usage,
 			.sharingMode = VK_SHARING_MODE_EXCLUSIVE
-		},
-		&(VmaAllocationCreateInfo) {
-			.flags = flags,
-			.usage = VMA_MEMORY_USAGE_AUTO,
-			.requiredFlags = props
-		}, buffer, memory, null) != VK_SUCCESS) {
+		}, &vctx.ac, buffer) != VK_SUCCESS) {
 		abort_with("Failed to create buffer.");
 	}
+
+	VkMemoryRequirements mem_req;
+	vkGetBufferMemoryRequirements(vctx.device, *buffer, &mem_req);
+
+	u32 mem_type = find_memory_type_index(mem_req.memoryTypeBits, props);
+	*memory = video_vk_allocate(mem_req.size, mem_type);
+	vkBindBufferMemory(vctx.device, *buffer, memory->memory, memory->start);
 }
 
 static void copy_buffer(VkBuffer dst, VkBuffer src, VkDeviceSize size, VkCommandPool pool, VkQueue queue) {
@@ -1939,9 +1901,8 @@ static VkDescriptorSetLayout* init_pipeline_descriptors(struct video_vk_pipeline
 							pipeline->uniforms[uniform_idx].buffers + j,
 							pipeline->uniforms[uniform_idx].memories + j);
 
-						vmaMapMemory(vctx.allocator,
-							pipeline->uniforms[uniform_idx].memories[j],
-							&pipeline->uniforms[uniform_idx].datas[j]);
+						pipeline->uniforms[uniform_idx].datas[j] =
+							video_vk_map(&pipeline->uniforms[uniform_idx].memories[j]);
 
 						VkDescriptorBufferInfo* buffer_info = buffer_infos + (buffer_info_count++);
 						buffer_info->buffer = pipeline->uniforms[uniform_idx].buffers[j];
@@ -2273,10 +2234,9 @@ static void deinit_pipeline(struct video_vk_pipeline* pipeline) {
 	if (pipeline->uniforms) {
 		for (usize i = 0; i < pipeline->uniform_count; i++) {
 			for (usize j = 0; j < max_frames_in_flight; j++) {
-				vmaUnmapMemory(vctx.allocator, pipeline->uniforms[i].memories[j]);
-				vmaDestroyBuffer(vctx.allocator,
-					pipeline->uniforms[i].buffers[j],
-					pipeline->uniforms[i].memories[j]);
+				video_vk_unmap(&pipeline->uniforms[i].memories[j]);
+				vkDestroyBuffer(vctx.device, pipeline->uniforms[i].buffers[j], &vctx.ac);
+				video_vk_free(&pipeline->uniforms[i].memories[j]);
 			}
 		}
 
@@ -2450,7 +2410,7 @@ void video_vk_recreate_pipeline(struct pipeline* pipeline_) {
 	}
 }
 
-void video_vk_update_pipeline_uniform(struct pipeline* pipeline_, const char* set, const char* descriptor, const void* data) {
+static void impl_video_vk_update_pipeline_uniform(struct pipeline* pipeline_, const char* set, const char* descriptor, const void* data, i32 frame) {
 	struct video_vk_pipeline* pipeline = (struct video_vk_pipeline*)pipeline_;
 
 	u64 set_name_hash  = hash_string(set);
@@ -2471,9 +2431,16 @@ void video_vk_update_pipeline_uniform(struct pipeline* pipeline_, const char* se
 	}
 
 	struct video_vk_impl_uniform_buffer* uniform = *uniform_ptr;
+	memcpy(uniform->datas[frame], data, uniform->size);
+}
 
-	for (usize i = 0; i < max_frames_in_flight; i++) {
-		add_memcpy_cmd(vctx.update_queues + i, uniform->datas[i], data, uniform->size);
+void video_vk_update_pipeline_uniform(struct pipeline* pipeline, const char* set, const char* descriptor, const void* data) {
+	impl_video_vk_update_pipeline_uniform(pipeline, set, descriptor, data, vctx.current_frame);
+}
+
+void video_vk_init_pipeline_uniform(struct pipeline* pipeline, const char* set, const char* descriptor, const void* data) {
+	for (i32 i = 0; i < max_frames_in_flight; i++) {
+		impl_video_vk_update_pipeline_uniform(pipeline, set, descriptor, data, i);
 	}
 }
 
@@ -2528,7 +2495,7 @@ struct storage* video_vk_new_storage(u32 flags, usize size, void* initial_data) 
 
 		new_buffer(size, usage, props, a_flags, &storage->buffer, &storage->memory);
 
-		vmaMapMemory(vctx.allocator, storage->memory, &storage->mapping);
+		storage->mapping = video_vk_map(&storage->memory);
 
 		if (initial_data) {
 			memcpy(storage->mapping, initial_data, size);
@@ -2540,21 +2507,20 @@ struct storage* video_vk_new_storage(u32 flags, usize size, void* initial_data) 
 
 		if (initial_data) {
 			VkBuffer stage;
-			VmaAllocation stage_memory;
+			struct video_vk_allocation stage_memory;
 
 			new_buffer(size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 				VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
 				VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,
 				&stage, &stage_memory);
 
-			void* data;
-			vmaMapMemory(vctx.allocator, stage_memory, &data);
+			void* data = video_vk_map(&stage_memory);
 			memcpy(data, initial_data, size);
-			vmaUnmapMemory(vctx.allocator, stage_memory);
+			video_vk_unmap(&stage_memory);
 
 			copy_buffer(storage->buffer, stage, size, vctx.command_pool, vctx.graphics_compute_queue);
-
-			vmaDestroyBuffer(vctx.allocator, stage, stage_memory);
+			vkDestroyBuffer(vctx.device, stage, &vctx.ac);
+			video_vk_free(&stage_memory);
 		}
 	}
 
@@ -2759,10 +2725,11 @@ void video_vk_free_storage(struct storage* storage_) {
 	vkDeviceWaitIdle(vctx.device);
 
 	if (storage->flags & storage_flags_cpu_readable || storage->flags & storage_flags_cpu_writable) {
-		vmaUnmapMemory(vctx.allocator, storage->memory);
+		video_vk_unmap(&storage->memory);
 	}
 
-	vmaDestroyBuffer(vctx.allocator, storage->buffer, storage->memory);
+	vkDestroyBuffer(vctx.device, storage->buffer, &vctx.ac);
+	video_vk_free(&storage->memory);
 
 	core_free(storage);
 }
@@ -2785,30 +2752,30 @@ struct vertex_buffer* video_vk_new_vertex_buffer(const void* verts, usize size, 
 			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
 			VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT, &vb->buffer, &vb->memory);
 
-		vmaMapMemory(vctx.allocator, vb->memory, &vb->data);
+		vb->data = video_vk_map(&vb->memory);
 
 		if (verts) {
 			memcpy(vb->data, verts, size);
 		}
 	} else {
 		VkBuffer stage;
-		VmaAllocation stage_memory;
+		struct video_vk_allocation stage_memory;
 
 		new_buffer(size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 			VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
 			VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,
 			&stage, &stage_memory);
 		
-		void* data;
-		vmaMapMemory(vctx.allocator, stage_memory, &data);
+		void* data = video_vk_map(&stage_memory);
 		memcpy(data, verts, size);
-		vmaUnmapMemory(vctx.allocator, stage_memory);
+		video_vk_unmap(&stage_memory);
 
 		new_buffer(size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
 			0, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &vb->buffer, &vb->memory);
 		copy_buffer(vb->buffer, stage, size, vctx.command_pool, vctx.graphics_compute_queue);
 
-		vmaDestroyBuffer(vctx.allocator, stage, stage_memory);
+		vkDestroyBuffer(vctx.device, stage, &vctx.ac);
+		video_vk_free(&stage_memory);
 	}
 
 	return (struct vertex_buffer*)vb;
@@ -2828,10 +2795,11 @@ void video_vk_free_vertex_buffer(struct vertex_buffer* vb_) {
 	vkDeviceWaitIdle(vctx.device);
 
 	if (vb->flags & vertex_buffer_flags_dynamic) {
-		vmaUnmapMemory(vctx.allocator, vb->memory);
+		video_vk_unmap(&vb->memory);
 	}
 
-	vmaDestroyBuffer(vctx.allocator, vb->buffer, vb->memory);
+	vkDestroyBuffer(vctx.device, vb->buffer, &vctx.ac);
+	video_vk_free(&vb->memory);
 
 	core_free(vb);
 }
@@ -2853,7 +2821,7 @@ void video_vk_update_vertex_buffer(struct vertex_buffer* vb_, const void* data, 
 	}
 #endif
 
-	add_memcpy_cmd(vctx.update_queues + vctx.current_frame, ((u8*)vb->data) + offset, data, size);
+	memcpy(((u8*)vb->data) + offset, data, size);
 }
 
 void video_vk_copy_vertex_buffer(struct vertex_buffer* dst_, usize dst_offset, const struct vertex_buffer* src_, usize src_offset, usize size) {
@@ -2937,7 +2905,7 @@ struct index_buffer* video_vk_new_index_buffer(const void* elements, usize count
 	ib->flags = flags;
 
 	VkBuffer stage;
-	VmaAllocation stage_memory;
+	struct video_vk_allocation stage_memory;
 
 	VkDeviceSize size = count * el_size;
 
@@ -2946,16 +2914,16 @@ struct index_buffer* video_vk_new_index_buffer(const void* elements, usize count
 		VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,
 		&stage, &stage_memory);
 	
-	void* data;
-	vmaMapMemory(vctx.allocator, stage_memory, &data);
+	void* data = video_vk_map(&stage_memory);
 	memcpy(data, elements, size);
-	vmaUnmapMemory(vctx.allocator, stage_memory);
+	video_vk_unmap(&stage_memory);
 
 	new_buffer(size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
 		0, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &ib->buffer, &ib->memory);
 	copy_buffer(ib->buffer, stage, size, vctx.command_pool, vctx.graphics_compute_queue);
 
-	vmaDestroyBuffer(vctx.allocator, stage, stage_memory);
+	vkDestroyBuffer(vctx.device, stage, &vctx.ac);
+	video_vk_free(&stage_memory);
 
 	return (struct index_buffer*)ib;
 }
@@ -2973,7 +2941,8 @@ void video_vk_free_index_buffer(struct index_buffer* ib_) {
 
 	vkDeviceWaitIdle(vctx.device);
 
-	vmaDestroyBuffer(vctx.allocator, ib->buffer, ib->memory);
+	vkDestroyBuffer(vctx.device, ib->buffer, &vctx.ac);
+	video_vk_free(&ib->memory);
 
 	core_free(ib);
 }
@@ -3100,15 +3069,14 @@ static void init_texture(struct video_vk_texture* texture, const struct image* i
 		(VkDeviceSize)format_data.pixel_size;
 
 	VkBuffer stage;
-	VmaAllocation stage_memory;
+	struct video_vk_allocation stage_memory;
 
 	new_buffer(image_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
 		VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,
 		&stage, &stage_memory);
 
-	void* data;
-	vmaMapMemory(vctx.allocator, stage_memory, &data);
+	void* data = video_vk_map(&stage_memory);
 
 	if (image->colours) {
 		memcpy(data, image->colours, image_size);
@@ -3116,7 +3084,7 @@ static void init_texture(struct video_vk_texture* texture, const struct image* i
 		memset(data, 0, image_size);
 	}
 
-	vmaUnmapMemory(vctx.allocator, stage_memory);
+	video_vk_unmap(&stage_memory);
 
 	u32 usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
 
@@ -3134,7 +3102,8 @@ static void init_texture(struct video_vk_texture* texture, const struct image* i
 
 	texture->state = texture_state_shader_graphics_read;
 
-	vmaDestroyBuffer(vctx.allocator, stage, stage_memory);
+	vkDestroyBuffer(vctx.device, stage, &vctx.ac);
+	video_vk_free(&stage_memory);
 
 	texture->view = new_image_view(texture->image, format_data.format, VK_IMAGE_ASPECT_COLOR_BIT);
 
