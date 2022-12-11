@@ -9,7 +9,6 @@ endif
 .phony: clean
 
 cc = emcc
-cxx = em++
 includes = -I../../../corrosion/include
 target_name = sbox
 defines = -Dcr_no_vulkan -Wno-unreachable-code-generic-assoc
@@ -18,7 +17,6 @@ deps = ../corrosion/bin/$(config)/emscripten/libcr.bc
 opts = -pthread
 srcdir = ../../../sbox/src
 cstd = -std=c11
-cxxstd = -std=c++20
 package_files = --preload-file ../../../sbox/shaders@shaders/ --preload-file ../../../sbox/res/@res/
 
 ifeq ($(config),debug)
@@ -27,7 +25,6 @@ ifeq ($(config),debug)
   lflags = -mwasm64 -g
   defines += -Ddebug
   cflags = -MMD -MP -g $(cstd) $(includes) $(defines) $(opts)
-  cxxflags = -MMD -MP -g $(cxxstd) $(includes) $(defines) $(opts)
   objdir = obj/debug/emscripten
 endif
 
@@ -37,7 +34,6 @@ ifeq ($(config),release)
   lflags = -mwasm64 -s
   defined += -Dndebug
   cflags = -MMD -MP -O2 $(cstd) $(includes) $(defines) $(opts)
-  cxxflags = -MMD -MP -O2 $(cxxstd) $(includes) $(defines) $(opts)
   objdir = obj/release/emscripten
 endif
 
@@ -63,9 +59,9 @@ $(objects): $(objdir)/%.o : $(srcdir)/%.c
 	@echo $(notdir $<)
 	$(silent) $(cc) $(cflags) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
 
-$(target): $(objects) $(objectsxx) $(deps) | $(targetdir)
+$(target): $(objects) $(deps) | $(targetdir)
 	@echo linking $(target)
-	$(silent) $(cxx) -o "$@" $(objects) $(lflags) $(libs) $(package_files)
+	$(silent) $(cc) -o "$@" $(objects) $(lflags) $(libs) $(package_files)
 
 $(targetdir):
 	$(silent) mkdir -p $(targetdir)
@@ -79,4 +75,3 @@ clean:
 	$(silent) rm -rf tags
 
 -include $(objects:%.o=%.d)
--include $(objectsxx:%.opp=%.dpp)

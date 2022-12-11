@@ -9,7 +9,6 @@ endif
 .phony: clean
 
 cc = emcc
-cxx = em++
 includes = -I../../../corrosion/include/corrosion -I../../../corrosion/src
 targetname = cr
 defines = -Dcr_no_vulkan -Wno-unreachable-code-generic-assoc
@@ -17,14 +16,12 @@ opts = -pthread
 deps = 
 srcdir = ../../../corrosion/src
 cstd = -std=gnu11
-cxxstd = -std=c++20
 
 ifeq ($(config),debug)
   targetdir = bin/debug/emscripten
   target = $(targetdir)/lib$(targetname).bc
   defines += -Ddebug
   cflags = -MMD -MP  -g $(cstd) $(includes) $(defines) $(opts)
-  cxxflags = -MMD -MP -g $(cxxstd) $(includes) $(defines) $(opts)
   objdir = obj/debug/emscripten
 endif
 
@@ -33,7 +30,6 @@ ifeq ($(config),release)
   target = $(targetdir)/lib$(targetname).bc
   defined += -Dndebug
   cflags = -MMD -MP -O2 $(cstd) $(includes) $(defines) $(opts)
-  cxxflags = -MMD -MP -O2 $(cxxstd) $(includes) $(defines) $(opts)
   objdir = obj/release/emscripten
 endif
 
@@ -65,26 +61,17 @@ sources =                               \
           $(srcdir)/window_common.c     \
           $(srcdir)/window_emscripten.c \
 
-sourcesxx = \
-	$(srcdir)/vma.cpp       \
-
 objects = $(sources:$(srcdir)/%.c=$(objdir)/%.o)
-objectsxx = $(sourcesxx:$(srcdir)/%.cpp=$(objdir)/%.opp)
 
 $(objects): | $(objdir)
-$(objectsxx): | $(objdir)
 
 $(objects): $(objdir)/%.o : $(srcdir)/%.c
 	@echo $(notdir $<)
 	$(silent) $(cc) $(cflags) -o "$@" -MF "$(@:%.o=%.d)" -c "$<"
 
-$(objectsxx): $(objdir)/%.opp : $(srcdir)/%.cpp
-	@echo $(notdir $<)
-	$(silent) $(cxx) $(cxxflags) -o "$@" -MF "$(@:%.opp=%.dpp)" -c "$<"
-
-$(target): $(objects) $(objectsxx) $(deps) | $(targetdir)
+$(target): $(objects) $(deps) | $(targetdir)
 	@echo linking $(target)
-	$(silent) emar -rcs "$@" $(objects) $(objectsxx)
+	$(silent) emar -rcs "$@" $(objects)
 	ctags -R
 
 $(targetdir):
@@ -99,4 +86,3 @@ clean:
 	$(silent) rm -rf tags
 
 -include $(objects:%.o=%.d)
--include $(objectsxx:%.opp=%.dpp)

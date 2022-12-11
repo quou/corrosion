@@ -174,8 +174,8 @@ installlibdir = /usr/lib64
 installbindir = /usr/bin
 
 install:
-	make config=release emscripten
-	make config=debug emscripten
+	$(MAKE) config=release emscripten
+	$(MAKE) config=debug emscripten
 	install -d $(installheaderdir)
 	install -d $(installlibdir)
 	install -d $(installbindir)

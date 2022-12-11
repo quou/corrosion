@@ -15,7 +15,6 @@ deps =
 srcdir = ../../../corrosion/src
 defines =
 cflags = -std=gnu11
-cppflags = -std=c++14
 
 bir_builder = $(target_dir)/bir
 bir_target = ../../../corrosion/src/bir.h
@@ -122,4 +121,4 @@ clean:
 	$(silent) rm -f $(bir_target)
 	$(silent) rm -f $(shader_targets)
 
--include $(objects:%.o=%.d) $(objectspp:%.o=%.d)
+-include $(objects:%.o=%.d)
