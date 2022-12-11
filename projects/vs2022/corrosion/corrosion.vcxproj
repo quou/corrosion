@@ -364,7 +364,6 @@
     <ClCompile Include="..\..\..\corrosion\src\video_common.c" />
     <ClCompile Include="..\..\..\corrosion\src\video_gl.c" />
     <ClCompile Include="..\..\..\corrosion\src\video_vk.c" />
-    <ClCompile Include="..\..\..\corrosion\src\vma.cpp" />
     <ClCompile Include="..\..\..\corrosion\src\window_common.c" />
     <ClCompile Include="..\..\..\corrosion\src\window_windows.c" />
   </ItemGroup>
@@ -392,7 +391,6 @@
     <ClInclude Include="..\..\..\corrosion\src\video_gl.h" />
     <ClInclude Include="..\..\..\corrosion\src\video_internal.h" />
     <ClInclude Include="..\..\..\corrosion\src\video_vk.h" />
-    <ClInclude Include="..\..\..\corrosion\src\vk_mem_alloc.h" />
     <ClInclude Include="..\..\..\corrosion\src\window_internal.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
