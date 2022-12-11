@@ -86,13 +86,30 @@ struct video_vk_allocation {
 	VkDeviceMemory memory;
 	VkDeviceSize start;
 	VkDeviceSize size;
-	u32 type;
+	bool free;
+	void* ptr;
 };
 
-struct video_vk_allocation video_vk_allocate(VkDeviceSize size, u32 type);
+struct video_vk_chunk {
+	VkDeviceMemory memory;
+	VkDeviceSize size;
+	u32 type;
+	void* ptr;
+	vector(struct video_vk_allocation) allocs;
+};
+
+void video_vk_init_chunk(struct video_vk_chunk* chunk, VkDeviceSize size, u32 type);
+void video_vk_deinit_chunk(struct video_vk_chunk* chunk);
+
+bool video_vk_chunk_alloc(struct video_vk_chunk* chunk, struct video_vk_allocation* alloc,
+	VkDeviceSize size, VkDeviceSize alignment);
+i64 video_vk_chunk_find(struct video_vk_chunk* chunk, const struct video_vk_allocation* alloc);
+
+struct video_vk_allocation video_vk_allocate(VkDeviceSize size, VkDeviceSize alignment, u32 type);
 void video_vk_free(struct video_vk_allocation* alloc);
 void* video_vk_map(struct video_vk_allocation* alloc);
-void video_vk_unmap(struct video_vk_allocation* alloc);
+
+#define video_vk_chunk_min_size 1024
 
 struct vk_video_context {
 	VkInstance instance;
@@ -123,8 +140,7 @@ struct vk_video_context {
 
 	VkAllocationCallbacks ac;
 
-	usize allocation_count;
-	VkDeviceSize* alloc_type_sizes;
+	vector(struct video_vk_chunk) chunks;
 
 	bool in_frame;
 	vector(struct free_queue_item) free_queue;

@@ -531,7 +531,7 @@ static void new_image(v2i size, VkFormat format, VkImageTiling tiling, VkImageUs
 	vkGetImageMemoryRequirements(vctx.device, *image, &mem_req);
 
 	u32 mem_type = find_memory_type_index(mem_req.memoryTypeBits, props);
-	*image_memory = video_vk_allocate(mem_req.size, mem_type);
+	*image_memory = video_vk_allocate(mem_req.size, mem_req.alignment, mem_type);
 	vkBindImageMemory(vctx.device, *image, image_memory->memory, image_memory->start);
 
 	if (layout != VK_IMAGE_LAYOUT_UNDEFINED) {
@@ -559,11 +559,20 @@ static void new_depth_resources(VkImage* image, VkImageView* view, struct video_
 	*view = new_image_view(*image, depth_format, VK_IMAGE_ASPECT_DEPTH_BIT);
 }
 
-struct video_vk_allocation video_vk_allocate(VkDeviceSize size, u32 type) {
-	struct video_vk_allocation alloc = { 0 };
+static bool is_p2(VkDeviceSize size) {
+	return (size & (size - 1)) == 0;
+}
 
-	vctx.alloc_type_sizes[type] += size;
-	vctx.allocation_count++;
+static VkDeviceSize next_p2(VkDeviceSize size) {
+	VkDeviceSize power = log2l(size) + 1;
+	return (VkDeviceSize)1 << power;
+}
+
+void video_vk_init_chunk(struct video_vk_chunk* chunk, VkDeviceSize size, u32 type) {
+	memset(chunk, 0, sizeof *chunk);
+
+	VkPhysicalDeviceMemoryProperties mem_props;
+	vkGetPhysicalDeviceMemoryProperties(vctx.pdevice, &mem_props);
 
 	VkMemoryAllocateInfo alloc_info = {
 		.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
@@ -571,11 +580,9 @@ struct video_vk_allocation video_vk_allocate(VkDeviceSize size, u32 type) {
 		.memoryTypeIndex = type
 	};
 
-	VkResult r = vkAllocateMemory(vctx.device, &alloc_info, &vctx.ac, &alloc.memory);
-
-	alloc.size = size;
-	alloc.type = type;
-	alloc.start = 0;
+	chunk->size = size;
+	chunk->type = type;
+	VkResult r = vkAllocateMemory(vctx.device, &alloc_info, &vctx.ac, &chunk->memory);
 
 	if (r == VK_ERROR_OUT_OF_DEVICE_MEMORY) {
 		abort_with("Out of GPU memory.");
@@ -583,23 +590,141 @@ struct video_vk_allocation video_vk_allocate(VkDeviceSize size, u32 type) {
 		abort_with("Failed to allocate GPU memory.");
 	}
 
+	if ((mem_props.memoryTypes[type].propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) ==
+		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) {
+		vkMapMemory(vctx.device, chunk->memory, 0, chunk->size, 0, &chunk->ptr);
+	}
+
+	struct video_vk_allocation alloc = {
+		.memory = chunk->memory,
+		.start = 0,
+		.size = size,
+		.free = true,
+		.ptr = chunk->ptr
+	};
+
+	vector_push(chunk->allocs, alloc);
+}
+
+void video_vk_deinit_chunk(struct video_vk_chunk* chunk) {
+	if (chunk->ptr) {
+		vkUnmapMemory(vctx.device, chunk->memory);
+	}
+
+	vkFreeMemory(vctx.device, chunk->memory, &vctx.ac);
+	free_vector(chunk->allocs);
+}
+
+bool video_vk_chunk_alloc(struct video_vk_chunk* chunk, struct video_vk_allocation* alloc,
+	VkDeviceSize size, VkDeviceSize alignment) {
+	if (size > chunk->size) {
+		return false;
+	}
+
+	for (usize i = 0; i < vector_count(chunk->allocs); i++) {
+		struct video_vk_allocation* block = &chunk->allocs[i];
+
+		if (!block->free) {
+			continue;
+		}
+
+		VkDeviceSize ac_size = block->size;
+		if (block->start % alignment != 0) {
+			ac_size -= alignment - block->start % alignment;
+		}
+
+		if (ac_size >= size) {
+			block->size = ac_size;
+			if (block->start % alignment != 0) {
+				block->start += alignment - block->start % alignment;
+			}
+
+			if (chunk->ptr) {
+				block->ptr = (u8*)chunk->ptr + block->start;
+			} else {
+				block->ptr = null;
+			}
+
+			if (block->size == size) {
+				block->free = false;
+				*alloc = *block;
+				return true;
+			}
+
+			vector_push(chunk->allocs, ((struct video_vk_allocation) {
+				.memory = chunk->memory,
+				.start = block->start + ac_size,
+				.size = block->size - ac_size,
+				.free = true
+			}));
+
+			block->size = ac_size;
+			block->free = false;
+			*alloc = *block;
+			return true;
+		}
+	}
+
+	return false;
+}
+
+i64 video_vk_chunk_find(struct video_vk_chunk* chunk, const struct video_vk_allocation* alloc) {
+	for (i64 i = 0; i < (i64)vector_count(chunk->allocs); i++) {
+		struct video_vk_allocation* block = &chunk->allocs[i];
+		if (
+			block->memory == alloc->memory &&
+			block->start == alloc->start &&
+			block->size == alloc->size &&
+			block->free == alloc->free) {
+			return i;
+		}
+	}
+
+	return -1;
+}
+
+struct video_vk_allocation video_vk_allocate(VkDeviceSize size, VkDeviceSize alignment, u32 type) {
+	struct video_vk_allocation alloc = { 0 };
+
+	for (usize i = 0; i < vector_count(vctx.chunks); i++) {
+		struct video_vk_chunk* chunk = &vctx.chunks[i];
+		if (chunk->type == type) {
+			if (video_vk_chunk_alloc(chunk, &alloc, size, alignment)) {
+				return alloc;
+			}
+		}
+	}
+
+	VkDeviceSize new_chunk_size = next_p2(cr_max(size, video_vk_chunk_min_size));
+	struct video_vk_chunk new_chunk;
+	video_vk_init_chunk(&new_chunk, new_chunk_size, type);
+	vector_push(vctx.chunks, new_chunk);
+
+	struct video_vk_chunk* chunk = vector_end(vctx.chunks) - 1;
+	if (!video_vk_chunk_alloc(chunk, &alloc, size, alignment)) {
+		abort_with("Failed to allocate GPU memory.");
+	}
+
 	return alloc;
 }
 
 void video_vk_free(struct video_vk_allocation* alloc) {
-	vctx.alloc_type_sizes[alloc->type] -= alloc->size;
-	vctx.allocation_count--;
-	vkFreeMemory(vctx.device, alloc->memory, &vctx.ac);
+	for (usize i = 0; i < vector_count(vctx.chunks); i++) {
+		struct video_vk_chunk* chunk = &vctx.chunks[i];
+
+		i64 idx = video_vk_chunk_find(chunk, alloc);
+		if (idx >= 0) {
+			chunk->allocs[idx].free = true;
+		}
+	}
 }
 
 void* video_vk_map(struct video_vk_allocation* alloc) {
-	void* ptr;
-	VkResult r = vkMapMemory(vctx.device, alloc->memory, alloc->start, alloc->size, 0, &ptr);
-	return ptr;
-}
+	if (!alloc->ptr) {
+		abort_with("video_vk_map: Attempt to map an unmappable allocation.");
+	}
 
-void video_vk_unmap(struct video_vk_allocation* alloc) {
-	vkUnmapMemory(vctx.device, alloc->memory);
+	return alloc->ptr;
 }
 
 static void* vk_allocation_function(void* uptr, usize size, usize alignment, VkSystemAllocationScope scope) {
@@ -767,11 +892,6 @@ no_validation:
 	vctx.vkCmdBeginRenderingKHR = (PFN_vkCmdBeginRenderingKHR)vkGetDeviceProcAddr(vctx.device, "vkCmdBeginRenderingKHR");
 	vctx.vkCmdEndRenderingKHR = (PFN_vkCmdEndRenderingKHR)vkGetDeviceProcAddr(vctx.device, "vkCmdEndRenderingKHR");
 
-	/* Set up the allocator. */
-	VkPhysicalDeviceMemoryProperties mem_props;
-	vkGetPhysicalDeviceMemoryProperties(vctx.pdevice, &mem_props);
-	vctx.alloc_type_sizes = core_alloc(sizeof *vctx.alloc_type_sizes * mem_props.memoryTypeCount);
-
 	init_swapchain(VK_NULL_HANDLE);
 
 	/* Create the command pools. */
@@ -877,7 +997,10 @@ void video_vk_deinit() {
 
 	window_destroy_vk_surface(vctx.instance);
 
-	core_free(vctx.alloc_type_sizes);
+	for (usize i = 0; i < vector_count(vctx.chunks); i++) {
+		video_vk_deinit_chunk(&vctx.chunks[i]);
+	}
+	free_vector(vctx.chunks);
 
 	vkDestroyDevice(vctx.device, &vctx.ac);
 
@@ -1666,7 +1789,7 @@ static void new_buffer(usize size, VkBufferUsageFlags usage, VkMemoryPropertyFla
 	vkGetBufferMemoryRequirements(vctx.device, *buffer, &mem_req);
 
 	u32 mem_type = find_memory_type_index(mem_req.memoryTypeBits, props);
-	*memory = video_vk_allocate(mem_req.size, mem_type);
+	*memory = video_vk_allocate(mem_req.size, mem_req.alignment, mem_type);
 	vkBindBufferMemory(vctx.device, *buffer, memory->memory, memory->start);
 }
 
@@ -2216,7 +2339,6 @@ static void deinit_pipeline(struct video_vk_pipeline* pipeline) {
 	if (pipeline->uniforms) {
 		for (usize i = 0; i < pipeline->uniform_count; i++) {
 			for (usize j = 0; j < max_frames_in_flight; j++) {
-				video_vk_unmap(&pipeline->uniforms[i].memories[j]);
 				vkDestroyBuffer(vctx.device, pipeline->uniforms[i].buffers[j], &vctx.ac);
 				video_vk_free(&pipeline->uniforms[i].memories[j]);
 			}
@@ -2495,7 +2617,6 @@ struct storage* video_vk_new_storage(u32 flags, usize size, void* initial_data) 
 
 			void* data = video_vk_map(&stage_memory);
 			memcpy(data, initial_data, size);
-			video_vk_unmap(&stage_memory);
 
 			copy_buffer(storage->buffer, stage, size, vctx.command_pool, vctx.graphics_compute_queue);
 			vkDestroyBuffer(vctx.device, stage, &vctx.ac);
@@ -2703,10 +2824,6 @@ void video_vk_free_storage(struct storage* storage_) {
 
 	vkDeviceWaitIdle(vctx.device);
 
-	if (storage->flags & storage_flags_cpu_readable || storage->flags & storage_flags_cpu_writable) {
-		video_vk_unmap(&storage->memory);
-	}
-
 	vkDestroyBuffer(vctx.device, storage->buffer, &vctx.ac);
 	video_vk_free(&storage->memory);
 
@@ -2746,7 +2863,6 @@ struct vertex_buffer* video_vk_new_vertex_buffer(const void* verts, usize size, 
 		
 		void* data = video_vk_map(&stage_memory);
 		memcpy(data, verts, size);
-		video_vk_unmap(&stage_memory);
 
 		new_buffer(size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
 			VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &vb->buffer, &vb->memory);
@@ -2771,10 +2887,6 @@ void video_vk_free_vertex_buffer(struct vertex_buffer* vb_) {
 	}
 
 	vkDeviceWaitIdle(vctx.device);
-
-	if (vb->flags & vertex_buffer_flags_dynamic) {
-		video_vk_unmap(&vb->memory);
-	}
 
 	vkDestroyBuffer(vctx.device, vb->buffer, &vctx.ac);
 	video_vk_free(&vb->memory);
@@ -2893,7 +3005,6 @@ struct index_buffer* video_vk_new_index_buffer(const void* elements, usize count
 	
 	void* data = video_vk_map(&stage_memory);
 	memcpy(data, elements, size);
-	video_vk_unmap(&stage_memory);
 
 	new_buffer(size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &ib->buffer, &ib->memory);
@@ -3060,8 +3171,6 @@ static void init_texture(struct video_vk_texture* texture, const struct image* i
 		memset(data, 0, image_size);
 	}
 
-	video_vk_unmap(&stage_memory);
-
 	u32 usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
 
 	if (flags & texture_flags_storage) {
@@ -3145,7 +3254,7 @@ static void init_texture_3d(struct video_vk_texture* texture, v3i size, u32 flag
 	vkGetImageMemoryRequirements(vctx.device, texture->image, &mem_req);
 
 	u32 mem_type = find_memory_type_index(mem_req.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-	texture->memory = video_vk_allocate(mem_req.size, mem_type);
+	texture->memory = video_vk_allocate(mem_req.size, mem_req.alignment, mem_type);
 	vkBindImageMemory(vctx.device, texture->image, texture->memory.memory, texture->memory.start);
 
 	if (vkCreateImageView(vctx.device, &(VkImageViewCreateInfo) {
