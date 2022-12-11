@@ -34,6 +34,7 @@ void video_vk_end_pipeline(const struct pipeline* pipeline);
 void video_vk_recreate_pipeline(struct pipeline* pipeline);
 void video_vk_update_pipeline_uniform(struct pipeline* pipeline, const char* set, const char* descriptor, const void* data);
 void video_vk_init_pipeline_uniform(struct pipeline* pipeline, const char* set, const char* descriptor, const void* data);
+void video_vk_pipeline_push_buffer(struct pipeline* pipeline, usize offset, usize size, const void* data);
 void video_vk_bind_pipeline_descriptor_set(struct pipeline* pipeline, const char* set, usize target);
 
 struct storage* video_vk_new_storage(u32 flags, usize size, void* initial_data);

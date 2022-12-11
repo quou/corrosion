@@ -1902,7 +1902,12 @@ static VkDescriptorSetLayout* init_pipeline_descriptors(struct video_vk_pipeline
 		const struct pipeline_descriptor_set* set = descriptor_sets->sets + i;
 		struct video_vk_impl_descriptor_set* v_set = pipeline->desc_sets + i;
 
-		table_set(pipeline->set_table, hash_string(set->name), v_set);
+		table_set(pipeline->set_table, set->name, v_set);
+
+		v_set->uniforms.hash = table_hash_string;
+		v_set->uniforms.compare = table_compare_string;
+		v_set->uniforms.free_key = table_free_string;
+		v_set->uniforms.copy_key = table_copy_string;
 
 		VkDescriptorSetLayoutBinding* layout_bindings = core_calloc(set->count, sizeof(VkDescriptorSetLayoutBinding));
 
@@ -1985,7 +1990,7 @@ static VkDescriptorSetLayout* init_pipeline_descriptors(struct video_vk_pipeline
 				pipeline->uniforms[uniform_idx].size = desc->resource.uniform.size;
 			}
 
-			table_set(v_set->uniforms, hash_string(desc->name), pipeline->uniforms + uniform_idx);
+			table_set(v_set->uniforms, desc->name, pipeline->uniforms + uniform_idx);
 
 			image_info_count = 0;
 			buffer_info_count = 0;
@@ -2077,6 +2082,10 @@ static void init_pipeline(struct video_vk_pipeline* pipeline, u32 flags, const s
 	pipeline->uniforms  = null;
 
 	memset(&pipeline->set_table, 0, sizeof(pipeline->set_table));
+	pipeline->set_table.hash = table_hash_string;
+	pipeline->set_table.compare = table_compare_string;
+	pipeline->set_table.free_key = table_free_string;
+	pipeline->set_table.copy_key = table_copy_string;
 
 	pipeline->flags = flags;
 
@@ -2226,10 +2235,18 @@ static void init_pipeline(struct video_vk_pipeline* pipeline, u32 flags, const s
 		set_layouts = init_pipeline_descriptors(pipeline, descriptor_sets);
 	}
 
+	VkPushConstantRange pc_range = {
+		.stageFlags = VK_SHADER_STAGE_ALL_GRAPHICS,
+		.offset = 0,
+		.size = max_push_const_size
+	};
+
 	if (vkCreatePipelineLayout(vctx.device, &(VkPipelineLayoutCreateInfo) {
 			.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
 			.setLayoutCount = (u32)descriptor_sets->count,
 			.pSetLayouts = set_layouts,
+			.pushConstantRangeCount = 1,
+			.pPushConstantRanges = &pc_range
 		}, &vctx.ac, &pipeline->layout) != VK_SUCCESS) {
 		abort_with("Failed to create pipeline layout.");
 	}
@@ -2286,6 +2303,10 @@ static void init_compute_pipeline(struct video_vk_pipeline* pipeline, u32 flags,
 	pipeline->uniforms  = null;
 
 	memset(&pipeline->set_table, 0, sizeof(pipeline->set_table));
+	pipeline->set_table.hash = table_hash_string;
+	pipeline->set_table.compare = table_compare_string;
+	pipeline->set_table.free_key = table_free_string;
+	pipeline->set_table.copy_key = table_copy_string;
 
 	pipeline->flags = flags;
 
@@ -2305,10 +2326,18 @@ static void init_compute_pipeline(struct video_vk_pipeline* pipeline, u32 flags,
 		set_layouts = init_pipeline_descriptors(pipeline, descriptor_sets);
 	}
 
+	VkPushConstantRange pc_range = {
+		.stageFlags = VK_SHADER_STAGE_ALL_GRAPHICS,
+		.offset = 0,
+		.size = max_push_const_size
+	};
+
 	if (vkCreatePipelineLayout(vctx.device, &(VkPipelineLayoutCreateInfo) {
 			.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
 			.setLayoutCount = (u32)descriptor_sets->count,
 			.pSetLayouts = set_layouts,
+			.pushConstantRangeCount = 1,
+			.pPushConstantRanges = &pc_range
 		}, &vctx.ac, &pipeline->layout) != VK_SUCCESS) {
 		abort_with("Failed to create pipeline layout.");
 	}
@@ -2518,10 +2547,7 @@ void video_vk_recreate_pipeline(struct pipeline* pipeline_) {
 static void impl_video_vk_update_pipeline_uniform(struct pipeline* pipeline_, const char* set, const char* descriptor, const void* data, i32 frame) {
 	struct video_vk_pipeline* pipeline = (struct video_vk_pipeline*)pipeline_;
 
-	u64 set_name_hash  = hash_string(set);
-	u64 desc_name_hash = hash_string(descriptor);
-
-	struct video_vk_impl_descriptor_set** set_ptr = table_get(pipeline->set_table, set_name_hash);
+	struct video_vk_impl_descriptor_set** set_ptr = table_get(pipeline->set_table, set);
 	if (!set_ptr) {
 		error("%s: No such descriptor set.", set);
 		return;
@@ -2529,7 +2555,7 @@ static void impl_video_vk_update_pipeline_uniform(struct pipeline* pipeline_, co
 
 	struct video_vk_impl_descriptor_set* desc_set = *set_ptr;
 
-	struct video_vk_impl_uniform_buffer** uniform_ptr = table_get(desc_set->uniforms, desc_name_hash);
+	struct video_vk_impl_uniform_buffer** uniform_ptr = table_get(desc_set->uniforms, descriptor);
 	if (!uniform_ptr) {
 		error("%s: No such uniform buffer on descriptor set `%s'.", descriptor, set);
 		return;
@@ -2549,10 +2575,18 @@ void video_vk_init_pipeline_uniform(struct pipeline* pipeline, const char* set, 
 	}
 }
 
+void video_vk_pipeline_push_buffer(struct pipeline* pipeline_, usize offset, usize size, const void* data) {
+	struct video_vk_pipeline* pipeline = (struct video_vk_pipeline*)pipeline_;
+
+	vkCmdPushConstants(vctx.command_buffers[vctx.current_frame], pipeline->layout,
+		VK_SHADER_STAGE_ALL_GRAPHICS,
+		(u32)offset, (u32)size, data);
+}
+
 void video_vk_bind_pipeline_descriptor_set(struct pipeline* pipeline_, const char* set, usize target) {
 	struct video_vk_pipeline* pipeline = (struct video_vk_pipeline*)pipeline_;
 
-	struct video_vk_impl_descriptor_set** set_ptr = table_get(pipeline->set_table, hash_string(set));
+	struct video_vk_impl_descriptor_set** set_ptr = table_get(pipeline->set_table, set);
 	if (!set_ptr) {
 		error("%s: No such descriptor set.", set);
 		return;

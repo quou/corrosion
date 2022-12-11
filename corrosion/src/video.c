@@ -901,6 +901,7 @@ static void find_procs(u32 api, bool enable_validation) {
 	video.bind_pipeline_descriptor_set = get_v_proc(bind_pipeline_descriptor_set);
 	video.update_pipeline_uniform      = get_v_proc(update_pipeline_uniform);
 	video.init_pipeline_uniform        = get_v_proc(init_pipeline_uniform);
+	video.pipeline_push_buffer         = get_api_proc(pipeline_push_buffer);
 
 	video.new_storage           = get_api_proc(new_storage);
 	video.update_storage        = get_api_proc(update_storage);

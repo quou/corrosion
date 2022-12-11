@@ -279,6 +279,7 @@ struct video {
 	void (*recreate_pipeline)(struct pipeline* pipeline);
 	void (*update_pipeline_uniform)(struct pipeline* pipeline, const char* set, const char* descriptor, const void* data);
 	void (*init_pipeline_uniform)(struct pipeline* pipeline, const char* set, const char* descriptor, const void* data);
+	void (*pipeline_push_buffer)(struct pipeline* pipeline, usize offset, usize size, const void* data);
 	void (*bind_pipeline_descriptor_set)(struct pipeline* pipeline, const char* set, usize target);
 	void (*pipeline_change_shader)(struct pipeline* pipeline, const struct shader* shader);
 

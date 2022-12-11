@@ -7,6 +7,10 @@
 #include "common.h"
 #include "video.h"
 
+/* The Vulkan spec only requires support for 128 byte push constants,
+ * so that's the maximum that we will support. */
+#define max_push_const_size 128
+
 #pragma pack(push, 1)
 struct shader_raster_header {
 	u64 v_offset;
@@ -260,7 +264,7 @@ struct video_vk_impl_descriptor_set {
 	VkDescriptorSetLayout layout;
 	VkDescriptorSet sets[max_frames_in_flight];
 
-	table(u64, struct video_vk_impl_uniform_buffer*) uniforms;
+	table(const char*, struct video_vk_impl_uniform_buffer*) uniforms;
 };
 
 struct video_vk_pipeline {
@@ -274,7 +278,7 @@ struct video_vk_pipeline {
 	struct video_vk_impl_descriptor_set* desc_sets;
 	struct video_vk_impl_uniform_buffer* uniforms;
 
-	table(u64, struct video_vk_impl_descriptor_set*) set_table;
+	table(const char*, struct video_vk_impl_descriptor_set*) set_table;
 
 	VkDescriptorPool descriptor_pool;
 

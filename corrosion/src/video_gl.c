@@ -700,6 +700,12 @@ void video_gl_bind_pipeline_descriptor_set(struct pipeline* pipeline_, const cha
 	}
 }
 
+void video_gl_pipeline_push_buffer(struct pipeline* pipeline_, usize offset, usize size, const void* data) {
+	struct video_gl_pipeline* pipeline = (struct video_gl_pipeline*)pipeline_;
+
+	abort_with("Not implemented.");
+}
+
 static void pipeline_setup_va(struct video_gl_pipeline* pipeline, u32 binding) {
 	struct pipeline_attribute_binding* ab = table_get(pipeline->attribute_bindings, binding);
 
