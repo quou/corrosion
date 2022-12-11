@@ -179,6 +179,9 @@ struct ui {
 	v2f cursor_pos;
 	v4f current_clip;
 
+	char* wrap_buffer;
+	usize wrap_buffer_size;
+
 	vector(struct ui_container) container_stack;
 
 	char* temp_str;
@@ -803,6 +806,7 @@ void free_ui(struct ui* ui) {
 		free_vector(m->cmd_views);
 	}
 
+	core_free(ui->wrap_buffer);
 	core_free(ui->temp_str);
 	free_vector(ui->columns);
 	free_vector(ui->container_stack);
@@ -1237,10 +1241,61 @@ void ui_columns(struct ui* ui, usize count, f32* columns) {
 	ui->current_item_height = 0.0f;
 }
 
+static i32 word_wrap_len(struct font* font, const char* string, i32 width) {
+	i32 i = 0;
+
+	i32 string_len = (i32)strlen(string);
+	i32 line_start = 0;
+
+	i32 len = 0;
+
+	while (i < string_len) {
+		for (i32 c = 1; c < width - 8; c += get_char_dimensions(font, string + i).x) {
+			if (i >= string_len) {
+				len++;
+				return len;
+			}
+
+			len++;
+
+			if (string[i] == '\n') {
+				line_start = i;
+				c = 1;
+			}
+
+			i++;
+		}
+
+		if (isspace(string[i])) {
+			i++;
+			len++;
+			line_start = i;
+		} else {
+			for (i32 c = i; c > 0; c--) {
+				if (isspace(string[c])) {
+					i = c + 1;
+					line_start = i;
+					break;
+				}
+
+				if (c <= line_start) {
+					i++;
+					len++;
+					break;
+				}
+			}
+		}
+	}
+
+	len++;
+
+	return len;
+}
+
 static char* word_wrap(struct font* font, char* buffer, const char* string, i32 width) {
 	i32 i = 0;
 
-	u32 string_len = (u32)strlen(string);
+	i32 string_len = (i32)strlen(string);
 	i32 line_start = 0;
 
 	while (i < string_len) {
@@ -1298,12 +1353,16 @@ bool ui_text_ex(struct ui* ui, const char* class, const char* text, bool wrapped
 				(container->padding.x + container->padding.z), get_font_height(ui->font)),
 			make_v2f(0.0f, style.padding.value.y + style.padding.value.w));
 
-		char* t = core_alloc(strlen(text) + 256);
-		strcpy(t, text);
+		i32 wrap_count = word_wrap_len(ui->font, text, wrap_dim.x);
+		if (wrap_count > (i32)ui->wrap_buffer_size) {
+			ui->wrap_buffer = core_realloc(ui->wrap_buffer, wrap_count + 1);
+		}
 
-		word_wrap(ui->font, t, text, (i32)wrap_dim.x);
+		strcpy(ui->wrap_buffer, text);
 
-		text = t;
+		word_wrap(ui->font, ui->wrap_buffer, text, (i32)wrap_dim.x);
+
+		text = ui->wrap_buffer;
 	}
 
 	const v2f text_dimensions = get_text_dimensions(ui->font, text);
@@ -1341,10 +1400,6 @@ bool ui_text_ex(struct ui* ui, const char* class, const char* text, bool wrapped
 	ui_advance(ui,
 		make_v2f(dimensions.x + style.outline_thickness.value * 2.0f,
 		dimensions.y + container->spacing + style.outline_thickness.value * 2.0f));
-	
-	if (wrapped) {
-		core_free((void*)text);
-	}
 
 	if (hovered && mouse_btn_just_released(mouse_btn_left)) { return true; }
 	return false;
