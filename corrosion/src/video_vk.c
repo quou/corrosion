@@ -715,6 +715,7 @@ void video_vk_free(struct video_vk_allocation* alloc) {
 		i64 idx = video_vk_chunk_find(chunk, alloc);
 		if (idx >= 0) {
 			chunk->allocs[idx].free = true;
+			break;
 		}
 	}
 }
