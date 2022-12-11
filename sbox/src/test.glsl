@@ -9,14 +9,10 @@ layout (location = 0) out VSOut {
 	vec2 uv;
 } fs_in;
 
-layout (push_constant) uniform PushData {
-	vec2 offset;
-};
-
 void main() {
 	fs_in.uv = uv;
 
-	gl_Position = vec4(offset + position, 0.0, 1.0);
+	gl_Position = vec4(position, 0.0, 1.0);
 }
 
 #end vertex

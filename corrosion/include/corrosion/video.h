@@ -226,10 +226,11 @@ enum {
 };
 
 enum {
-	video_feature_base    = 1 << 0,
-	video_feature_compute = 1 << 1,
-	video_feature_storage = 1 << 2,
-	video_feature_barrier = 1 << 3
+	video_feature_base        = 1 << 0,
+	video_feature_compute     = 1 << 1,
+	video_feature_storage     = 1 << 2,
+	video_feature_barrier     = 1 << 3,
+	video_feature_push_buffer = 1 << 4
 };
 
 m4f get_camera_view(const struct camera* camera);

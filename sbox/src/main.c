@@ -482,7 +482,7 @@ struct app_config cr_config() {
 	return (struct app_config) {
 		.name = "Sandbox",
 		.video_config = (struct video_config) {
-			.api = video_api_vulkan,
+			.api = video_api_opengl,
 #ifdef debug
 			.enable_validation = true,
 #else
@@ -779,8 +779,6 @@ void cr_update(f64 ts) {
 
 	video.begin_framebuffer(app.fb);
 		video.begin_pipeline(app.pipeline);
-			v2f offset = make_v2f(0.1f, 0);
-			video.pipeline_push_buffer(app.pipeline, 0, sizeof(v2f), &offset);
 			video.bind_pipeline_descriptor_set(app.pipeline, "primary", 0);
 
 			if (key_pressed(key_space)) {
