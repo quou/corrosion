@@ -645,7 +645,7 @@ bool video_vk_chunk_alloc(struct video_vk_chunk* chunk, struct video_vk_allocati
 				block->ptr = null;
 			}
 
-			if (block->size == size) {
+			if (block->size == ac_size) {
 				block->free = false;
 				*alloc = *block;
 				return true;
