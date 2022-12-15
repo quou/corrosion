@@ -1078,7 +1078,7 @@ frame_begin:
 		vctx.want_recreate = false;
 		recreate();
 		goto frame_begin;
-	} else if (r != VK_SUCCESS) {
+	} else if (r != VK_SUCCESS && r != VK_SUBOPTIMAL_KHR) {
 		abort_with("Failed to acquire swapchain image.");
 	}
 
