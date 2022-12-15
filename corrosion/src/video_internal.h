@@ -113,7 +113,7 @@ struct video_vk_allocation video_vk_allocate(VkDeviceSize size, VkDeviceSize ali
 void video_vk_free(struct video_vk_allocation* alloc);
 void* video_vk_map(struct video_vk_allocation* alloc);
 
-#define video_vk_chunk_min_size 1024
+#define video_vk_chunk_min_size (1024 * 1024)
 
 struct vk_video_context {
 	VkInstance instance;
