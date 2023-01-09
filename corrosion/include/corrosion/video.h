@@ -8,7 +8,8 @@
 enum {
 	video_api_none = 0,
 	video_api_vulkan,
-	video_api_opengl
+	video_api_opengl,
+	video_api_dx12
 };
 
 enum {

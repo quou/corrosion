@@ -13,7 +13,7 @@ includes = -I$(VULKAN_SDK)/include -I../../../corrosion/include/corrosion -I../.
 target_name = cr
 deps = 
 srcdir = ../../../corrosion/src
-defines =
+defines = -Dcr_no_dx12
 cflags = -std=gnu11
 
 bir_builder = $(target_dir)/bir

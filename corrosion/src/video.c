@@ -2,6 +2,7 @@
 #include "video.h"
 #include "video_gl.h"
 #include "video_vk.h"
+#include "video_dx12.h"
 
 struct video video;
 
@@ -32,8 +33,10 @@ struct {
 #define get_api_proc(n_) cat(video_vk_, n_)
 #else
 #define get_api_proc(n_) ( \
-	video.api == video_api_vulkan ? cat(video_vk_, n_) : \
-	video.api == video_api_opengl ? cat(video_gl_, n_) : null)
+	video.api == video_api_vulkan ? cat(video_vk_, n_)   : \
+	video.api == video_api_opengl ? cat(video_gl_, n_)   : \
+	video.api == video_api_dx12   ? cat(video_dx12_, n_) : \
+	null)
 #endif
 
 #define get_v_proc(n_) \
@@ -866,8 +869,9 @@ static void validated_set_scissor(v4i rect) {
 
 static const char* impl_get_api_name() {
 	return
-		video.api == video_api_vulkan ? "Vulkan" :
-		video.api == video_api_opengl ? "OpenGL" :
+		video.api == video_api_vulkan ? "Vulkan"     :
+		video.api == video_api_opengl ? "OpenGL"     :
+		video.api == video_api_dx12   ? "DirectX 12" :
 		"<Unkown API>";
 }
 
@@ -973,7 +977,11 @@ u32 video_best_api(u32 features) {
 void init_video(const struct video_config* config) {
 	video.api = config->api;
 
-	if (config->api != video_api_vulkan && config->api != video_api_opengl) {
+	if (
+		config->api != video_api_vulkan &&
+		config->api != video_api_opengl &&
+		config->api != video_api_dx12
+	) {
 		info("%d", config->api);
 		abort_with("Invalid video API.");
 	}
@@ -1012,6 +1020,20 @@ void init_video(const struct video_config* config) {
 	case video_api_opengl:
 		abort_with("Compiled without OpenGL support.");
 		break;
+#endif
+#ifndef cr_no_dx12
+	case video_api_dx12:
+		info("Using API: DirectX 12.");
+
+		find_procs(config->api, config->enable_validation);
+		video.init(config);
+
+		video_gl_register_resources();
+		break;
+#else
+		case video_api_dx12
+			abort_with("Compiled without DirectX12 support.")
+			break;
 #endif
 	}
 }

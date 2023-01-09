@@ -28,7 +28,7 @@ struct app_config cr_config() {
 	return (struct app_config) {
 		.name = "3D Renderer",
 		.video_config = (struct video_config) {
-			.api = video_best_api(video_feature_base),
+			.api = video_api_dx12,
 #ifdef debug
 			.enable_validation = true,
 #else
