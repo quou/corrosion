@@ -4,6 +4,21 @@
 
 #include "common.h"
 
+/* Maintain C++ compatibility in this file for the DirectX backend. */
+
+/* Because the syntax is different for initialising structs
+ * in C99 and C++; that is, C++ doesn't have support for
+ * C99's compound literals. */
+#if defined(__cplusplus)
+template <typename T, typename... Args>
+T _imp_make_struct(Args... args) {
+	return T { args... };
+}
+#define make_struct(t_, ...) (_imp_make_struct<t_>(__VA_ARGS__))
+#else
+#define make_struct(t_, ...) ((t_) { __VA_ARGS__ })
+#endif
+
 #define cr_min(a_, b_) ((a_) < (b_) ? (a_) : (b_))
 #define cr_max(a_, b_) ((a_) > (b_) ? (a_) : (b_))
 
@@ -39,11 +54,20 @@ typedef cr_m4(f32) m4f;
 
 typedef v4f quat;
 
-#if !defined(__cplusplus)
-
 #define pi_f 3.14159265358f
 #define pi_d 3.14159265358979323846
 
+#if defined(__cplusplus)
+template <typename T>
+T to_rad(T deg) {
+	return deg * ((T)pi_d / (T)180);
+}
+
+template <typename T>
+T to_deg(T rad) {
+	return rad * ((T)180 * (T)pi_d);
+}
+#else
 #define to_rad(v_) _Generic((v_), \
 		f32: (v_ * (pi_f / 180.0f)), \
 		f64: (v_ * (pi_d / 180.0)),  \
@@ -57,6 +81,7 @@ typedef v4f quat;
 		const f32: (v_ * (180.0f / pi_f)), \
 		const f64: (v_ * (180.0  / pi_d)) \
 	)
+#endif
 
 #define lerp(a_, b_, t_) ((a_) + (t_) * ((b_) - (a_)))
 #define clamp(v_, min_, max_) (cr_max(min_, cr_min(max_, v_)))
@@ -64,9 +89,9 @@ typedef v4f quat;
 #define saturate(v_) (clamp(v_, 0.0f, 1.0f))
 
 /* make_v */
-#define make_v2(t_, x_, y_)         ((t_) { x_, y_ })
-#define make_v3(t_, x_, y_, z_)     ((t_) { x_, y_, z_ })
-#define make_v4(t_, x_, y_, z_, w_) ((t_) { x_, y_, z_, w_ })
+#define make_v2(t_, x_, y_)         (make_struct(t_, x_, y_))
+#define make_v3(t_, x_, y_, z_)     (make_struct(t_, x_, y_, z_))
+#define make_v4(t_, x_, y_, z_, w_) (make_struct(t_, x_, y_, z_, w_))
 #define make_v2f(x_, y_)         make_v2(v2f, (f32)x_, (f32)y_)
 #define make_v2i(x_, y_)         make_v2(v2i, (i32)x_, (i32)y_)
 #define make_v2u(x_, y_)         make_v2(v2u, (u32)x_, (u32)y_)
@@ -91,6 +116,7 @@ typedef v4f quat;
 /* Swizzle. */
 #define v_xy(t_, v_)   make_v2(t_, (v_).x, (v_).y)
 #define v_xz(t_, v_)   make_v2(t_, (v_).x, (v_).z)
+#define v_xw(t_, v_)   make_v2(t_, (v_).x, (v_).w)
 #define v_xw(t_, v_)   make_v2(t_, (v_).x, (v_).w)
 #define v_yz(t_, v_)   make_v2(t_, (v_).y, (v_).z)
 #define v_yw(t_, v_)   make_v2(t_, (v_).y, (v_).w)
@@ -290,9 +316,9 @@ force_inline v4f hsva_to_rgba(v4f hsva) {
 }
 
 /* v_add */
-#define _v2_add(t_, a_, b_) ((t_) { (a_).x + (b_).x, (a_).y + (b_).y })
-#define _v3_add(t_, a_, b_) ((t_) { (a_).x + (b_).x, (a_).y + (b_).y, (a_).z + (b_).z })
-#define _v4_add(t_, a_, b_) ((t_) { (a_).x + (b_).x, (a_).y + (b_).y, (a_).z + (b_).z, (a_).w + (b_).w })
+#define _v2_add(t_, a_, b_) (make_struct(t_, (a_).x + (b_).x, (a_).y + (b_).y))
+#define _v3_add(t_, a_, b_) (make_struct(t_, (a_).x + (b_).x, (a_).y + (b_).y, (a_).z + (b_).z))
+#define _v4_add(t_, a_, b_) (make_struct(t_, (a_).x + (b_).x, (a_).y + (b_).y, (a_).z + (b_).z, (a_).w + (b_).w))
 
 #define v2f_add(a_, b_) _v2_add(v2f, a_, b_)
 #define v2i_add(a_, b_) _v2_add(v2i, a_, b_)
@@ -305,9 +331,9 @@ force_inline v4f hsva_to_rgba(v4f hsva) {
 #define v4u_add(a_, b_) _v4_add(v4u, a_, b_)
 
 /* v_sub */
-#define _v2_sub(t_, a_, b_) ((t_) { (a_).x - (b_).x, (a_).y - (b_).y })
-#define _v3_sub(t_, a_, b_) ((t_) { (a_).x - (b_).x, (a_).y - (b_).y, (a_).z - (b_).z })
-#define _v4_sub(t_, a_, b_) ((t_) { (a_).x - (b_).x, (a_).y - (b_).y, (a_).z - (b_).z, (a_).w - (b_).w })
+#define _v2_sub(t_, a_, b_) (make_struct(t_, (a_).x - (b_).x, (a_).y - (b_).y))
+#define _v3_sub(t_, a_, b_) (make_struct(t_, (a_).x - (b_).x, (a_).y - (b_).y, (a_).z - (b_).z))
+#define _v4_sub(t_, a_, b_) (make_struct(t_, (a_).x - (b_).x, (a_).y - (b_).y, (a_).z - (b_).z, (a_).w - (b_).w))
 
 #define v2f_sub(a_, b_) _v2_sub(v2f, a_, b_)
 #define v2i_sub(a_, b_) _v2_sub(v2i, a_, b_)
@@ -320,9 +346,9 @@ force_inline v4f hsva_to_rgba(v4f hsva) {
 #define v4u_sub(a_, b_) _v4_sub(v4u, a_, b_)
 
 /* v_mul */
-#define _v2_mul(t_, a_, b_) ((t_) { (a_).x * (b_).x, (a_).y * (b_).y })
-#define _v3_mul(t_, a_, b_) ((t_) { (a_).x * (b_).x, (a_).y * (b_).y, (a_).z * (b_).z })
-#define _v4_mul(t_, a_, b_) ((t_) { (a_).x * (b_).x, (a_).y * (b_).y, (a_).z * (b_).z, (a_).w * (b_).w })
+#define _v2_mul(t_, a_, b_) (make_struct(t_, (a_).x * (b_).x, (a_).y * (b_).y))
+#define _v3_mul(t_, a_, b_) (make_struct(t_, (a_).x * (b_).x, (a_).y * (b_).y, (a_).z * (b_).z))
+#define _v4_mul(t_, a_, b_) (make_struct(t_, (a_).x * (b_).x, (a_).y * (b_).y, (a_).z * (b_).z, (a_).w * (b_).w))
 
 #define v2f_mul(a_, b_) _v2_mul(v2f, a_, b_)
 #define v2i_mul(a_, b_) _v2_mul(v2i, a_, b_)
@@ -335,9 +361,9 @@ force_inline v4f hsva_to_rgba(v4f hsva) {
 #define v4u_mul(a_, b_) _v4_mul(v4u, a_, b_)
 
 /* v_div */
-#define _v2_div(t_, a_, b_) ((t_) { (a_).x / (b_).x, (a_).y / (b_).y })
-#define _v3_div(t_, a_, b_) ((t_) { (a_).x / (b_).x, (a_).y / (b_).y, (a_).z / (b_).z })
-#define _v4_div(t_, a_, b_) ((t_) { (a_).x / (b_).x, (a_).y / (b_).y, (a_).z / (b_).z, (a_).w / (b_).w })
+#define _v2_div(t_, a_, b_) (make_struct(t_, (a_).x / (b_).x, (a_).y / (b_).y))
+#define _v3_div(t_, a_, b_) (make_struct(t_, (a_).x / (b_).x, (a_).y / (b_).y, (a_).z / (b_).z))
+#define _v4_div(t_, a_, b_) (make_struct(t_, (a_).x / (b_).x, (a_).y / (b_).y, (a_).z / (b_).z, (a_).w / (b_).w))
 
 #define v2f_div(a_, b_) _v2_div(v2f, a_, b_)
 #define v2i_div(a_, b_) _v2_div(v2i, a_, b_)
@@ -350,9 +376,9 @@ force_inline v4f hsva_to_rgba(v4f hsva) {
 #define v4u_div(a_, b_) _v4_div(v4u, a_, b_)
 
 /* v_scale */
-#define _v2_scale(t_, a_, b_) ((t_) { (a_).x * b_, (a_).y * b_ })
-#define _v3_scale(t_, a_, b_) ((t_) { (a_).x * b_, (a_).y * b_, (a_).z * b_ })
-#define _v4_scale(t_, a_, b_) ((t_) { (a_).x * b_, (a_).y * b_, (a_).z * b_, (a_).w * b_ })
+#define _v2_scale(t_, a_, b_) (make_struct(t_, (a_).x * b_, (a_).y * b_))
+#define _v3_scale(t_, a_, b_) (make_struct(t_, (a_).x * b_, (a_).y * b_, (a_).z * b_))
+#define _v4_scale(t_, a_, b_) (make_struct(t_, (a_).x * b_, (a_).y * b_, (a_).z * b_, (a_).w * b_))
 
 #define v2f_scale(a_, b_) _v2_scale(v2f, a_, b_)
 #define v2i_scale(a_, b_) _v2_scale(v2i, a_, b_)
@@ -378,19 +404,19 @@ force_inline v4f hsva_to_rgba(v4f hsva) {
 #define _v2_normalised(t_, t2_) \
 	force_inline t_ t_##_normalised(t_ v_) { \
 		const t2_ l = v2_mag(v_); \
-		return (t_) { v_.x / l, v_.y / l }; \
+		return make_struct(t_, v_.x / l, v_.y / l); \
 	}
 
 #define _v3_normalised(t_, t2_) \
 	force_inline t_ t_##_normalised(t_ v_) { \
 		const t2_ l = v3_mag(v_); \
-		return (t_) { v_.x / l, v_.y / l, v_.z / l }; \
+		return make_struct(t_, v_.x / l, v_.y / l, v_.z / l); \
 	}
 
 #define _v4_normalised(t_, t2_) \
 	force_inline t_ t_##_normalised(t_ v_) { \
 		const t2_ l = v4_mag(v_); \
-		return (t_) { v_.x / l, v_.y / l, v_.z / l, v_.w / l }; \
+		return make_struct(t_, v_.x / l, v_.y / l, v_.z / l, v_.w / l); \
 	}
 
 _v2_normalised(v2f, f32)
@@ -426,6 +452,22 @@ _v4_normalised(v4f, f32)
 	((a_).x * (b_).x + (a_).y * (b_).y + (a_).z * (b_).z + (a_).w * (b_).w)
 
 /* v_abs */
+#if defined(__cplusplus)
+template <typename T>
+T v2_abs(const T& v) {
+	return T { (T)fabsf(v).x, (T)fabsf(v).y };
+}
+
+template <typename T>
+T v3_abs(const T& v) {
+	return T{ (T)fabsf(v).x, (T)fabsf(v).y, (T)fabsf(v).z };
+}
+
+template <typename T>
+T v4_abs(const T& v) {
+	return T{ (T)fabsf(v).x, (T)fabsf(v).y, (T)fabsf(v).z, (T)fabsf(v).w };
+}
+#else
 #define v2_abs(v_) _Generic((v_), \
 		v2f: make_v2f(fabsf((v_).x), fabsf((v_).y)), \
 		v2i: make_v2f(fabsf((v_).x), fabsf((v_).y)), \
@@ -443,6 +485,7 @@ _v4_normalised(v4f, f32)
 		v4i: make_v4f(fabsf((v_).x), fabsf((v_).y), fabsf((v_).z), fabsf((v_).w)), \
 		v4u: make_v4f(fabsf((v_).x), fabsf((v_).y), fabsf((v_).z), fabsf((v_).w))  \
 	)
+#endif
 
 /* Quaternion. */
 #define make_quat(a_, s_) make_v4f((a_).x, (a_).y, (a_).z, s_)
@@ -450,7 +493,7 @@ _v4_normalised(v4f, f32)
 #define quat_identity()	make_quat(make_v3f(0.0f, 0.0f, 0.0f), 1.0f)
 
 force_inline quat quat_scale(quat q, f32 s) {
-	return (quat) { q.x * s, q.y * s, q.z * s, q.w };
+	return make_struct(quat, q.x * s, q.y * s, q.z * s, q.w);
 }
 
 force_inline f32 quat_normal(quat q) {
@@ -458,12 +501,12 @@ force_inline f32 quat_normal(quat q) {
 }
 
 force_inline quat quat_conjugate(quat q) {
-	return (quat) {
+	return make_struct(quat,
 		-q.x,
 		-q.y,
 		-q.z,
 		 q.w
-	};
+	);
 }
 
 force_inline quat quat_normalised(quat q) {
@@ -471,7 +514,7 @@ force_inline quat quat_normalised(quat q) {
 }
 
 force_inline quat quat_mul(quat a, quat b) {
-	return quat_normalised((quat) {
+	return quat_normalised(make_struct(quat,
 		 a.x * b.w +
 		 a.y * b.z -
 		 a.z * b.y +
@@ -491,12 +534,12 @@ force_inline quat quat_mul(quat a, quat b) {
 		 a.y * b.y -
 		 a.z * b.z +
 		 a.w * b.w
-	});
+	));
 }
 
 /* Multiply without normalising. */
 force_inline quat quat_mul_dn(quat a, quat b) {
-	return (quat) {
+	return make_struct(quat,
 		 a.x * b.w +
 		 a.y * b.z -
 		 a.z * b.y +
@@ -516,7 +559,7 @@ force_inline quat quat_mul_dn(quat a, quat b) {
 		 a.y * b.y -
 		 a.z * b.z +
 		 a.w * b.w
-	};
+	);
 }
 
 force_inline quat quat_rotate(f32 angle, v3f axis) {
@@ -544,78 +587,86 @@ force_inline quat euler(v3f a) {
 }
 
 /* 4x4 float matrix. */
+force_inline m4f init_m4f(
+	float aa, float ab, float ac, float ad,
+	float ba, float bb, float bc, float bd,
+	float ca, float cb, float cc, float cd,
+	float da, float db, float dc, float dd
+) {
+	m4f r;
+	r.m[0][0] = aa; r.m[0][1] = ab; r.m[0][2] = ac; r.m[0][3] = ad;
+	r.m[1][0] = ba; r.m[1][1] = bb; r.m[1][2] = bc; r.m[1][3] = bd;
+	r.m[2][0] = ca; r.m[2][1] = cb; r.m[2][2] = cc; r.m[2][3] = cd;
+	r.m[3][0] = da; r.m[3][1] = db; r.m[3][2] = dc; r.m[3][3] = dd;
+	return r;
+}
+
 #define make_m4f(d_) \
-	((m4f) {{ \
-		{ d_,   0.0f, 0.0f, 0.0f }, \
-		{ 0.0f, d_,   0.0f, 0.0f }, \
-		{ 0.0f, 0.0f, d_,   0.0f }, \
-		{ 0.0f, 0.0f, 0.0f, d_   }, \
-	}})
+	(init_m4f( \
+		d_,   0.0f, 0.0f, 0.0f, \
+		0.0f, d_,   0.0f, 0.0f, \
+		0.0f, 0.0f, d_,   0.0f, \
+		0.0f, 0.0f, 0.0f, d_    \
+	))
 
 #define m4f_zero() \
-	((m4f) {{ \
-		{ 0.0f, 0.0f, 0.0f, 0.0f }, \
-		{ 0.0f, 0.0f, 0.0f, 0.0f }, \
-		{ 0.0f, 0.0f, 0.0f, 0.0f }, \
-		{ 0.0f, 0.0f, 0.0f, 0.0f }, \
-	}})
+	(init_m4f( \
+		0.0f, 0.0f, 0.0f, 0.0f, \
+		0.0f, 0.0f, 0.0f, 0.0f, \
+		0.0f, 0.0f, 0.0f, 0.0f, \
+		0.0f, 0.0f, 0.0f, 0.0f  \
+	))
 
 #define m4f_identity() make_m4f(1.0f)
 
 #define m4f_screenspace(hw_, hh_) \
-	((m4f) {{ \
-		{ hw_,  0.0f,   0.0f, 0.0f }, \
-		{ 0.0f, -(hh_), 0.0f, 0.0f }, \
-		{ 0.0f, 0.0f,   1.0f, 0.0f }, \
-		{ hw_,  hh_,    0.0f, 1.0f }, \
-	}})
+	(init_m4f( \
+		hw_,  0.0f,   0.0f, 0.0f, \
+		0.0f, -(hh_), 0.0f, 0.0f, \
+		0.0f, 0.0f,   1.0f, 0.0f, \
+		hw_,  hh_,    0.0f, 1.0f  \
+	))
 
 force_inline m4f m4f_mul(m4f a, m4f b) {
-	return ((m4f) {{ \
-		{
-			a.m[0][0] * b.m[0][0] + a.m[1][0] * b.m[0][1] + a.m[2][0] * b.m[0][2] + a.m[3][0] * b.m[0][3],
-			a.m[0][1] * b.m[0][0] + a.m[1][1] * b.m[0][1] + a.m[2][1] * b.m[0][2] + a.m[3][1] * b.m[0][3],
-			a.m[0][2] * b.m[0][0] + a.m[1][2] * b.m[0][1] + a.m[2][2] * b.m[0][2] + a.m[3][2] * b.m[0][3],
-			a.m[0][3] * b.m[0][0] + a.m[1][3] * b.m[0][1] + a.m[2][3] * b.m[0][2] + a.m[3][3] * b.m[0][3] 
-		},
-		{
-			a.m[0][0] * b.m[1][0] + a.m[1][0] * b.m[1][1] + a.m[2][0] * b.m[1][2] + a.m[3][0] * b.m[1][3],
-			a.m[0][1] * b.m[1][0] + a.m[1][1] * b.m[1][1] + a.m[2][1] * b.m[1][2] + a.m[3][1] * b.m[1][3],
-			a.m[0][2] * b.m[1][0] + a.m[1][2] * b.m[1][1] + a.m[2][2] * b.m[1][2] + a.m[3][2] * b.m[1][3],
-			a.m[0][3] * b.m[1][0] + a.m[1][3] * b.m[1][1] + a.m[2][3] * b.m[1][2] + a.m[3][3] * b.m[1][3] 
-		},
-		{
-			a.m[0][0] * b.m[2][0] + a.m[1][0] * b.m[2][1] + a.m[2][0] * b.m[2][2] + a.m[3][0] * b.m[2][3],
-			a.m[0][1] * b.m[2][0] + a.m[1][1] * b.m[2][1] + a.m[2][1] * b.m[2][2] + a.m[3][1] * b.m[2][3],
-			a.m[0][2] * b.m[2][0] + a.m[1][2] * b.m[2][1] + a.m[2][2] * b.m[2][2] + a.m[3][2] * b.m[2][3],
-			a.m[0][3] * b.m[2][0] + a.m[1][3] * b.m[2][1] + a.m[2][3] * b.m[2][2] + a.m[3][3] * b.m[2][3] 
-		},
-		{
-			a.m[0][0] * b.m[3][0] + a.m[1][0] * b.m[3][1] + a.m[2][0] * b.m[3][2] + a.m[3][0] * b.m[3][3],
-			a.m[0][1] * b.m[3][0] + a.m[1][1] * b.m[3][1] + a.m[2][1] * b.m[3][2] + a.m[3][1] * b.m[3][3],
-			a.m[0][2] * b.m[3][0] + a.m[1][2] * b.m[3][1] + a.m[2][2] * b.m[3][2] + a.m[3][2] * b.m[3][3],
-			a.m[0][3] * b.m[3][0] + a.m[1][3] * b.m[3][1] + a.m[2][3] * b.m[3][2] + a.m[3][3] * b.m[3][3] 
-		},
-	}});
+	return init_m4f(
+		a.m[0][0] * b.m[0][0] + a.m[1][0] * b.m[0][1] + a.m[2][0] * b.m[0][2] + a.m[3][0] * b.m[0][3],
+		a.m[0][1] * b.m[0][0] + a.m[1][1] * b.m[0][1] + a.m[2][1] * b.m[0][2] + a.m[3][1] * b.m[0][3],
+		a.m[0][2] * b.m[0][0] + a.m[1][2] * b.m[0][1] + a.m[2][2] * b.m[0][2] + a.m[3][2] * b.m[0][3],
+		a.m[0][3] * b.m[0][0] + a.m[1][3] * b.m[0][1] + a.m[2][3] * b.m[0][2] + a.m[3][3] * b.m[0][3],
 
+		a.m[0][0] * b.m[1][0] + a.m[1][0] * b.m[1][1] + a.m[2][0] * b.m[1][2] + a.m[3][0] * b.m[1][3],
+		a.m[0][1] * b.m[1][0] + a.m[1][1] * b.m[1][1] + a.m[2][1] * b.m[1][2] + a.m[3][1] * b.m[1][3],
+		a.m[0][2] * b.m[1][0] + a.m[1][2] * b.m[1][1] + a.m[2][2] * b.m[1][2] + a.m[3][2] * b.m[1][3],
+		a.m[0][3] * b.m[1][0] + a.m[1][3] * b.m[1][1] + a.m[2][3] * b.m[1][2] + a.m[3][3] * b.m[1][3],
+
+		a.m[0][0] * b.m[2][0] + a.m[1][0] * b.m[2][1] + a.m[2][0] * b.m[2][2] + a.m[3][0] * b.m[2][3],
+		a.m[0][1] * b.m[2][0] + a.m[1][1] * b.m[2][1] + a.m[2][1] * b.m[2][2] + a.m[3][1] * b.m[2][3],
+		a.m[0][2] * b.m[2][0] + a.m[1][2] * b.m[2][1] + a.m[2][2] * b.m[2][2] + a.m[3][2] * b.m[2][3],
+		a.m[0][3] * b.m[2][0] + a.m[1][3] * b.m[2][1] + a.m[2][3] * b.m[2][2] + a.m[3][3] * b.m[2][3],
+
+		a.m[0][0] * b.m[3][0] + a.m[1][0] * b.m[3][1] + a.m[2][0] * b.m[3][2] + a.m[3][0] * b.m[3][3],
+		a.m[0][1] * b.m[3][0] + a.m[1][1] * b.m[3][1] + a.m[2][1] * b.m[3][2] + a.m[3][1] * b.m[3][3],
+		a.m[0][2] * b.m[3][0] + a.m[1][2] * b.m[3][1] + a.m[2][2] * b.m[3][2] + a.m[3][2] * b.m[3][3],
+		a.m[0][3] * b.m[3][0] + a.m[1][3] * b.m[3][1] + a.m[2][3] * b.m[3][2] + a.m[3][3] * b.m[3][3] 
+	);
 }
 
 force_inline m4f m4f_translation(v3f v) {
-	return (m4f) { {
-		{ 1.0f, 0.0f, 0.0f, 0.0f },
-		{ 0.0f, 1.0f, 0.0f, 0.0f },
-		{ 0.0f, 0.0f, 1.0f, 0.0f },
-		{ v.x,  v.y,  v.z,  1.0f },
-	} };
+	return init_m4f(
+		1.0f, 0.0f, 0.0f, 0.0f,
+		0.0f, 1.0f, 0.0f, 0.0f,
+		0.0f, 0.0f, 1.0f, 0.0f,
+		v.x,  v.y,  v.z,  1.0f
+	);
 }
 
 force_inline m4f m4f_scale(v3f v) {
-	return (m4f) { {
-		{ v.x,  0.0f, 0.0f, 0.0f },
-		{ 0.0f, v.y,  0.0f, 0.0f },
-		{ 0.0f, 0.0f, v.z,  0.0f },
-		{ 0.0f, 0.0f, 0.0f, 1.0f },
-	} };
+	return init_m4f(
+		v.x,  0.0f, 0.0f, 0.0f,
+		0.0f, v.y,  0.0f, 0.0f,
+		0.0f, 0.0f, v.z,  0.0f,
+		0.0f, 0.0f, 0.0f, 1.0f
+	);
 }
 
 force_inline m4f m4f_rotation(quat q) {
@@ -719,4 +770,3 @@ force_inline m4f m4f_persp(f32 fov, f32 aspect, f32 near_clip, f32 far_clip) {
 
 	return r;
 }
-#endif

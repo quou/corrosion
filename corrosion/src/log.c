@@ -8,21 +8,21 @@
 
 #include "core.h"
 
-void info(const char* fmt, ...) {
+cpp_compat void info(const char* fmt, ...) {
 	va_list args;
 	va_start(args, fmt);
 	vinfo(fmt, args);
 	va_end(args);
 }
 
-void error(const char* fmt, ...) {
+cpp_compat void error(const char* fmt, ...) {
 	va_list args;
 	va_start(args, fmt);
 	verror(fmt, args);
 	va_end(args);
 }
 
-void warning(const char* fmt, ...) {
+cpp_compat void warning(const char* fmt, ...) {
 	va_list args;
 	va_start(args, fmt);
 	vwarning(fmt, args);
@@ -35,7 +35,7 @@ void warning(const char* fmt, ...) {
  * Most terminal emulators on Linux do, however, so we don't bother checking if
  * it does. We don't do coloured output on Emscripten. */
 
-void vinfo(const char* fmt, va_list args) {
+cpp_compat void vinfo(const char* fmt, va_list args) {
 #if defined(_WIN32)
 		HANDLE console = GetStdHandle(STD_OUTPUT_HANDLE);
 		SetConsoleTextAttribute(console, FOREGROUND_GREEN);
@@ -51,7 +51,7 @@ void vinfo(const char* fmt, va_list args) {
 
 }
 
-void verror(const char* fmt, va_list args) {
+cpp_compat void verror(const char* fmt, va_list args) {
 #if defined(_WIN32)
 		HANDLE console = GetStdHandle(STD_OUTPUT_HANDLE);
 		SetConsoleTextAttribute(console, FOREGROUND_RED);
@@ -67,7 +67,7 @@ void verror(const char* fmt, va_list args) {
 
 }
 
-void vwarning(const char* fmt, va_list args) {
+cpp_compat void vwarning(const char* fmt, va_list args) {
 #if defined(_WIN32)
 		HANDLE console = GetStdHandle(STD_OUTPUT_HANDLE);
 		SetConsoleTextAttribute(console, FOREGROUND_RED | FOREGROUND_BLUE);
@@ -83,7 +83,7 @@ void vwarning(const char* fmt, va_list args) {
 
 }
 
-void abort_with(const char* fmt, ...) {
+cpp_compat void abort_with(const char* fmt, ...) {
 	va_list args;
 	va_start(args, fmt);
 	verror(fmt, args);
@@ -92,7 +92,7 @@ void abort_with(const char* fmt, ...) {
 	abort();
 }
 
-void vabort_with(const char* fmt, va_list args) {
+cpp_compat void vabort_with(const char* fmt, va_list args) {
 	verror(fmt, args);
 
 	abort();

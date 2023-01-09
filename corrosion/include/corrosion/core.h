@@ -18,16 +18,16 @@ extern u32 heap_allocation_count;
 u64 elf_hash(const u8* data, usize size);
 u64 hash_string(const char* str);
 
-void info(const char* fmt, ...);
-void error(const char* fmt, ...);
-void warning(const char* fmt, ...);
+cpp_compat void info(const char* fmt, ...);
+cpp_compat void error(const char* fmt, ...);
+cpp_compat void warning(const char* fmt, ...);
 
-void vinfo(const char* fmt, va_list args);
-void verror(const char* fmt, va_list args);
-void vwarning(const char* fmt, va_list args);
+cpp_compat void vinfo(const char* fmt, va_list args);
+cpp_compat void verror(const char* fmt, va_list args);
+cpp_compat void vwarning(const char* fmt, va_list args);
 
-void abort_with(const char* fmt, ...);
-void vabort_with(const char* fmt, va_list args);
+cpp_compat void abort_with(const char* fmt, ...);
+cpp_compat void vabort_with(const char* fmt, va_list args);
 
 #define cat2(x, y) x ## y
 #define cat(x, y) cat2(x, y)

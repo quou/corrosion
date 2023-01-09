@@ -362,7 +362,7 @@
     <ClCompile Include="..\..\..\corrosion\src\ui_render.c" />
     <ClCompile Include="..\..\..\corrosion\src\video.c" />
     <ClCompile Include="..\..\..\corrosion\src\video_common.c" />
-    <ClCompile Include="..\..\..\corrosion\src\video_dx12.c" />
+    <ClCompile Include="..\..\..\corrosion\src\video_dx12.cpp" />
     <ClCompile Include="..\..\..\corrosion\src\video_gl.c" />
     <ClCompile Include="..\..\..\corrosion\src\video_vk.c" />
     <ClCompile Include="..\..\..\corrosion\src\window_common.c" />

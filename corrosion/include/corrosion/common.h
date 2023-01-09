@@ -37,3 +37,8 @@ typedef size_t usize;
 	#define dont_inline
 #endif
 
+#ifdef __cplusplus
+#define cpp_compat extern "C"
+#else
+#define cpp_compat
+#endif
