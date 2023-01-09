@@ -7,6 +7,7 @@
 #include <shaderc/shaderc.hpp>
 #include <spirv_cross/spirv_cross.hpp>
 #include <spirv_cross/spirv_glsl.hpp>
+#include <spirv_cross/spirv_hlsl.hpp>
 
 extern "C" {
 #include <corrosion/common.h>
@@ -100,6 +101,10 @@ struct ShaderRasterHeader {
 	u64 f_gl_offset;
 	u64 v_gl_size;
 	u64 f_gl_size;
+	u64 v_dx_offset;
+	u64 f_dx_offset;
+	u64 v_dx_size;
+	u64 f_dx_size;
 	u64 sampler_name_table_offset;
 };
 
@@ -108,6 +113,8 @@ struct ShaderComputeHeader {
 	u64 size;
 	u64 gl_offset;
 	u64 gl_size;
+	u64 dx_offset;
+	u64 dx_size;
 };
 
 struct ShaderHeader {
@@ -282,6 +289,12 @@ static void compile_for_opengl(spirv_cross::CompilerGLSL& compiler) {
 	}
 }
 
+static void compile_for_directx(spirv_cross::CompilerHLSL& compiler) {
+	spirv_cross::CompilerHLSL::Options options;
+	options.shader_model = 67;
+	compiler.set_hlsl_options(options);
+}
+
 i32 main(i32 argc, const char** argv) {
 	if (argc < 3) {
 		error("Usage: %s file out", argv[0]);
@@ -340,13 +353,21 @@ i32 main(i32 argc, const char** argv) {
 		spirv_cross::CompilerGLSL v_compiler(vert_data);
 		spirv_cross::CompilerGLSL f_compiler(frag_data);
 
+		spirv_cross::CompilerHLSL vh_compiler(vert_data);
+		spirv_cross::CompilerHLSL fh_compiler(frag_data);
+
 		compile_for_opengl(v_compiler);
 		compile_for_opengl(f_compiler);
+
+		compile_for_directx(vh_compiler);
+		compile_for_directx(fh_compiler);
 
 		compute_set_bindings();
 		
 		std::string vert_opengl_src = v_compiler.compile();
 		std::string frag_opengl_src = f_compiler.compile();
+		std::string vert_directx_src = vh_compiler.compile();
+		std::string frag_directx_src = fh_compiler.compile();
 
 		FILE* outfile = fopen(argv[2], "wb");
 		if (!outfile) {
@@ -367,11 +388,18 @@ i32 main(i32 argc, const char** argv) {
 		r_header.f_size = frag_data.size() * sizeof(u32);
 		r_header.v_offset = sizeof header;
 		r_header.f_offset = r_header.v_offset + r_header.v_size;
+
 		r_header.v_gl_size = vert_opengl_src.size() + 1;
 		r_header.f_gl_size = frag_opengl_src.size() + 1;
 		r_header.v_gl_offset = r_header.f_offset + r_header.f_size;
 		r_header.f_gl_offset = r_header.v_gl_offset + r_header.v_gl_size;
-		r_header.sampler_name_table_offset = r_header.f_gl_offset + r_header.f_gl_size;
+		
+		r_header.v_dx_size = vert_directx_src.size() + 1;
+		r_header.f_dx_size = vert_directx_src.size() + 1;
+		r_header.v_dx_offset = r_header.f_gl_offset + r_header.f_gl_size;
+		r_header.f_dx_offset = r_header.v_dx_offset + r_header.v_dx_size;
+
+		r_header.sampler_name_table_offset = r_header.f_dx_offset + r_header.f_dx_size;
 
 		fwrite(&header, 1, sizeof header, outfile);
 		fwrite(&vert_data[0], 1, r_header.v_size, outfile);
@@ -380,6 +408,11 @@ i32 main(i32 argc, const char** argv) {
 		fwrite(vert_opengl_src.c_str(), 1, vert_opengl_src.size(), outfile);
 		fwrite("\0", 1, 1, outfile);
 		fwrite(frag_opengl_src.c_str(), 1, frag_opengl_src.size(), outfile);
+		fwrite("\0", 1, 1, outfile);
+
+		fwrite(vert_directx_src.c_str(), 1, vert_directx_src.size(), outfile);
+		fwrite("\0", 1, 1, outfile);
+		fwrite(frag_directx_src.c_str(), 1, frag_directx_src.size(), outfile);
 		fwrite("\0", 1, 1, outfile);
 
 		/* Sampler bind table */
@@ -409,9 +442,17 @@ i32 main(i32 argc, const char** argv) {
 
 		compute_set_bindings();
 
+		spirv_cross::CompilerHLSL dx_compiler(com_data);
+		compile_for_directx(dx_compiler);
+
 		std::string gl_src = "";
+		std::string dx_src = dx_compiler.compile();
 
 		FILE* outfile = fopen(argv[2], "wb");
+		if (!outfile) {
+			error("Failed to fopen %s.", argv[2]);
+			return 1;
+		}
 
 		ShaderHeader header;
 		header.header[0] = 'C';
@@ -426,10 +467,13 @@ i32 main(i32 argc, const char** argv) {
 		c_header.offset = sizeof header;
 		c_header.gl_size = gl_src.size() + 1;
 		c_header.gl_offset = c_header.offset + c_header.size;
+		c_header.dx_size = dx_src.size() + 1;
+		c_header.dx_offset = c_header.gl_offset + c_header.gl_size;
 
 		fwrite(&header, 1, sizeof header, outfile);
 		fwrite(&com_data[0], 1, com_data.size() * sizeof(u32), outfile);
 		fwrite(gl_src.c_str(), 1, gl_src.size() + 1, outfile);
+		fwrite(dx_src.c_str(), 1, dx_src.size() + 1, outfile);
 
 		fclose(outfile);
 	}

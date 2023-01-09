@@ -14,7 +14,7 @@ includes = -I$(VULKAN_SDK)/include -I../../../corrosion/include -I../../../corro
 target_name = shadercompiler
 deps =
 srcdir = ../../../shadercompiler/src
-libs = -L$(VULKAN_SDK)/lib -lshaderc_shared -lspirv-cross-cpp -lspirv-cross-glsl -lspirv-cross-util -lspirv-cross-core
+libs = -L$(VULKAN_SDK)/lib -lshaderc_shared -lspirv-cross-cpp -lspirv-cross-glsl -lspirv-cross-hlsl -lspirv-cross-util -lspirv-cross-core
 defines =
 
 ifeq ($(config),debug)
