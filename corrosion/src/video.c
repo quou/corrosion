@@ -27,16 +27,31 @@ struct {
 	table(const struct pipeline*, struct pipeline_val_meta) pipeline_meta;
 } validation_state;
 
-#if defined(cr_no_vulkan)
-#define get_api_proc(n_) cat(video_gl_, n_)
+#if defined(cr_no_vulkan) && defined(cr_no_dx12)
+	#define get_api_proc(n_) cat(video_gl_, n_)
+#elif defined(cr_no_opengl) && defined(cr_no_dx12)
+	#define get_api_proc(n_) cat(video_vk_, n_)
+#elif defined(cr_no_dx12)
+	#define get_api_proc(n_) ( \
+		video.api == video_api_vulkan ? cat(video_vk_, n_)   : \
+		video.api == video_api_opengl ? cat(video_gl_, n_)   : \
+		null)
 #elif defined(cr_no_opengl)
-#define get_api_proc(n_) cat(video_vk_, n_)
+	#define get_api_proc(n_) ( \
+		video.api == video_api_vulkan ? cat(video_vk_, n_)   : \
+		video.api == video_api_dx12   ? cat(video_dx12_, n_) : \
+		null)
+#elif defined(cr_no_vulkan)
+	#define get_api_proc(n_) ( \
+		video.api == video_api_dx12   ? cat(video_dx12_, n_)   : \
+		video.api == video_api_opengl ? cat(video_gl_, n_)     : \
+		null)
 #else
-#define get_api_proc(n_) ( \
-	video.api == video_api_vulkan ? cat(video_vk_, n_)   : \
-	video.api == video_api_opengl ? cat(video_gl_, n_)   : \
-	video.api == video_api_dx12   ? cat(video_dx12_, n_) : \
-	null)
+	#define get_api_proc(n_) ( \
+		video.api == video_api_vulkan ? cat(video_vk_, n_)   : \
+		video.api == video_api_opengl ? cat(video_gl_, n_)   : \
+		video.api == video_api_dx12   ? cat(video_dx12_, n_) : \
+		null)
 #endif
 
 #define get_v_proc(n_) \
@@ -1031,8 +1046,8 @@ void init_video(const struct video_config* config) {
 		video_gl_register_resources();
 		break;
 #else
-		case video_api_dx12
-			abort_with("Compiled without DirectX12 support.")
+		case video_api_dx12:
+			abort_with("Compiled without DirectX12 support.");
 			break;
 #endif
 	}
