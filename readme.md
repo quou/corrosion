@@ -61,10 +61,10 @@ It will also set the following environment variables:
 | CORROSION_SDK       | C:\Program Files\corrosion\         |
 | CORROSION_DEPS      | vulkan-1.lib;opengl32.lib;winmm.lib |
 | CORROSION_DEP_PATHS | %VULKAN_SDK%\Lib                    |
-| PATH                | C:\Program Files\corrosion\bin      |
 
 After installation on Windows, you'll want to restart your shell so that you can use the environment
-variables.
+variables. You'll probably want to add `C:\Program Files\corrosion` to your `PATH` variable so that
+you can use the shader compiler from the command line.
 
 ## Demos
 <figure>

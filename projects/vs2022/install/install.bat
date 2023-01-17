@@ -19,4 +19,3 @@ copy  /y "%1shadercompiler\bin\%3\shadercompiler.exe" "%install_dir%bin\cshc.exe
 setx /m CORROSION_SDK "%install_dir%
 setx /m CORROSION_DEPS "vulkan-1.lib;opengl32.lib;winmm.lib;
 setx /m CORROSION_DEP_PATHS %VULKAN_SDK%\Lib
-setx /m PATH "%PATH%;%install_dir%bin
